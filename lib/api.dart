@@ -16,7 +16,7 @@ class Api {
 
   Api();
 
-  Future<void> test() async {
+  Future<bool> test() async {
     if (auth == "") {
       await getAuth(Uri.parse(
               "$urlBase/accounts/ClientLogin?Email=$userName&Passwd=$password"))
@@ -33,6 +33,7 @@ class Api {
       getUnread(auth).then((value) => unread = jsonDecode(value.body)),
       // getList(auth).then((value) => list = jsonDecode(value.body)),
     ]);
+    return true;
   }
 
   Future<String> getAuth(Uri uriWithAuth) async {
