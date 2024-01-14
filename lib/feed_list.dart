@@ -50,88 +50,100 @@ class _FeedListState extends State<FeedList> {
         ],
       ),
       body: FutureBuilder(
-        future: api.load(),
+        future: api.storageLoad(),
         builder: (context, snapshot) {
           if (snapshot.hasData) {
-            return ListView.builder(
-              padding: const EdgeInsets.all(8.0),
-              itemCount: api.tags.length + 1,
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return ListTile(
-                    title: const Text("All Articles"),
-                    trailing: UnreadCount(api.unreadTotal.toString()),
-                    onTap: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ArticleList(
-                                title: "All Articles", articles: api.articles),
-                          ));
-                    },
-                  );
-                } else {
-                  String tag = api.tags.elementAt(index - 1);
-                  num tagCount = 0;
-                  Map<String, dynamic> currentSubscriptions = {};
-                  api.subs.forEach((key, value) {
-                    if ((value["categories"] ?? []).toString().contains(tag)) {
-                      currentSubscriptions[key] = value;
-                      tagCount += value["count"];
-                    }
-                  });
-                  return Card(
-                    margin: const EdgeInsets.all(8.0),
-                    child: ExpansionTile(
-                      shape: const Border(),
-                      initiallyExpanded: true,
-                      title: Text(tag),
-                      childrenPadding: const EdgeInsets.all(8.0),
-                      children: [
-                        ListTile(
-                          title: Text("All $tag"),
-                          trailing: UnreadCount(tagCount.toString()),
-                          onTap: () {
-                            List<String> ids =
-                                currentSubscriptions.keys.toList();
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ArticleList(
-                                      title: tag,
-                                      articles: api.articles
-                                          .where((article) =>
-                                              ids.contains(article["feedId"]))
-                                          .toList()),
-                                ));
-                          },
-                        ),
-                        ...currentSubscriptions.keys
-                            .map((e) => ListTile(
-                                  title: Text(currentSubscriptions[e]["title"]),
-                                  trailing: UnreadCount(currentSubscriptions[e]
-                                          ["count"]
-                                      .toString()),
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) => ArticleList(
-                                              title: currentSubscriptions[e]
-                                                  ["title"],
-                                              articles: api.articles
-                                                  .where((article) =>
-                                                      article["feedId"] == e)
-                                                  .toList())),
-                                    );
-                                  },
-                                ))
-                            .toList()
-                      ],
-                    ),
-                  );
-                }
+            return RefreshIndicator.adaptive(
+              onRefresh: () async {
+                await api.networkLoad();
+                setState(() {
+                  
+                });
               },
+              child: ListView.builder(
+                padding: const EdgeInsets.all(8.0),
+                itemCount: api.tags.length + 1,
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return ListTile(
+                      title: const Text("All Articles"),
+                      trailing: UnreadCount(api.unreadTotal.toString()),
+                      onTap: () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ArticleList(
+                                  title: "All Articles",
+                                  articles: api.articles),
+                            ));
+                      },
+                    );
+                  } else {
+                    String tag = api.tags.elementAt(index - 1);
+                    num tagCount = 0;
+                    Map<String, dynamic> currentSubscriptions = {};
+                    api.subs.forEach((key, value) {
+                      if ((value["categories"] ?? [])
+                          .toString()
+                          .contains(tag)) {
+                        currentSubscriptions[key] = value;
+                        tagCount += value["count"];
+                      }
+                    });
+                    return Card(
+                      margin: const EdgeInsets.all(8.0),
+                      child: ExpansionTile(
+                        shape: const Border(),
+                        initiallyExpanded: true,
+                        title: Text(tag),
+                        childrenPadding: const EdgeInsets.all(8.0),
+                        children: [
+                          ListTile(
+                            title: Text("All $tag"),
+                            trailing: UnreadCount(tagCount.toString()),
+                            onTap: () {
+                              List<String> ids =
+                                  currentSubscriptions.keys.toList();
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ArticleList(
+                                        title: tag,
+                                        articles: api.articles
+                                            .where((article) =>
+                                                ids.contains(article["feedId"]))
+                                            .toList()),
+                                  ));
+                            },
+                          ),
+                          ...currentSubscriptions.keys
+                              .map((e) => ListTile(
+                                    title:
+                                        Text(currentSubscriptions[e]["title"]),
+                                    trailing: UnreadCount(
+                                        currentSubscriptions[e]["count"]
+                                            .toString()),
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) => ArticleList(
+                                                title: currentSubscriptions[e]
+                                                    ["title"],
+                                                articles: api.articles
+                                                    .where((article) =>
+                                                        article["feedId"] == e)
+                                                    .toList())),
+                                      );
+                                    },
+                                  ))
+                              .toList()
+                        ],
+                      ),
+                    );
+                  }
+                },
+              ),
             );
           } else {
             return Center(

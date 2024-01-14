@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Api {
   String urlBase = "http://192.168.100.20/freshrss/p/api/greader.php";
@@ -17,7 +18,28 @@ class Api {
 
   Api();
 
-  Future<bool> load() async {
+
+  Future<bool> storageLoad() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    subs = jsonDecode(await prefs.getString("subs") ?? "{}");
+    tags = await prefs.getStringList("tags")?.toSet() ?? tags;
+    articles = await prefs.getStringList("articles")?.map((e) => jsonDecode(e)).toList() ?? articles;
+    updatedTime = await prefs.getInt("updatedTime") ?? updatedTime;
+    unreadTotal = await prefs.getInt("unreadTotal") ?? unreadTotal;
+    return true;
+  }
+
+  Future<bool> storageSave() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setString("subs", jsonEncode(subs));
+    prefs.setStringList("tags", tags.toList());
+    prefs.setStringList("articles", articles.map((e) => jsonEncode(e)).toList());
+    prefs.setInt("updatedTime", updatedTime);
+    prefs.setInt("unreadTotal", unreadTotal);
+    return true;
+  }
+
+  Future<bool> networkLoad() async {
     if (auth == "") {
       await getAuth(Uri.parse(
               "$urlBase/accounts/ClientLogin?Email=$userName&Passwd=$password"))
@@ -65,6 +87,7 @@ class Api {
       getAllArticles(auth, "reading-list")
           .then((value) => articles.addAll(value)),
     ]);
+    await storageSave();
     return true;
   }
 
