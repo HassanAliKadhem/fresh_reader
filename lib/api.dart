@@ -8,30 +8,62 @@ class Api {
   String password = "PfHdPfH123";
   String auth = "";
   String modifyAuth = "";
-  Map<String, dynamic> subscriptions = {};
-  Map<String, dynamic> tags = {};
-  Map<String, dynamic> articles = {};
+  Map<String, dynamic> subs = {};
+  Set<String> tags = <String>{};
+  List<dynamic> articles = [];
+  int updatedTime = 0;
+  int unreadTotal = 0;
   Map<String, dynamic> unread = {};
-  // Map<String, dynamic> list = {};
 
   Api();
 
-  Future<bool> test() async {
+  Future<bool> load() async {
     if (auth == "") {
       await getAuth(Uri.parse(
               "$urlBase/accounts/ClientLogin?Email=$userName&Passwd=$password"))
           .then((value) {
         auth = value;
-      }).catchError((onError) => print(onError));
+      });
     }
     await Future.wait([
       getModifyAuth(auth).then((value) => modifyAuth = value.body),
-      getSubscriptions(auth)
-          .then((value) => subscriptions = jsonDecode(value.body)),
-      getTags(auth).then((value) => tags = jsonDecode(value.body)),
-      getArticles(auth).then((value) => articles = jsonDecode(value.body)),
-      getUnread(auth).then((value) => unread = jsonDecode(value.body)),
-      // getList(auth).then((value) => list = jsonDecode(value.body)),
+      getTags(auth).then((value) {
+        jsonDecode(value.body)["tags"].forEach((element) {
+          tags.add(element["id"]?.split("/").last ?? "");
+        });
+        List<String> list = tags.toList()..sort(); // sort the set
+        tags = list.toSet();
+      }),
+      getSubscriptions(auth).then((value) {
+        jsonDecode(value.body)["subscriptions"].forEach((element) {
+          if (subs[element["id"]] == null) {
+            subs[element["id"]] = {};
+          }
+          subs[element["id"]]["title"] = element["title"] ?? "";
+          subs[element["id"]]["url"] = element["url"] ?? "";
+          subs[element["id"]]["htmlUrl"] = element["htmlUrl"] ?? "";
+          subs[element["id"]]["iconUrl"] = element["iconUrl"] ?? "";
+          List<String> categories = [];
+          element["categories"].forEach((cat) {
+            categories.add(cat["label"]);
+          });
+          subs[element["id"]]["categories"] = categories;
+        });
+      }),
+      getUnreadCounts(auth).then((value) {
+        Map<String, dynamic> json = jsonDecode(value.body);
+        unreadTotal = json["max"] ?? 0; // get total unread count
+
+        // get unread counts for each subscription
+        json["unreadcounts"].forEach((element) {
+          if (subs[element["id"]] == null) {
+            subs[element["id"]] = {};
+          }
+          subs[element["id"]]["count"] = element["count"] ?? 0;
+        });
+      }),
+      getAllArticles(auth, "reading-list")
+          .then((value) => articles.addAll(value)),
     ]);
     return true;
   }
@@ -77,18 +109,18 @@ class Api {
     );
   }
 
-  Future<http.Response> getArticles(String auth) {
-    return http.post(
-      Uri.parse("$urlBase/reader/api/0/stream/contents/reading-list"),
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': 'GoogleLogin auth=$auth',
-      },
-    );
-  }
+  // Future<http.Response> getArticles(String auth) {
+  //   return http.post(
+  //     Uri.parse("$urlBase/reader/api/0/stream/contents/reading-list&ot=0"),
+  //     headers: {
+  //       'Content-Type': 'application/json',
+  //       'Accept': 'application/json',
+  //       'Authorization': 'GoogleLogin auth=$auth',
+  //     },
+  //   );
+  // }
 
-  Future<http.Response> getUnread(String auth) {
+  Future<http.Response> getUnreadCounts(String auth) {
     return http.post(
       Uri.parse("$urlBase/reader/api/0/unread-count?output=json"),
       headers: {
@@ -99,63 +131,50 @@ class Api {
     );
   }
 
-  // Future<http.Response> getList(String auth) {
-  //   return http.post(
-  //     Uri.parse("$urlBase/reader/api/0/tag/list?output=json"),
-  //     headers: {
-  //       'Content-Type': 'application/json',
-  //       'Accept': 'application/json',
-  //       'Authorization': 'GoogleLogin auth=$auth',
-  //     },
-  //   );
-  // }
+  Future<List<dynamic>> getAllArticles(String auth, String feed) async {
+    String url =
+        "$urlBase/reader/api/0/stream/contents/$feed?xt=user/-/state/com.google/read";
+    String con = "";
+    List<dynamic> articles = [];
+    do {
+      http.Response response = await http.post(
+        Uri.parse("$url${con == "" ? "" : "&c=$con"}"),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'GoogleLogin auth=$auth',
+        },
+      );
+      dynamic res = jsonDecode(String.fromCharCodes(response.bodyBytes));
+      updatedTime = res["updated"] ?? 0;
+      res["items"].forEach((element) {
+        articles.add({
+          "feedId": element["origin"]["streamId"] ?? "",
+          "read": false,
+          "published": element["published"] ?? 0,
+          "title": element["title"] ?? "",
+          "url": element["origin"]["htmlUrl"] ?? "",
+          "urls": element["canonical"] ??
+              [
+                {"href": ""}
+              ],
+          "altUrls": element["alternate"] ??
+              [
+                {"href": ""}
+              ],
+          "summary": element["summary"]["content"] ?? "",
+        });
+      });
+      con = res["continuation"]?.toString() ?? "";
+    } while (con != "");
+    return articles;
+  }
 }
 
-Map<String, dynamic> getData(Api api) {
-  Map<String, dynamic> data = {};
-  // get tags
-  List<dynamic> tags = [];
-  api.tags["tags"].forEach((element) {
-    tags.add(element["id"]?.split("/").last ?? "");
-  });
-  data["tags"] = tags;
-
-  data["unreadTotal"] = api.unread["max"] ?? 0; // get total unread count
-
-  // get unread counts for each subscription
-  Map<String, dynamic> items = {};
-  api.unread["unreadcounts"].forEach((element) {
-    items[element["id"]] = {"count": element["count"] ?? 0};
-  });
-
-  // get subscription data for each feed
-  api.subscriptions["subscriptions"].forEach((element) {
-    items[element["id"]]["title"] = element["title"] ?? "";
-    items[element["id"]]["url"] = element["url"] ?? "";
-    items[element["id"]]["htmlUrl"] = element["htmlUrl"] ?? "";
-    items[element["id"]]["iconUrl"] = element["iconUrl"] ?? "";
-    List<String> categories = [];
-    element["categories"].forEach((cat) {
-      categories.add(cat["label"]);
-    });
-    items[element["id"]]["categories"] = categories;
-  });
-  data["subscriptions"] = items;
-
-  //get updated time
-  data["updated"] = api.articles["updated"] ?? 0;
-  data["articles"] = [];
-  // sort the articles into the appropriate feed
-  api.articles["items"].forEach((element) {
-    data["articles"].add({
-      "feedId": element["origin"]["streamId"],
-      "read": false,
-      "published": element["published"],
-      "title": element["title"],
-      "urls": element["canonical"],
-      "altUrls": element["alternate"],
-      "summary": element["summary"],
-    });
-  });
-  return data;
+String getFirstImage(String content) {
+  RegExpMatch? match = RegExp('(?<=src=")(.*?)(?=")').firstMatch(content);
+  if (match != null && match?[0] != null) {
+    print(match[0]);
+  }
+  return match?[0] ?? "";
 }

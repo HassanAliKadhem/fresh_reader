@@ -78,7 +78,7 @@ class _ArticleViewState extends State<ArticleView> {
                       .toString(),
                 ),
                 HtmlWidget(
-                  article["summary"]["content"] ?? "",
+                  article["summary"] ?? "",
                 ),
               ],
             ),

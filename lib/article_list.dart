@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fresh_reader/api.dart';
 import 'package:fresh_reader/article_view.dart';
 
 class ArticleList extends StatefulWidget {
@@ -24,16 +25,35 @@ class _ArticleListState extends State<ArticleList> {
         itemCount: widget.articles.length,
         itemBuilder: (context, index) {
           dynamic article = widget.articles[index];
+          String imgLink = getFirstImage(article["summary"] ?? "");
           return ListTile(
             title: Text(article["title"]),
             subtitle: Text(
-                DateTime.fromMillisecondsSinceEpoch(article["published"]*1000)
+                DateTime.fromMillisecondsSinceEpoch(article["published"] * 1000)
                     .toString()),
-            leading: Icon(
-              widget.articles[index]["read"] ?? false
-                  ? Icons.remove_red_eye_outlined
-                  : Icons.remove_red_eye,
-            ),
+            leading: imgLink == ""
+                ? Container(
+                    color: Colors.grey.shade800,
+                    height: 48,
+                    width: 48,
+                  )
+                : Image.network(
+                    imgLink,
+                    height: 48,
+                    width: 48,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: Colors.grey.shade800,
+                        height: 48,
+                        width: 48,
+                      );
+                    },
+                  ),
+            // leading: Icon(
+            //   widget.articles[index]["read"] ?? false
+            //       ? Icons.remove_red_eye_outlined
+            //       : Icons.remove_red_eye,
+            // ),
             // trailing: const Icon(Icons.arrow_forward_ios),
             onTap: () => Navigator.push(
               context,
