@@ -11,6 +11,7 @@ An opinionated reader for FreshRss (not affiliated) made just for me. but you ca
 - [x] open in browser
 
 ## Todo
+- [ ] change the server link (it points to my FreshRss instance at the moment)
 - [ ] sync read articles to server
 - [ ] search articles
 - [ ] in app browser view
