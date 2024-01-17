@@ -32,7 +32,7 @@ class _ArticleListState extends State<ArticleList> {
         itemCount: articles.length,
         itemBuilder: (context, index) {
           Article article = articles[index];
-          String imgLink = getFirstImage(article.title);
+          String imgLink = getFirstImage(article.content);
           return Dismissible(
             key: ValueKey(article.id),
             direction: DismissDirection.endToStart,

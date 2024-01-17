@@ -14,7 +14,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Api(
-      notifier: ApiData(),
+      notifier: ApiData()..storageLoad(),
       child: MaterialApp(
         title: 'FreshReader',
         scrollBehavior: const CupertinoScrollBehavior(),

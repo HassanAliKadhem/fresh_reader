@@ -1,9 +1,10 @@
 # FreshReader
 
-An opinionated reader for FreshRss (not affiliated) made just for me. but you can use it if you want
+An opinionated client for FreshRss (not affiliated) made just for me. but you can use it if you want
 
 ## Features
 - [x] get unread articles from FreshRss Server
+- [x] change the server link
 - [x] filter by tag
 - [x] filter by unread
 - [x] render article as html
@@ -11,7 +12,6 @@ An opinionated reader for FreshRss (not affiliated) made just for me. but you ca
 - [x] open in browser
 
 ## Todo
-- [ ] change the server link (it points to my FreshRss instance at the moment)
 - [ ] sync read articles to server
 - [ ] search articles
 - [ ] in app browser view

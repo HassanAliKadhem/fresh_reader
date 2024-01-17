@@ -25,10 +25,10 @@ class _FeedListState extends State<FeedList> {
         actions: [
           DropdownButtonHideUnderline(
             child: DropdownButton<bool>(
-              icon: Icon(Api.of(context).getShowAll()
-                  ? Icons.filter_alt_off
-                  : Icons.filter_alt),
-                  
+              // icon: Icon(Api.of(context).getShowAll()
+              //     ? Icons.filter_alt_off
+              //     : Icons.filter_alt),
+              icon: const SizedBox(),
               value: Api.of(context).getShowAll(),
               items: const [
                 DropdownMenuItem<bool>(
@@ -91,26 +91,27 @@ class _FeedListState extends State<FeedList> {
           ),
         ],
       ),
-      body: FutureBuilder(
-        future: Api.of(context).storageLoad(),
-        builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            return RefreshIndicator.adaptive(
-              onRefresh: () async {
-                await Api.of(context).networkLoad();
-                setState(() {});
-              },
-              child: CategoryList(),
-            );
-          } else {
-            return Center(
-              child: snapshot.hasError
-                  ? Text(snapshot.error.toString())
-                  : const CircularProgressIndicator.adaptive(),
-            );
-          }
-        },
-      ),
+      body: CategoryList(),
+      // body: FutureBuilder(
+      //   future: Api.of(context).storageLoad(),
+      //   builder: (context, snapshot) {
+      //     if (snapshot.hasData) {
+      //       return RefreshIndicator.adaptive(
+      //         onRefresh: () async {
+      //           await Api.of(context).networkLoad();
+      //           setState(() {});
+      //         },
+      //         child: CategoryList(),
+      //       );
+      //     } else {
+      //       return Center(
+      //         child: snapshot.hasError
+      //             ? Text(snapshot.error.toString())
+      //             : const CircularProgressIndicator.adaptive(),
+      //       );
+      //     }
+      //   },
+      // ),
     );
   }
 }
@@ -154,64 +155,85 @@ class _CategoryListState extends State<CategoryList> {
     });
   }
 
+  dynamic networkError;
+
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(8.0),
-      itemCount: Api.of(context).tags.length + 1,
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return ListTile(
-            title: const Text("All Articles"),
-            trailing: UnreadCount(
-                Api.of(context).getFilteredArticles("").length.toString()),
-            onTap: () => openArticleList(context, "", "All Articles"),
-          );
-        } else {
-          String tag = Api.of(context).tags.elementAt(index - 1);
-          Map<String, Subscription> currentSubscriptions = {};
-          Api.of(context).subs.forEach((key, value) {
-            if (value.categories.toString().contains(tag)) {
-              currentSubscriptions[key] = value;
-            }
+    return RefreshIndicator.adaptive(
+      onRefresh: () async {
+        await Api.of(context).networkLoad().then((value) {
+          setState(() {
+            networkError = null;
           });
-          return ExpansionTile(
-            title: Text(tag),
-            shape: const Border(),
-            initiallyExpanded: true,
-            controlAffinity: ListTileControlAffinity.leading,
-            childrenPadding: const EdgeInsets.only(left: 40.0),
-            trailing: InkWell(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 0, 16.0),
-                child: UnreadCount(Api.of(context)
-                    .getFilteredArticles("")
-                    .values
-                    .where((element) =>
-                        currentSubscriptions.keys.contains(element.feedId))
-                    .length
-                    .toString()),
-              ),
-              onTap: () => openArticleList(context, tag, tag),
-            ),
-            children: currentSubscriptions.keys
-                .map((key) => ListTile(
-                      title: Text(currentSubscriptions[key]!.title),
-                      trailing: UnreadCount(Api.of(context)
-                          .getFilteredArticles("")
-                          .values
-                          .where((element) => element.feedId == key)
-                          .length
-                          .toString()),
-                      onTap: () {
-                        openArticleList(
-                            context, key, currentSubscriptions[key]!.title);
-                      },
-                    ))
-                .toList(),
-          );
-        }
+        }).catchError((onError) {
+          setState(() {
+            networkError = onError;
+          });
+        });
       },
+      child: networkError != null
+          ? Center(
+              child: Text(networkError.toString()),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(8.0),
+              itemCount: Api.of(context).tags.length + 1,
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  return ListTile(
+                    title: const Text("All Articles"),
+                    trailing: UnreadCount(Api.of(context)
+                        .getFilteredArticles("")
+                        .length
+                        .toString()),
+                    onTap: () => openArticleList(context, "", "All Articles"),
+                  );
+                } else {
+                  String tag = Api.of(context).tags.elementAt(index - 1);
+                  Map<String, Subscription> currentSubscriptions = {};
+                  Api.of(context).subs.forEach((key, value) {
+                    if (value.categories.toString().contains(tag)) {
+                      currentSubscriptions[key] = value;
+                    }
+                  });
+                  return ExpansionTile(
+                    title: Text(tag),
+                    shape: const Border(),
+                    initiallyExpanded: true,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    childrenPadding: const EdgeInsets.only(left: 40.0),
+                    trailing: InkWell(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16.0, 16.0, 0, 16.0),
+                        child: UnreadCount(Api.of(context)
+                            .getFilteredArticles("")
+                            .values
+                            .where((element) => currentSubscriptions.keys
+                                .contains(element.feedId))
+                            .length
+                            .toString()),
+                      ),
+                      onTap: () => openArticleList(context, tag, tag),
+                    ),
+                    children: currentSubscriptions.keys
+                        .map((key) => ListTile(
+                              title: Text(currentSubscriptions[key]!.title),
+                              trailing: UnreadCount(Api.of(context)
+                                  .getFilteredArticles("")
+                                  .values
+                                  .where((element) => element.feedId == key)
+                                  .length
+                                  .toString()),
+                              onTap: () {
+                                openArticleList(context, key,
+                                    currentSubscriptions[key]!.title);
+                              },
+                            ))
+                        .toList(),
+                  );
+                }
+              },
+            ),
     );
   }
 }

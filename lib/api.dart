@@ -7,7 +7,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'data_types.dart';
 
 class Api extends InheritedNotifier<ApiData> {
-  const Api({super.key, required super.child, required super.notifier});
+  const Api({
+    super.key,
+    required super.child,
+    required super.notifier,
+  });
 
   static ApiData of(BuildContext context) {
     assert(context.dependOnInheritedWidgetOfExactType<Api>() != null,
@@ -22,9 +26,9 @@ class Api extends InheritedNotifier<ApiData> {
 }
 
 class ApiData extends ChangeNotifier {
-  String urlBase = "http://192.168.100.20/freshrss/p/api/greader.php";
-  String userName = "hassanali92";
-  String password = "PfHdPfH123";
+  String server = "";
+  String userName = "";
+  String password = "";
   String auth = "";
   String modifyAuth = "";
   Map<String, Subscription> subs = {};
@@ -33,36 +37,47 @@ class ApiData extends ChangeNotifier {
   bool _showAll = false;
   int updatedTime = 0;
   int unreadTotal = 0;
-  Map<String, dynamic> unread = {};
+  // Map<String, dynamic> unread = {};
 
   ApiData();
 
   Future<bool> storageLoad() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    (jsonDecode(prefs.getString("subs") ?? "{}") as Map<String, dynamic>)
-        .entries
-        .forEach((element) {
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    for (var element in (jsonDecode(preferences.getString("subs") ?? "{}")
+            as Map<String, dynamic>)
+        .entries) {
       subs[element.key] = Subscription.fromJson(element.value);
-    });
-    tags = prefs.getStringList("tags")?.toSet() ?? tags;
-    prefs.getStringList("articles")?.forEach((element) {
+    }
+    tags = preferences.getStringList("tags")?.toSet() ?? tags;
+    preferences.getStringList("articles")?.forEach((element) {
       Map<String, dynamic> json = jsonDecode(element);
       articles[json["id"]] = Article.fromJson(json);
     });
-    updatedTime = prefs.getInt("updatedTime") ?? updatedTime;
-    unreadTotal = prefs.getInt("unreadTotal") ?? unreadTotal;
+    updatedTime = preferences.getInt("updatedTime") ?? updatedTime;
+    unreadTotal = preferences.getInt("unreadTotal") ?? unreadTotal;
+
+    server = preferences.getString("server") ?? "";
+    // debugPrint(server);
+    userName = preferences.getString("userName") ?? "";
+    // debugPrint(userName);
+    password = preferences.getString("password") ?? "";
+    // debugPrint(password);
+    notifyListeners();
     return true;
   }
 
   Future<bool> storageSave() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
     await Future.wait([
-      prefs.setString("subs", jsonEncode(subs)),
-      prefs.setStringList("tags", tags.toList()),
-      prefs.setStringList("articles",
+      preferences.setString("subs", jsonEncode(subs)),
+      preferences.setStringList("tags", tags.toList()),
+      preferences.setStringList("articles",
           articles.values.map<String>((e) => jsonEncode(e.toJson())).toList()),
-      prefs.setInt("updatedTime", updatedTime),
-      prefs.setInt("unreadTotal", unreadTotal),
+      preferences.setInt("updatedTime", updatedTime),
+      preferences.setInt("unreadTotal", unreadTotal),
+      preferences.setString("server", server),
+      preferences.setString("userName", userName),
+      preferences.setString("password", password),
     ]);
     return true;
   }
@@ -70,7 +85,7 @@ class ApiData extends ChangeNotifier {
   Future<bool> networkLoad() async {
     if (auth == "") {
       await _getAuth(Uri.parse(
-              "$urlBase/accounts/ClientLogin?Email=$userName&Passwd=$password"))
+              "$server/accounts/ClientLogin?Email=$userName&Passwd=$password"))
           .then((value) {
         auth = value;
       });
@@ -146,7 +161,7 @@ class ApiData extends ChangeNotifier {
 
   Future<http.Response> _getModifyAuth(String auth) {
     return http.post(
-      Uri.parse("$urlBase/reader/api/0/token"),
+      Uri.parse("$server/reader/api/0/token"),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -157,7 +172,7 @@ class ApiData extends ChangeNotifier {
 
   Future<http.Response> _getSubscriptions(String auth) {
     return http.post(
-      Uri.parse("$urlBase/reader/api/0/subscription/list?output=json"),
+      Uri.parse("$server/reader/api/0/subscription/list?output=json"),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -168,7 +183,7 @@ class ApiData extends ChangeNotifier {
 
   Future<http.Response> _getTags(String auth) {
     return http.post(
-      Uri.parse("$urlBase/reader/api/0/tag/list?output=json"),
+      Uri.parse("$server/reader/api/0/tag/list?output=json"),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -190,7 +205,7 @@ class ApiData extends ChangeNotifier {
 
   Future<List<Article>> _getAllArticles(String auth, String feed) async {
     String url =
-        "$urlBase/reader/api/0/stream/contents/$feed?xt=user/-/state/com.google/read";
+        "$server/reader/api/0/stream/contents/$feed?xt=user/-/state/com.google/read";
     String con = "";
     List<Article> newArticles = [];
     do {
@@ -281,6 +296,18 @@ class ApiData extends ChangeNotifier {
 
 String getFirstImage(String content) {
   RegExpMatch? match = RegExp('(?<=src=")(.*?)(?=")').firstMatch(content);
+  if (match?[0] == null) {
+    for (RegExpMatch newMatch
+        in RegExp('(?<=href=")(.*?)(?=")').allMatches(content)) {
+      if (newMatch[0]!.endsWith(".jpg") ||
+          newMatch[0]!.endsWith(".jpeg") ||
+          newMatch[0]!.endsWith(".png") ||
+          newMatch[0]!.endsWith(".webp") ||
+          newMatch[0]!.endsWith(".gif")) {
+        return newMatch[0]!;
+      }
+    }
+  }
   return match?[0] ?? "";
 }
 
