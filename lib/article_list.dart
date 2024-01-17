@@ -18,20 +18,75 @@ class ArticleList extends StatefulWidget {
 
 class _ArticleListState extends State<ArticleList> {
   late List<Article> articles = [];
+  List<Article> currentArticles = [];
+  bool showSearchBar = false;
+  String searchTerm = "";
+  FocusNode focusNode = FocusNode();
 
   @override
   Widget build(BuildContext context) {
     if (articles.isEmpty) {
-      articles = Api.of(context).getFilteredArticles(widget.filter).values.toList();
+      articles =
+          Api.of(context).getFilteredArticles(widget.filter).values.toList();
+    }
+
+    if (searchTerm == "") {
+      currentArticles = articles;
+    } else {
+      currentArticles = articles
+          .where((element) =>
+              element.title.toLowerCase().contains(searchTerm) ||
+              element.content.toLowerCase().contains(searchTerm))
+          .toList();
     }
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        title: IndexedStack(
+          alignment: Alignment.centerLeft,
+          index: showSearchBar ? 1 : 0,
+          children: [
+            Text(widget.title),
+            TextField(
+              focusNode: focusNode,
+              style: const TextStyle(fontSize: 24),
+              decoration: InputDecoration(
+                suffix: IconButton(
+                  onPressed: () {
+                    setState(() {
+                      showSearchBar = false;
+                      searchTerm = "";
+                    });
+                    focusNode.previousFocus();
+                  },
+                  icon: const Icon(Icons.clear),
+                ),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  searchTerm = value.toLowerCase();
+                });
+              },
+            ),
+          ],
+        ),
+        actions: showSearchBar
+            ? []
+            : [
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      showSearchBar = true;
+                    });
+                    focusNode.requestFocus();
+                  },
+                  icon: const Icon(Icons.search),
+                ),
+              ],
       ),
       body: ListView.builder(
-        itemCount: articles.length,
+        itemCount: currentArticles.length,
         itemBuilder: (context, index) {
-          Article article = articles[index];
+          Article article = currentArticles[index];
           String imgLink = getFirstImage(article.content);
           return Dismissible(
             key: ValueKey(article.id),
@@ -108,7 +163,7 @@ class _ArticleListState extends State<ArticleList> {
                   context,
                   MaterialPageRoute(
                       builder: (context) =>
-                          ArticleView(index: index, articles: articles)),
+                          ArticleView(index: index, articles: currentArticles)),
                 ).then((value) {
                   setState(() {});
                 });

@@ -7,14 +7,14 @@ An opinionated client for FreshRss (not affiliated) made just for me. but you ca
 - [x] change the server link
 - [x] filter by tag
 - [x] filter by unread
+- [X] search articles
 - [x] render article as html
 - [x] share article link
 - [x] open in browser
+- [x] in app browser view
 
 ## Todo
 - [ ] sync read articles to server
-- [ ] search articles
-- [ ] in app browser view
 
 ## Screenshots
 ![Alt text](SimulatorHome.png)

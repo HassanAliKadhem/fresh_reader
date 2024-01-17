@@ -3,11 +3,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
-import 'package:fresh_reader/data_types.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'api.dart';
+import 'data_types.dart';
 
 class ArticleView extends StatefulWidget {
   const ArticleView({
@@ -24,6 +25,7 @@ class ArticleView extends StatefulWidget {
 class _ArticleViewState extends State<ArticleView> {
   late PageController _pageController;
   int currentIndex = 0;
+  bool showWebView = false;
   @override
   void initState() {
     super.initState();
@@ -50,8 +52,6 @@ class _ArticleViewState extends State<ArticleView> {
       currentIndex = page;
     });
   }
-
-  bool firstPage = true;
 
   @override
   Widget build(BuildContext context) {
@@ -98,6 +98,29 @@ class _ArticleViewState extends State<ArticleView> {
                 ),
               );
             }),
+            DropdownButtonHideUnderline(
+              child: DropdownButton<bool>(
+                icon: const SizedBox(),
+                value: showWebView,
+                items: const [
+                  DropdownMenuItem<bool>(
+                    value: true,
+                    child: Text("Web"),
+                  ),
+                  DropdownMenuItem<bool>(
+                    value: false,
+                    child: Text("Text"),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (showWebView != value) {
+                    setState(() {
+                      showWebView = value ?? false;
+                    });
+                  }
+                },
+              ),
+            ),
           ],
         ),
       ),
@@ -107,28 +130,35 @@ class _ArticleViewState extends State<ArticleView> {
         itemCount: widget.articles.length,
         itemBuilder: (context, index) {
           Article article = widget.articles[index];
-          return SelectionArea(
-            child: ListView(
-              padding: const EdgeInsets.all(16.0),
-              children: [
-                ListTile(
-                  contentPadding: const EdgeInsets.all(0),
-                  title: Text(article.title),
-                  subtitle: Text(
-                    "${getRelativeDate(article.published)}, ${DateTime.fromMillisecondsSinceEpoch(article.published * 1000)}",
+          late WebViewController controller;
+          if (showWebView) {
+            controller = WebViewController();
+            controller.loadRequest(Uri.parse(article.urls.first));
+          }
+          return showWebView
+              ? WebViewWidget(controller: controller)
+              : SelectionArea(
+                  child: ListView(
+                    padding: const EdgeInsets.all(16.0),
+                    children: [
+                      ListTile(
+                        contentPadding: const EdgeInsets.all(0),
+                        title: Text(article.title),
+                        subtitle: Text(
+                          "${getRelativeDate(article.published)}, ${DateTime.fromMillisecondsSinceEpoch(article.published * 1000)}",
+                        ),
+                      ),
+                      HtmlWidget(
+                        article.content,
+                        onTapUrl: (url) {
+                          launchUrl(Uri.parse(url),
+                              mode: LaunchMode.inAppBrowserView);
+                          return true;
+                        },
+                      ),
+                    ],
                   ),
-                ),
-                HtmlWidget(
-                  article.content,
-                  onTapUrl: (url) {
-                    launchUrl(Uri.parse(url),
-                        mode: LaunchMode.inAppBrowserView);
-                    return true;
-                  },
-                ),
-              ],
-            ),
-          );
+                );
         },
       ),
     );
