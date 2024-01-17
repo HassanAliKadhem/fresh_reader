@@ -177,16 +177,16 @@ class ApiData extends ChangeNotifier {
     );
   }
 
-  Future<http.Response> _getUnreadCounts(String auth) {
-    return http.post(
-      Uri.parse("$urlBase/reader/api/0/unread-count?output=json"),
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': 'GoogleLogin auth=$auth',
-      },
-    );
-  }
+  // Future<http.Response> _getUnreadCounts(String auth) {
+  //   return http.post(
+  //     Uri.parse("$urlBase/reader/api/0/unread-count?output=json"),
+  //     headers: {
+  //       'Content-Type': 'application/json',
+  //       'Accept': 'application/json',
+  //       'Authorization': 'GoogleLogin auth=$auth',
+  //     },
+  //   );
+  // }
 
   Future<List<Article>> _getAllArticles(String auth, String feed) async {
     String url =

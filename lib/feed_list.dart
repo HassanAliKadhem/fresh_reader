@@ -23,39 +23,61 @@ class _FeedListState extends State<FeedList> {
       appBar: AppBar(
         title: Text(widget.title),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_alt),
-            tooltip: "Filter",
-            onPressed: () {
-              showAdaptiveDialog(
-                context: context,
-                barrierDismissible: true,
-                builder: (context) {
-                  return AlertDialog.adaptive(
-                    title: const Text("Filter type"),
-                    actions: [
-                      TextButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            setState(() {
-                              Api.of(context).setShowAll(true);
-                            });
-                          },
-                          child: const Text("All")),
-                      TextButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            setState(() {
-                              Api.of(context).setShowAll(false);
-                            });
-                          },
-                          child: const Text("Unread")),
-                    ],
-                  );
-                },
-              );
-            },
+          DropdownButtonHideUnderline(
+            child: DropdownButton<bool>(
+              icon: Icon(Api.of(context).getShowAll()
+                  ? Icons.filter_alt_off
+                  : Icons.filter_alt),
+                  
+              value: Api.of(context).getShowAll(),
+              items: const [
+                DropdownMenuItem<bool>(
+                  value: true,
+                  child: Text("All "),
+                ),
+                DropdownMenuItem<bool>(
+                  value: false,
+                  child: Text("Unread "),
+                ),
+              ],
+              onChanged: (showAll) {
+                Api.of(context).setShowAll(showAll ?? false);
+              },
+            ),
           ),
+          // IconButton(
+          //   icon: const Icon(Icons.filter_alt),
+          //   tooltip: "Filter",
+          //   onPressed: () {
+          //     showAdaptiveDialog(
+          //       context: context,
+          //       barrierDismissible: true,
+          //       builder: (context) {
+          //         return AlertDialog.adaptive(
+          //           title: const Text("Filter type"),
+          //           actions: [
+          //             TextButton(
+          //                 onPressed: () {
+          //                   Navigator.pop(context);
+          //                   setState(() {
+          //                     Api.of(context).setShowAll(true);
+          //                   });
+          //                 },
+          //                 child: const Text("All")),
+          //             TextButton(
+          //                 onPressed: () {
+          //                   Navigator.pop(context);
+          //                   setState(() {
+          //                     Api.of(context).setShowAll(false);
+          //                   });
+          //                 },
+          //                 child: const Text("Unread")),
+          //           ],
+          //         );
+          //       },
+          //     );
+          //   },
+          // ),
           IconButton(
             icon: const Icon(Icons.settings),
             tooltip: "Settings",

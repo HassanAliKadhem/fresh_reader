@@ -1,16 +1,21 @@
-# fresh_reader
+# FreshReader
 
-An opinionated reader for freshrss made just for me. but you can use it if you want
+An opinionated reader for FreshRss (not affiliated) made just for me. but you can use it if you want
 
-## Getting Started
+## Features
+- [x] get unread articles from FreshRss Server
+- [x] filter by tag
+- [x] filter by unread
+- [x] render article as html
+- [x] share article link
+- [x] open in browser
 
-This project is a starting point for a Flutter application.
+## Todo
+- [ ] sync read articles to server
+- [ ] search articles
+- [ ] in app browser view
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Screenshots
+![Alt text](SimulatorHome.png)
+![Alt text](SimulatorList.png)
+![Alt text](SimulatorArticle.png)
