@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:fresh_reader/api.dart';
-import 'package:fresh_reader/article_list.dart';
-import 'package:fresh_reader/settings_view.dart';
+import 'package:fresh_reader/data_types.dart';
+
+import 'api.dart';
+import 'article_list.dart';
+import 'settings_view.dart';
 
 class FeedList extends StatefulWidget {
   const FeedList({
@@ -15,14 +17,6 @@ class FeedList extends StatefulWidget {
 }
 
 class _FeedListState extends State<FeedList> {
-  late Api api;
-
-  @override
-  void initState() {
-    super.initState();
-    api = Api();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -32,7 +26,35 @@ class _FeedListState extends State<FeedList> {
           IconButton(
             icon: const Icon(Icons.filter_alt),
             tooltip: "Filter",
-            onPressed: () {},
+            onPressed: () {
+              showAdaptiveDialog(
+                context: context,
+                barrierDismissible: true,
+                builder: (context) {
+                  return AlertDialog.adaptive(
+                    title: const Text("Filter type"),
+                    actions: [
+                      TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            setState(() {
+                              Api.of(context).setShowAll(true);
+                            });
+                          },
+                          child: const Text("All")),
+                      TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            setState(() {
+                              Api.of(context).setShowAll(false);
+                            });
+                          },
+                          child: const Text("Unread")),
+                    ],
+                  );
+                },
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.settings),
@@ -40,9 +62,7 @@ class _FeedListState extends State<FeedList> {
             onPressed: () {
               Navigator.push(context, MaterialPageRoute(
                 builder: (context) {
-                  return SettingsView(
-                    api: api,
-                  );
+                  return const SettingsView();
                 },
               ));
             },
@@ -50,100 +70,15 @@ class _FeedListState extends State<FeedList> {
         ],
       ),
       body: FutureBuilder(
-        future: api.storageLoad(),
+        future: Api.of(context).storageLoad(),
         builder: (context, snapshot) {
           if (snapshot.hasData) {
             return RefreshIndicator.adaptive(
               onRefresh: () async {
-                await api.networkLoad();
-                setState(() {
-                  
-                });
+                await Api.of(context).networkLoad();
+                setState(() {});
               },
-              child: ListView.builder(
-                padding: const EdgeInsets.all(8.0),
-                itemCount: api.tags.length + 1,
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    return ListTile(
-                      title: const Text("All Articles"),
-                      trailing: UnreadCount(api.unreadTotal.toString()),
-                      onTap: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ArticleList(
-                                  title: "All Articles",
-                                  articles: api.articles),
-                            ));
-                      },
-                    );
-                  } else {
-                    String tag = api.tags.elementAt(index - 1);
-                    num tagCount = 0;
-                    Map<String, dynamic> currentSubscriptions = {};
-                    api.subs.forEach((key, value) {
-                      if ((value["categories"] ?? [])
-                          .toString()
-                          .contains(tag)) {
-                        currentSubscriptions[key] = value;
-                        tagCount += value["count"];
-                      }
-                    });
-                    return Card(
-                      margin: const EdgeInsets.all(8.0),
-                      child: ExpansionTile(
-                        shape: const Border(),
-                        initiallyExpanded: true,
-                        title: Text(tag),
-                        childrenPadding: const EdgeInsets.all(8.0),
-                        children: [
-                          ListTile(
-                            title: Text("All $tag"),
-                            trailing: UnreadCount(tagCount.toString()),
-                            onTap: () {
-                              List<String> ids =
-                                  currentSubscriptions.keys.toList();
-                              Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ArticleList(
-                                        title: tag,
-                                        articles: api.articles
-                                            .where((article) =>
-                                                ids.contains(article["feedId"]))
-                                            .toList()),
-                                  ));
-                            },
-                          ),
-                          ...currentSubscriptions.keys
-                              .map((e) => ListTile(
-                                    title:
-                                        Text(currentSubscriptions[e]["title"]),
-                                    trailing: UnreadCount(
-                                        currentSubscriptions[e]["count"]
-                                            .toString()),
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                            builder: (context) => ArticleList(
-                                                title: currentSubscriptions[e]
-                                                    ["title"],
-                                                articles: api.articles
-                                                    .where((article) =>
-                                                        article["feedId"] == e)
-                                                    .toList())),
-                                      );
-                                    },
-                                  ))
-                              .toList()
-                        ],
-                      ),
-                    );
-                  }
-                },
-              ),
+              child: CategoryList(),
             );
           } else {
             return Center(
@@ -170,6 +105,91 @@ class UnreadCount extends StatelessWidget {
         color: Theme.of(context).dialogBackgroundColor,
       ),
       child: Text(unread),
+    );
+  }
+}
+
+class CategoryList extends StatefulWidget {
+  const CategoryList({super.key});
+
+  @override
+  State<CategoryList> createState() => _CategoryListState();
+}
+
+class _CategoryListState extends State<CategoryList> {
+  void openArticleList(BuildContext context, String filter, String title) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ArticleList(
+          key: ValueKey(filter + Api.of(context).getShowAll().toString()),
+          title: title,
+          filter: filter,
+        ),
+      ),
+    ).then((value) {
+      setState(() {});
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(8.0),
+      itemCount: Api.of(context).tags.length + 1,
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return ListTile(
+            title: const Text("All Articles"),
+            trailing: UnreadCount(
+                Api.of(context).getFilteredArticles("").length.toString()),
+            onTap: () => openArticleList(context, "", "All Articles"),
+          );
+        } else {
+          String tag = Api.of(context).tags.elementAt(index - 1);
+          Map<String, Subscription> currentSubscriptions = {};
+          Api.of(context).subs.forEach((key, value) {
+            if (value.categories.toString().contains(tag)) {
+              currentSubscriptions[key] = value;
+            }
+          });
+          return ExpansionTile(
+            title: Text(tag),
+            shape: const Border(),
+            initiallyExpanded: true,
+            controlAffinity: ListTileControlAffinity.leading,
+            childrenPadding: const EdgeInsets.only(left: 40.0),
+            trailing: InkWell(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 0, 16.0),
+                child: UnreadCount(Api.of(context)
+                    .getFilteredArticles("")
+                    .values
+                    .where((element) =>
+                        currentSubscriptions.keys.contains(element.feedId))
+                    .length
+                    .toString()),
+              ),
+              onTap: () => openArticleList(context, tag, tag),
+            ),
+            children: currentSubscriptions.keys
+                .map((key) => ListTile(
+                      title: Text(currentSubscriptions[key]!.title),
+                      trailing: UnreadCount(Api.of(context)
+                          .getFilteredArticles("")
+                          .values
+                          .where((element) => element.feedId == key)
+                          .length
+                          .toString()),
+                      onTap: () {
+                        openArticleList(
+                            context, key, currentSubscriptions[key]!.title);
+                      },
+                    ))
+                .toList(),
+          );
+        }
+      },
     );
   }
 }

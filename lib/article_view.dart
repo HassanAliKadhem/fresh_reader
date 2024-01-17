@@ -1,14 +1,22 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:fresh_reader/data_types.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import 'api.dart';
 
 class ArticleView extends StatefulWidget {
   const ArticleView({
+    super.key,
     required this.index,
     required this.articles,
-    super.key,
   });
   final int index;
-  final List<dynamic> articles;
+  final List<Article> articles;
   @override
   State<ArticleView> createState() => _ArticleViewState();
 }
@@ -23,12 +31,33 @@ class _ArticleViewState extends State<ArticleView> {
     currentIndex = widget.index;
   }
 
+  void _onShare(BuildContext context) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (Platform.isAndroid) {
+      Share.shareUri(Uri.parse(widget.articles[currentIndex].urls.first));
+    } else {
+      Share.share(
+        widget.articles[currentIndex].urls.first,
+        subject: widget.articles[currentIndex].title,
+        sharePositionOrigin: box!.localToGlobal(Offset.zero) & box.size,
+      );
+    }
+  }
+
+  void _onPageChanged(BuildContext context, int page) {
+    Api.of(context).setRead(widget.articles[page].id, true);
+    setState(() {
+      currentIndex = page;
+    });
+  }
+
+  bool firstPage = true;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: kToolbarHeight * 1.5,
-        title: Text(widget.articles[currentIndex]["title"], maxLines: 2),
+        title: Text("$currentIndex / ${widget.articles.length}"),
       ),
       bottomNavigationBar: Container(
         height: 48 + MediaQuery.viewPaddingOf(context).bottom,
@@ -37,48 +66,65 @@ class _ArticleViewState extends State<ArticleView> {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             IconButton(
-              onPressed: () {},
+              onPressed: () {
+                Api.of(context).setRead(widget.articles[currentIndex].id,
+                    !Api.of(context).isRead(widget.articles[currentIndex].id));
+                setState(() {});
+              },
               icon: Icon(
-                widget.articles[currentIndex]["read"]?? false
-                    ? Icons.remove_red_eye_outlined
-                    : Icons.remove_red_eye,
+                Api.of(context).isRead(widget.articles[currentIndex].id)
+                    ? Icons.circle_outlined
+                    : Icons.circle_rounded,
               ),
             ),
             IconButton(
-              onPressed: () {},
+              onPressed: () {
+                launchUrl(
+                  Uri.parse(widget.articles[currentIndex].urls.first),
+                  mode: LaunchMode.inAppBrowserView,
+                );
+              },
               icon: const Icon(
                 Icons.open_in_browser,
               ),
             ),
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(
-                Icons.share,
-              ),
-            ),
+            Builder(builder: (context) {
+              return IconButton(
+                onPressed: () {
+                  _onShare(context);
+                },
+                icon: const Icon(
+                  Icons.share,
+                ),
+              );
+            }),
           ],
         ),
       ),
       body: PageView.builder(
         controller: _pageController,
-        onPageChanged: (value) {
-          setState(() {
-            currentIndex = value;
-          });
-        },
+        onPageChanged: (value) => _onPageChanged(context, value),
         itemCount: widget.articles.length,
         itemBuilder: (context, index) {
-          dynamic article = widget.articles[index];
+          Article article = widget.articles[index];
           return SelectionArea(
             child: ListView(
               padding: const EdgeInsets.all(16.0),
               children: [
-                Text(
-                  DateTime.fromMillisecondsSinceEpoch(article["published"]*1000)
-                      .toString(),
+                ListTile(
+                  contentPadding: const EdgeInsets.all(0),
+                  title: Text(article.title),
+                  subtitle: Text(
+                    "${getRelativeDate(article.published)}, ${DateTime.fromMillisecondsSinceEpoch(article.published * 1000)}",
+                  ),
                 ),
                 HtmlWidget(
-                  article["summary"] ?? "",
+                  article.content,
+                  onTapUrl: (url) {
+                    launchUrl(Uri.parse(url),
+                        mode: LaunchMode.inAppBrowserView);
+                    return true;
+                  },
                 ),
               ],
             ),

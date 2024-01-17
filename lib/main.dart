@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:fresh_reader/feed_list.dart';
+
+import 'api.dart';
+import 'feed_list.dart';
 
 void main() async {
   runApp(const MyApp());
@@ -8,21 +10,25 @@ void main() async {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+  
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'FreshReader',
-      scrollBehavior: const CupertinoScrollBehavior(),
-      themeMode: ThemeMode.dark,
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
-          brightness: Brightness.dark,
+    return Api(
+      notifier: ApiData(),
+      child: MaterialApp(
+        title: 'FreshReader',
+        scrollBehavior: const CupertinoScrollBehavior(),
+        themeMode: ThemeMode.dark,
+        darkTheme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.deepPurple,
+            brightness: Brightness.dark,
+          ),
+          appBarTheme: const AppBarTheme(backgroundColor: Colors.deepPurple),
+          useMaterial3: true,
         ),
-        appBarTheme: const AppBarTheme(backgroundColor: Colors.deepPurple),
-        useMaterial3: true,
+        home: const FeedList(title: 'FreshReader'),
       ),
-      home: const FeedList(title: 'FreshReader'),
     );
   }
 }

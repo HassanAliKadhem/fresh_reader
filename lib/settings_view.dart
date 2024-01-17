@@ -4,10 +4,8 @@ import 'api.dart';
 
 class SettingsView extends StatefulWidget {
   const SettingsView({
-    required this.api,
     super.key,
   });
-  final Api api;
   @override
   State<SettingsView> createState() => _SettingsViewState();
 }
@@ -23,15 +21,15 @@ class _SettingsViewState extends State<SettingsView> {
         children: [
           ListTile(
             title: const Text("Server Url"),
-            subtitle: Text(widget.api.urlBase),
+            subtitle: Text(Api.of(context).urlBase),
           ),
           ListTile(
             title: const Text("Username"),
-            subtitle: Text(widget.api.userName),
+            subtitle: Text(Api.of(context).userName),
           ),
           ListTile(
             title: const Text("Password"),
-            subtitle: Text("*" * widget.api.password.length),
+            subtitle: Text("*" * Api.of(context).password.length),
           ),
         ],
       ),

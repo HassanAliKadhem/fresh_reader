@@ -12,6 +12,8 @@ PODS:
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
+  - share_plus (0.0.1):
+    - Flutter
   - shared_preferences_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -34,6 +36,7 @@ DEPENDENCIES:
   - just_audio (from `.symlinks/plugins/just_audio/ios`)
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
+  - share_plus (from `.symlinks/plugins/share_plus/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - sqflite (from `.symlinks/plugins/sqflite/ios`)
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
@@ -56,6 +59,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/package_info_plus/ios"
   path_provider_foundation:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
+  share_plus:
+    :path: ".symlinks/plugins/share_plus/ios"
   shared_preferences_foundation:
     :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
   sqflite:
@@ -76,6 +81,7 @@ SPEC CHECKSUMS:
   just_audio: baa7252489dbcf47a4c7cc9ca663e9661c99aafa
   package_info_plus: 115f4ad11e0698c8c1c5d8a689390df880f47e85
   path_provider_foundation: 3784922295ac71e43754bd15e0653ccfd36a147c
+  share_plus: c3fef564749587fc939ef86ffb283ceac0baf9f5
   shared_preferences_foundation: b4c3b4cddf1c21f02770737f147a3f5da9d39695
   sqflite: 31f7eba61e3074736dff8807a9b41581e4f7f15a
   url_launcher_ios: bbd758c6e7f9fd7b5b1d4cde34d2b95fcce5e812
