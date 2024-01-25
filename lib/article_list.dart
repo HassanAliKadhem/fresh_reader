@@ -79,12 +79,33 @@ class _ArticleListState extends State<ArticleList> {
                     });
                     focusNode.requestFocus();
                   },
+                  tooltip: "Search",
                   icon: const Icon(Icons.search),
                 ),
               ],
       ),
-      body: ListView.builder(
+      extendBody: true,
+      body: ListView.separated(
         itemCount: currentArticles.length,
+        separatorBuilder: (context, index) {
+          int day = getDifferenceInDays(articles[index].published);
+          String date = getRelativeDate(articles[index].published);
+          String nextDate = getRelativeDate(articles[index + 1].published);
+          if (day > 0 && date != nextDate) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+              child: Text(
+                nextDate,
+                style: TextStyle(color: Theme.of(context).colorScheme.primary),
+              ),
+            );
+          } else {
+            return const Divider(
+              height: 16,
+              color: Colors.transparent,
+            );
+          }
+        },
         itemBuilder: (context, index) {
           Article article = currentArticles[index];
           String? iconUrl = Api.of(context).getIconUrl(article.feedId);

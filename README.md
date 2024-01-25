@@ -20,6 +20,7 @@ An opinionated client for FreshRss (not affiliated) made just for me. but you ca
 
 ## Todo
 - [ ] sync read articles to server
+- [ ] add date separator in article list
 - text formatting:
     - [ ] bold first letter of word
 

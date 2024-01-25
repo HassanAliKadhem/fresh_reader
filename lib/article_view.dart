@@ -3,10 +3,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
-import 'package:url_launcher/url_launcher_string.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -97,6 +95,17 @@ class _ArticleViewState extends State<ArticleView> {
   List<Widget> bottomButtons() {
     return [
       const UnreadButton(),
+      Builder(builder: (context) {
+        return IconButton(
+          onPressed: () {
+            _onShare(context);
+          },
+          tooltip: "Share",
+          icon: const Icon(
+            Icons.share,
+          ),
+        );
+      }),
       IconButton(
         onPressed: () {
           launchUrl(
@@ -104,20 +113,11 @@ class _ArticleViewState extends State<ArticleView> {
             mode: LaunchMode.inAppBrowserView,
           );
         },
+        tooltip: "Open In Browser",
         icon: const Icon(
           Icons.open_in_browser,
         ),
       ),
-      Builder(builder: (context) {
-        return IconButton(
-          onPressed: () {
-            _onShare(context);
-          },
-          icon: const Icon(
-            Icons.share,
-          ),
-        );
-      }),
       // DropdownButtonHideUnderline(
       //   child: DropdownButton<bool>(
       //     icon: const SizedBox(),
@@ -141,24 +141,36 @@ class _ArticleViewState extends State<ArticleView> {
       //     },
       //   ),
       // ),
-      TextButton(
+      // TextButton(
+      //   onPressed: () {
+      //     setState(() {
+      //       showWebView = !showWebView;
+      //     });
+      //   },
+      //   child: Text(
+      //     showWebView ? "Text" : "Web",
+      //     style: TextStyle(
+      //       color: Colors.grey[350],
+      //       fontWeight: FontWeight.bold,
+      //     ),
+      //   ),
+      // ),
+      IconButton(
         onPressed: () {
           setState(() {
             showWebView = !showWebView;
           });
         },
-        child: Text(
-          showWebView ? "Text" : "Web",
-          style: TextStyle(
-            color: Colors.grey[350],
-            fontWeight: FontWeight.bold,
-          ),
+        tooltip: showWebView ? "Article View" : "Web View",
+        icon: Icon(
+          showWebView ? Icons.article : Icons.public,
         ),
       ),
       Builder(
         builder: (context) {
           return IconButton(
             icon: const Icon(Icons.text_format),
+            tooltip: "Text Formatting",
             onPressed: showWebView
                 ? null
                 : () {
@@ -262,13 +274,6 @@ class _ArticleViewState extends State<ArticleView> {
       ),
       persistentFooterAlignment: AlignmentDirectional.topCenter,
       persistentFooterButtons: bottomButtons(),
-      // bottomNavigationBar: BottomAppBar(
-      //   color: Theme.of(context).colorScheme.inversePrimary,
-      //   child: Row(
-      //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      //     children: bottomButtons(),
-      //   ),
-      // ),
       body: ListenableBuilder(
         listenable: formattingSetting,
         child: PageView.builder(
@@ -396,6 +401,7 @@ class _UnreadButtonState extends State<UnreadButton> {
             Api.of(context).setRead(id, !Api.of(context).isRead(id));
             setState(() {});
           },
+          tooltip: Api.of(context).isRead(id) ? "Set Unread" : "Set Read",
           icon: Icon(
             Api.of(context).isRead(id)
                 ? Icons.circle_outlined

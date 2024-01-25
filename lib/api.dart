@@ -407,3 +407,11 @@ String getRelativeDate(int secondsSinceEpoch) {
   }
   return "Just Now";
 }
+
+int getDifferenceInDays(int secondsSinceEpoch) {
+  DateTime articleTime =
+      DateTime.fromMillisecondsSinceEpoch(secondsSinceEpoch * 1000);
+  DateTime now = DateTime.now();
+  Duration difference = now.difference(articleTime);
+  return difference.inDays;
+}

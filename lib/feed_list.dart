@@ -91,6 +91,7 @@ class _FeedListState extends State<FeedList> {
           ),
         ],
       ),
+      extendBody: true,
       body: CategoryList(),
       // body: FutureBuilder(
       //   future: Api.of(context).storageLoad(),
