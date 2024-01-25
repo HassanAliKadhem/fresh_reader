@@ -12,9 +12,16 @@ An opinionated client for FreshRss (not affiliated) made just for me. but you ca
 - [x] share article link
 - [x] open in browser
 - [x] in app browser view
+- [x] show feed icon
+- text formatting:
+    - [x] font size
+    - [x] word spacing
+    - [x] line height
 
 ## Todo
 - [ ] sync read articles to server
+- text formatting:
+    - [ ] bold first letter of word
 
 ## Screenshots
 ![Alt text](SimulatorHome.png)

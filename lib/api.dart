@@ -14,8 +14,10 @@ class Api extends InheritedNotifier<ApiData> {
   });
 
   static ApiData of(BuildContext context) {
-    assert(context.dependOnInheritedWidgetOfExactType<Api>() != null,
-        "Api not found in current context");
+    assert(
+      context.dependOnInheritedWidgetOfExactType<Api>() != null,
+      "Api not found in current context",
+    );
     return context.dependOnInheritedWidgetOfExactType<Api>()!.notifier!;
   }
 
@@ -30,7 +32,7 @@ class ApiData extends ChangeNotifier {
   String userName = "";
   String password = "";
   String auth = "";
-  String modifyAuth = "";
+  // String modifyAuth = "";
   Map<String, Subscription> subs = {};
   Set<String> tags = <String>{};
   Map<String, Article> articles = {};
@@ -38,6 +40,8 @@ class ApiData extends ChangeNotifier {
   int updatedTime = 0;
   int unreadTotal = 0;
   // Map<String, dynamic> unread = {};
+  Set<String> newUnread = <String>{};
+  Set<String> newRead = <String>{};
 
   ApiData();
 
@@ -57,11 +61,18 @@ class ApiData extends ChangeNotifier {
     unreadTotal = preferences.getInt("unreadTotal") ?? unreadTotal;
 
     server = preferences.getString("server") ?? "";
-    // debugPrint(server);
     userName = preferences.getString("userName") ?? "";
-    // debugPrint(userName);
     password = preferences.getString("password") ?? "";
-    // debugPrint(password);
+    newRead = preferences.getStringList("newRead")?.toSet() ?? newRead;
+    newUnread = preferences.getStringList("newUnread")?.toSet() ?? newUnread;
+
+    // first time only
+    for (MapEntry<String, Article> element in articles.entries) {
+      if (element.value.read) {
+        newRead.add(element.key);
+      }
+    }
+
     notifyListeners();
     return true;
   }
@@ -78,6 +89,8 @@ class ApiData extends ChangeNotifier {
       preferences.setString("server", server),
       preferences.setString("userName", userName),
       preferences.setString("password", password),
+      preferences.setStringList("newUnread", newUnread.toList()),
+      preferences.setStringList("newRead", newRead.toList()),
     ]);
     return true;
   }
@@ -90,8 +103,18 @@ class ApiData extends ChangeNotifier {
         auth = value;
       });
     }
+    newRead.addAll(articles.values
+        .where((article) => article.read)
+        .map((article) => article.id));
+    for (var i = 0; i < newRead.length; i += 10) {
+      await _setUnread(newRead.skip(i).take(10).toList(), true);
+    }
+    for (var i = 0; i < newUnread.length; i += 10) {
+      await _setUnread(newUnread.skip(i).take(10).toList(), false);
+    }
     await Future.wait([
-      _getModifyAuth(auth).then((value) => modifyAuth = value.body),
+      // _getModifyAuth(auth)
+      //     .then((value) => modifyAuth = value.body.replaceAll("\n", "")),
       _getTags(auth).then((value) {
         jsonDecode(value.body)["tags"].forEach((element) {
           tags.add(element["id"]?.split("/").last ?? "");
@@ -138,7 +161,7 @@ class ApiData extends ChangeNotifier {
       _getAllArticles(auth, "reading-list").then((value) {
         for (Article article in value) {
           if (articles.containsKey(article.id)) {
-            articles[article.id]!.read = false;
+            // articles[article.id]!.read = false;
           } else {
             articles[article.id] = article;
           }
@@ -159,19 +182,19 @@ class ApiData extends ChangeNotifier {
     return res.body.split("Auth=").last.replaceAll("\n", "");
   }
 
-  Future<http.Response> _getModifyAuth(String auth) {
-    return http.post(
-      Uri.parse("$server/reader/api/0/token"),
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': 'GoogleLogin auth=$auth',
-      },
-    );
-  }
+  // Future<http.Response> _getModifyAuth(String auth) {
+  //   return http.post(
+  //     Uri.parse("$server/reader/api/0/token"),
+  //     headers: {
+  //       'Content-Type': 'application/json',
+  //       'Accept': 'application/json',
+  //       'Authorization': 'GoogleLogin auth=$auth',
+  //     },
+  //   );
+  // }
 
   Future<http.Response> _getSubscriptions(String auth) {
-    return http.post(
+    return http.get(
       Uri.parse("$server/reader/api/0/subscription/list?output=json"),
       headers: {
         'Content-Type': 'application/json',
@@ -205,11 +228,11 @@ class ApiData extends ChangeNotifier {
 
   Future<List<Article>> _getAllArticles(String auth, String feed) async {
     String url =
-        "$server/reader/api/0/stream/contents/$feed?xt=user/-/state/com.google/read";
+        "$server/reader/api/0/stream/contents/$feed?xt=user/-/state/com.google/read&n=1000";
     String con = "";
     List<Article> newArticles = [];
     do {
-      http.Response response = await http.post(
+      http.Response response = await http.get(
         Uri.parse("$url${con == "" ? "" : "&c=$con"}"),
         headers: {
           'Content-Type': 'application/json',
@@ -247,6 +270,38 @@ class ApiData extends ChangeNotifier {
     return newArticles;
   }
 
+  Future<bool> _setUnread(List<String> ids, bool isRead) async {
+    await http.post(
+      Uri.parse(
+          "$server/reader/api/0/edit-tag?i=${ids.join("&i=")}&${isRead ? "a" : "r"}=user/-/state/com.google/read"),
+      headers: {
+        // 'Content-Type': 'application/json',
+        // 'Accept': 'application/json',
+        'Authorization': 'GoogleLogin auth=$auth',
+      },
+    ).then((value) {
+      debugPrint(ids.toString());
+      debugPrint(value.body);
+      if (value.body == "OK") {
+        newRead.removeAll(ids);
+        newUnread.removeAll(ids);
+      } else {
+        if (isRead) {
+          newRead.addAll(ids);
+        } else {
+          newUnread.addAll(ids);
+        }
+      }
+    }).catchError((onError) {
+      if (isRead) {
+        newRead.addAll(ids);
+      } else {
+        newUnread.addAll(ids);
+      }
+    });
+    return true;
+  }
+
   bool isRead(String id) {
     return articles[id]?.read ?? false;
   }
@@ -254,9 +309,17 @@ class ApiData extends ChangeNotifier {
   void setRead(String id, bool isRead) {
     if (articles.containsKey(id)) {
       articles[id]!.read = isRead;
+      if (isRead) {
+        newUnread.remove(id);
+        newRead.add(id);
+      } else {
+        newRead.remove(id);
+        newUnread.add(id);
+      }
       storageSave();
       // notifyListeners();
     }
+    _setUnread([id], isRead);
   }
 
   Map<String, Article> getFilteredArticles(String filter) {
@@ -291,6 +354,17 @@ class ApiData extends ChangeNotifier {
   void setShowAll(bool newValue) {
     _showAll = newValue;
     notifyListeners();
+  }
+
+  String? getIconUrl(String feedId) {
+    if (subs.containsKey(feedId)) {
+      String url = subs[feedId]!.iconUrl;
+      url = url.replaceFirst("http://localhost/FreshRss/p/", server);
+      url = url.replaceFirst("api/greader.php","");
+      return url;
+    } else {
+      return null;
+    }
   }
 }
 

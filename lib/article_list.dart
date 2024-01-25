@@ -87,6 +87,7 @@ class _ArticleListState extends State<ArticleList> {
         itemCount: currentArticles.length,
         itemBuilder: (context, index) {
           Article article = currentArticles[index];
+          String? iconUrl = Api.of(context).getIconUrl(article.feedId);
           String imgLink = getFirstImage(article.content);
           return Dismissible(
             key: ValueKey(article.id),
@@ -129,7 +130,29 @@ class _ArticleListState extends State<ArticleList> {
                       : null,
                 ),
               ),
-              // isThreeLine: true,
+              leading: iconUrl == null
+                  ? null
+                  : SizedBox(
+                      height: 28,
+                      width: 28,
+                      child: Image.network(
+                        iconUrl,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) {
+                            return child;
+                          } else {
+                            return const Center(
+                              child: CircularProgressIndicator.adaptive(),
+                            );
+                          }
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return const ColoredBox(
+                            color: Colors.grey,
+                          );
+                        },
+                      ),
+                    ),
               trailing: Container(
                 height: 48,
                 width: 48,

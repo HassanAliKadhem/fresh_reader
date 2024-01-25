@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'api.dart';
@@ -10,14 +9,13 @@ void main() async {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-  
+
   @override
   Widget build(BuildContext context) {
     return Api(
       notifier: ApiData()..storageLoad(),
       child: MaterialApp(
         title: 'FreshReader',
-        scrollBehavior: const CupertinoScrollBehavior(),
         themeMode: ThemeMode.dark,
         darkTheme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
