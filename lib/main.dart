@@ -6,8 +6,14 @@ import 'feed_list.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge, overlays: [SystemUiOverlay.top]);
-  runApp(const MyApp());
+  SystemChrome.setEnabledSystemUIMode(
+    SystemUiMode.edgeToEdge,
+    overlays: [
+      SystemUiOverlay.top,
+    ],
+  ).then((value) {
+    runApp(const MyApp());
+  });
 }
 
 class MyApp extends StatelessWidget {
@@ -26,7 +32,9 @@ class MyApp extends StatelessWidget {
             brightness: Brightness.dark,
           ),
           appBarTheme: const AppBarTheme(
-            backgroundColor: Colors.deepPurple,
+            // backgroundColor: Colors.deepPurple,
+            backgroundColor: Colors.transparent,
+            scrolledUnderElevation: 0,
             systemOverlayStyle: SystemUiOverlayStyle(
               statusBarColor: Colors.transparent,
               systemStatusBarContrastEnforced: false,
@@ -34,7 +42,7 @@ class MyApp extends StatelessWidget {
               systemNavigationBarColor: Colors.transparent,
               systemNavigationBarDividerColor: Colors.transparent,
               systemNavigationBarContrastEnforced: false,
-              systemNavigationBarIconBrightness: Brightness.light
+              systemNavigationBarIconBrightness: Brightness.light,
             ),
           ),
           useMaterial3: true,

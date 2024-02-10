@@ -63,6 +63,8 @@ class ApiData extends ChangeNotifier {
     server = preferences.getString("server") ?? "";
     userName = preferences.getString("userName") ?? "";
     password = preferences.getString("password") ?? "";
+    auth = preferences.getString("auth") ?? "";
+
     newRead = preferences.getStringList("newRead")?.toSet() ?? newRead;
     newUnread = preferences.getStringList("newUnread")?.toSet() ?? newUnread;
 
@@ -89,6 +91,7 @@ class ApiData extends ChangeNotifier {
       preferences.setString("server", server),
       preferences.setString("userName", userName),
       preferences.setString("password", password),
+      preferences.setString("auth", auth),
       preferences.setStringList("newUnread", newUnread.toList()),
       preferences.setStringList("newRead", newRead.toList()),
     ]);
@@ -292,12 +295,14 @@ class ApiData extends ChangeNotifier {
           newUnread.addAll(ids);
         }
       }
+      storageSave();
     }).catchError((onError) {
       if (isRead) {
         newRead.addAll(ids);
       } else {
         newUnread.addAll(ids);
       }
+      storageSave();
     });
     return true;
   }
@@ -360,7 +365,7 @@ class ApiData extends ChangeNotifier {
     if (subs.containsKey(feedId)) {
       String url = subs[feedId]!.iconUrl;
       url = url.replaceFirst("http://localhost/FreshRss/p/", server);
-      url = url.replaceFirst("api/greader.php","");
+      url = url.replaceFirst("api/greader.php", "");
       return url;
     } else {
       return null;

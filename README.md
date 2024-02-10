@@ -13,6 +13,7 @@ An opinionated client for FreshRss (not affiliated) made just for me. but you ca
 - [x] open in browser
 - [x] in app browser view
 - [x] show feed icon
+- [x] add date separator in article list
 - text formatting:
     - [x] font size
     - [x] word spacing
@@ -20,9 +21,9 @@ An opinionated client for FreshRss (not affiliated) made just for me. but you ca
 
 ## Todo
 - [ ] sync read articles to server
-- [ ] add date separator in article list
 - text formatting:
-    - [ ] bold first letter of word
+    - [ ] save formatting options
+    - [ ] bionic reading
 
 ## Screenshots
 ![Alt text](SimulatorHome.png)

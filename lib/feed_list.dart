@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:fresh_reader/data_types.dart';
 
@@ -45,39 +47,6 @@ class _FeedListState extends State<FeedList> {
               },
             ),
           ),
-          // IconButton(
-          //   icon: const Icon(Icons.filter_alt),
-          //   tooltip: "Filter",
-          //   onPressed: () {
-          //     showAdaptiveDialog(
-          //       context: context,
-          //       barrierDismissible: true,
-          //       builder: (context) {
-          //         return AlertDialog.adaptive(
-          //           title: const Text("Filter type"),
-          //           actions: [
-          //             TextButton(
-          //                 onPressed: () {
-          //                   Navigator.pop(context);
-          //                   setState(() {
-          //                     Api.of(context).setShowAll(true);
-          //                   });
-          //                 },
-          //                 child: const Text("All")),
-          //             TextButton(
-          //                 onPressed: () {
-          //                   Navigator.pop(context);
-          //                   setState(() {
-          //                     Api.of(context).setShowAll(false);
-          //                   });
-          //                 },
-          //                 child: const Text("Unread")),
-          //           ],
-          //         );
-          //       },
-          //     );
-          //   },
-          // ),
           IconButton(
             icon: const Icon(Icons.settings),
             tooltip: "Settings",
@@ -90,29 +59,18 @@ class _FeedListState extends State<FeedList> {
             },
           ),
         ],
+        flexibleSpace: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+            child: Container(
+              color: Theme.of(context).canvasColor.withAlpha(64),
+            ),
+          ),
+        ),
       ),
       extendBody: true,
-      body: CategoryList(),
-      // body: FutureBuilder(
-      //   future: Api.of(context).storageLoad(),
-      //   builder: (context, snapshot) {
-      //     if (snapshot.hasData) {
-      //       return RefreshIndicator.adaptive(
-      //         onRefresh: () async {
-      //           await Api.of(context).networkLoad();
-      //           setState(() {});
-      //         },
-      //         child: CategoryList(),
-      //       );
-      //     } else {
-      //       return Center(
-      //         child: snapshot.hasError
-      //             ? Text(snapshot.error.toString())
-      //             : const CircularProgressIndicator.adaptive(),
-      //       );
-      //     }
-      //   },
-      // ),
+      extendBodyBehindAppBar: true,
+      body: const CategoryList(),
     );
   }
 }
@@ -173,11 +131,12 @@ class _CategoryListState extends State<CategoryList> {
         });
       },
       child: networkError != null
-          ? Center(
+          ? SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
               child: Text(networkError.toString()),
             )
           : ListView.builder(
-              padding: const EdgeInsets.all(8.0),
+              // padding: const EdgeInsets.all(8.0),
               itemCount: Api.of(context).tags.length + 1,
               itemBuilder: (context, index) {
                 if (index == 0) {

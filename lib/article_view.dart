@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -10,6 +11,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'api.dart';
+import 'bionic.dart';
 import 'data_types.dart';
 
 class FormattingSetting extends ChangeNotifier {
@@ -21,6 +23,7 @@ class FormattingSetting extends ChangeNotifier {
     Platform.isAndroid ? "Roboto" : "SF UI Text",
     "Courier",
   ];
+  bool isBionic = false;
 
   void setSize(double newSize) {
     fontSize = newSize;
@@ -41,6 +44,11 @@ class FormattingSetting extends ChangeNotifier {
     font = newFont;
     notifyListeners();
   }
+
+  void setIsBionic(bool newIs) {
+    isBionic = newIs;
+    notifyListeners();
+  }
 }
 
 class ArticleView extends StatefulWidget {
@@ -57,7 +65,6 @@ class ArticleView extends StatefulWidget {
 
 class _ArticleViewState extends State<ArticleView> {
   late PageController _pageController;
-  int currentIndex = 0;
   bool showWebView = false;
   final FormattingSetting formattingSetting = FormattingSetting();
 
@@ -65,31 +72,34 @@ class _ArticleViewState extends State<ArticleView> {
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: widget.index);
-    currentIndex = widget.index;
+    _pageController.addListener(_onPageChanged);
     articleId.value = widget.articles[widget.index].id;
     index.value = widget.index;
   }
 
   void _onShare(BuildContext context) {
     try {
-      Share.shareUri(Uri.parse(widget.articles[currentIndex].urls.first));
+      Share.shareUri(Uri.parse(widget.articles[index.value].urls.first));
     } catch (e) {
       final box = context.findRenderObject() as RenderBox?;
       Share.share(
-        widget.articles[currentIndex].urls.first,
-        subject: widget.articles[currentIndex].title,
+        widget.articles[index.value].urls.first,
+        subject: widget.articles[index.value].title,
         sharePositionOrigin: box!.localToGlobal(Offset.zero) & box.size,
       );
     }
   }
 
-  void _onPageChanged(BuildContext context, int page) {
-    Api.of(context).setRead(widget.articles[page].id, true);
-    // setState(() {
-    articleId.value = widget.articles[page].id;
-    currentIndex = page;
-    index.value = page;
-    // });
+  void _onPageChanged() {
+    if (_pageController.page?.round() == _pageController.page &&
+        _pageController.page != null) {
+      Api.of(context)
+          .setRead(widget.articles[_pageController.page!.round()].id, true);
+      // setState(() {
+      articleId.value = widget.articles[_pageController.page!.round()].id;
+      index.value = _pageController.page!.round();
+      // });
+    }
   }
 
   List<Widget> bottomButtons() {
@@ -109,7 +119,7 @@ class _ArticleViewState extends State<ArticleView> {
       IconButton(
         onPressed: () {
           launchUrl(
-            Uri.parse(widget.articles[currentIndex].urls.first),
+            Uri.parse(widget.articles[index.value].urls.first),
             mode: LaunchMode.inAppBrowserView,
           );
         },
@@ -118,43 +128,6 @@ class _ArticleViewState extends State<ArticleView> {
           Icons.open_in_browser,
         ),
       ),
-      // DropdownButtonHideUnderline(
-      //   child: DropdownButton<bool>(
-      //     icon: const SizedBox(),
-      //     value: showWebView,
-      //     items: const [
-      //       DropdownMenuItem<bool>(
-      //         value: true,
-      //         child: Text("Web"),
-      //       ),
-      //       DropdownMenuItem<bool>(
-      //         value: false,
-      //         child: Text("Text"),
-      //       ),
-      //     ],
-      //     onChanged: (value) {
-      //       if (showWebView != value) {
-      //         setState(() {
-      //           showWebView = value ?? false;
-      //         });
-      //       }
-      //     },
-      //   ),
-      // ),
-      // TextButton(
-      //   onPressed: () {
-      //     setState(() {
-      //       showWebView = !showWebView;
-      //     });
-      //   },
-      //   child: Text(
-      //     showWebView ? "Text" : "Web",
-      //     style: TextStyle(
-      //       color: Colors.grey[350],
-      //       fontWeight: FontWeight.bold,
-      //     ),
-      //   ),
-      // ),
       IconButton(
         onPressed: () {
           setState(() {
@@ -236,6 +209,12 @@ class _ArticleViewState extends State<ArticleView> {
                                         },
                                       ),
                                     ),
+                                    SwitchListTile.adaptive(
+                                      title: const Text("Use Bionic Reading"),
+                                      value: formattingSetting.isBionic,
+                                      onChanged: (value) =>
+                                          formattingSetting.setIsBionic(value),
+                                    ),
                                     const ListTile(
                                       title: Text("font"),
                                     ),
@@ -271,22 +250,21 @@ class _ArticleViewState extends State<ArticleView> {
     return Scaffold(
       appBar: AppBar(
         title: TitleCounter(length: widget.articles.length),
+        flexibleSpace: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+            child: Container(
+              color: Theme.of(context).canvasColor.withAlpha(64),
+            ),
+          ),
+        ),
       ),
+      extendBodyBehindAppBar: true,
+      // extendBody: true,
       persistentFooterAlignment: AlignmentDirectional.topCenter,
       persistentFooterButtons: bottomButtons(),
       body: ListenableBuilder(
         listenable: formattingSetting,
-        child: PageView.builder(
-          controller: _pageController,
-          onPageChanged: (value) => _onPageChanged(context, value),
-          itemCount: widget.articles.length,
-          itemBuilder: (context, index) {
-            return ArticlePage(
-              article: widget.articles[index],
-              showWebView: showWebView,
-            );
-          },
-        ),
         builder: (context, child) {
           return AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 250),
@@ -296,7 +274,19 @@ class _ArticleViewState extends State<ArticleView> {
               height: formattingSetting.lineHeight,
               fontFamily: formattingSetting.font,
             ),
-            child: child!,
+            child: PageView.builder(
+              controller: _pageController,
+              // onPageChanged: (value) => _onPageChanged(context, value),
+
+              itemCount: widget.articles.length,
+              itemBuilder: (context, index) {
+                return ArticlePage(
+                  article: widget.articles[index],
+                  showWebView: showWebView,
+                  isBionic: formattingSetting.isBionic,
+                );
+              },
+            ),
           );
         },
       ),
@@ -309,10 +299,12 @@ class ArticlePage extends StatelessWidget {
     super.key,
     required this.article,
     required this.showWebView,
+    required this.isBionic,
   });
 
   final Article article;
   final bool showWebView;
+  final bool isBionic;
 
   @override
   Widget build(BuildContext context) {
@@ -327,32 +319,24 @@ class ArticlePage extends StatelessWidget {
                 () => VerticalDragGestureRecognizer())
           });
     } else {
+      String content =
+          "<h2>${article.title}</h2><p>${Api.of(context).subs[article.feedId]?.title}<br>${getRelativeDate(article.published)}, ${DateTime.fromMillisecondsSinceEpoch(article.published * 1000)}</p>${article.content}";
       return SelectionArea(
         child: ListView(
-          padding: const EdgeInsets.all(16.0),
           children: [
-            ListTile(
-              contentPadding: const EdgeInsets.all(0),
-              title: Text(
-                article.title,
-                style: TextStyle(
-                    fontSize:
-                        (DefaultTextStyle.of(context).style.fontSize ?? 14) *
-                            1.5),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: HtmlWidget(
+                isBionic ? getBionicContent(content) : content,
+                renderMode: const ColumnMode(),
+                onTapUrl: (url) {
+                  launchUrl(
+                    Uri.parse(url),
+                    mode: LaunchMode.inAppBrowserView,
+                  );
+                  return true;
+                },
               ),
-              subtitle: Text(
-                "${Api.of(context).subs[article.feedId]?.title}\n${getRelativeDate(article.published)}, ${DateTime.fromMillisecondsSinceEpoch(article.published * 1000)}",
-              ),
-            ),
-            HtmlWidget(
-              article.content,
-              onTapUrl: (url) {
-                launchUrl(
-                  Uri.parse(url),
-                  mode: LaunchMode.inAppBrowserView,
-                );
-                return true;
-              },
             ),
           ],
         ),

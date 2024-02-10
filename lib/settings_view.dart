@@ -23,7 +23,7 @@ class _SettingsViewState extends State<SettingsView> {
             title: const Text("Server Url"),
             subtitle: Text(Api.of(context).server),
             onTap: () {
-              showValueChangerDialog(context, Api.of(context).server)
+              showValueChangerDialog(context, "Server link", Api.of(context).server)
                   .then((value) {
                 if (value != null) {
                   Api.of(context).server = value;
@@ -37,7 +37,7 @@ class _SettingsViewState extends State<SettingsView> {
             title: const Text("Username"),
             subtitle: Text(Api.of(context).userName),
             onTap: () {
-              showValueChangerDialog(context, Api.of(context).userName)
+              showValueChangerDialog(context, "username", Api.of(context).userName)
                   .then((value) {
                 if (value != null) {
                   Api.of(context).userName = value;
@@ -51,7 +51,7 @@ class _SettingsViewState extends State<SettingsView> {
             title: const Text("Password"),
             subtitle: Text("*" * Api.of(context).password.length),
             onTap: () {
-              showValueChangerDialog(context, Api.of(context).password)
+              showValueChangerDialog(context, "password", Api.of(context).password)
                   .then((value) {
                 if (value != null) {
                   Api.of(context).password = value;
@@ -67,7 +67,7 @@ class _SettingsViewState extends State<SettingsView> {
   }
 
   Future<dynamic> showValueChangerDialog(
-      BuildContext context, String currentValue) {
+      BuildContext context, String title, String currentValue) {
     String newValue = currentValue;
     TextEditingController textEditingController =
         TextEditingController(text: newValue);
@@ -76,7 +76,7 @@ class _SettingsViewState extends State<SettingsView> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text("Change Server Url"),
+          title: Text(title),
           content: TextField(
             controller: textEditingController,
             onChanged: (value) => newValue = value,
