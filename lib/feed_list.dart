@@ -1,6 +1,5 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
+import 'package:fresh_reader/blur_bar.dart';
 import 'package:fresh_reader/data_types.dart';
 
 import 'api.dart';
@@ -59,14 +58,7 @@ class _FeedListState extends State<FeedList> {
             },
           ),
         ],
-        flexibleSpace: ClipRRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: Container(
-              color: Theme.of(context).canvasColor.withAlpha(64),
-            ),
-          ),
-        ),
+        flexibleSpace: const BlurBar(),
       ),
       extendBody: true,
       extendBodyBehindAppBar: true,
@@ -119,6 +111,7 @@ class _CategoryListState extends State<CategoryList> {
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator.adaptive(
+      displacement: kToolbarHeight * 2,
       onRefresh: () async {
         await Api.of(context).networkLoad().then((value) {
           setState(() {

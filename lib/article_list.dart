@@ -1,6 +1,5 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
+import 'package:fresh_reader/blur_bar.dart';
 import 'package:fresh_reader/data_types.dart';
 
 import 'api.dart';
@@ -41,6 +40,7 @@ class _ArticleListState extends State<ArticleList> {
     }
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: kToolbarHeight + 15,
         title: SearchBar(
           controller: _searchController,
           hintText: widget.title,
@@ -59,14 +59,7 @@ class _ArticleListState extends State<ArticleList> {
             setState(() {});
           },
         ),
-        flexibleSpace: ClipRRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: Container(
-              color: Theme.of(context).canvasColor.withAlpha(64),
-            ),
-          ),
-        ),
+        flexibleSpace: const BlurBar(),
       ),
       extendBody: true,
       extendBodyBehindAppBar: true,
@@ -223,7 +216,11 @@ class _ArticleListState extends State<ArticleList> {
                   builder: (context) =>
                       ArticleView(index: index, articles: currentArticles)),
             ).then((value) {
-              setState(() {});
+              setState(() {
+                if (value != null && value is int) {
+                  // TODO: add scroll to here
+                }
+              });
             });
           },
         ),

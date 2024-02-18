@@ -1,11 +1,11 @@
 import 'dart:io';
-import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:fresh_reader/blur_bar.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -249,20 +249,24 @@ class _ArticleViewState extends State<ArticleView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: TitleCounter(length: widget.articles.length),
-        flexibleSpace: ClipRRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: Container(
-              color: Theme.of(context).canvasColor.withAlpha(64),
-            ),
+          leading: IconButton(
+              onPressed: () => Navigator.pop(context, index.value),
+              icon: const Icon(Icons.arrow_back)),
+          title: TitleCounter(length: widget.articles.length),
+          flexibleSpace: const BlurBar()),
+      extendBodyBehindAppBar: !showWebView,
+      extendBody: !showWebView,
+      // persistentFooterAlignment: AlignmentDirectional.topCenter,
+      // persistentFooterButtons: bottomButtons(),
+      bottomNavigationBar: BlurBar(
+        child: SafeArea(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: bottomButtons(),
           ),
         ),
       ),
-      extendBodyBehindAppBar: true,
-      // extendBody: true,
-      persistentFooterAlignment: AlignmentDirectional.topCenter,
-      persistentFooterButtons: bottomButtons(),
       body: ListenableBuilder(
         listenable: formattingSetting,
         builder: (context, child) {
@@ -277,7 +281,6 @@ class _ArticleViewState extends State<ArticleView> {
             child: PageView.builder(
               controller: _pageController,
               // onPageChanged: (value) => _onPageChanged(context, value),
-
               itemCount: widget.articles.length,
               itemBuilder: (context, index) {
                 return ArticlePage(
