@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:fresh_reader/blur_bar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -24,6 +25,38 @@ class FormattingSetting extends ChangeNotifier {
     "Courier",
   ];
   bool isBionic = false;
+
+  FormattingSetting() {
+    load();
+  }
+
+  void load() async {
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    fontSize = preferences.getDouble("format_fontSize") ?? fontSize;
+    wordSpacing = preferences.getDouble("format_wordSpacing") ?? wordSpacing;
+    lineHeight = preferences.getDouble("format_lineHeight") ?? lineHeight;
+    String? newFont = preferences.getString("format_font");
+    if (newFont != null) {
+      font = newFont;
+    }
+    isBionic = preferences.getBool("format_bionic") ?? isBionic;
+    notifyListeners();
+  }
+
+  void save() async {
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    preferences.setDouble("format_fontSize",fontSize);
+    preferences.setDouble("format_wordSpacing", wordSpacing);
+    preferences.setDouble("format_lineHeight", lineHeight);
+    preferences.setString("format_font", font);
+    preferences.setBool("format_bionic", isBionic);
+  }
+
+  @override
+  void notifyListeners() {
+    super.notifyListeners();
+    save();
+  }
 
   void setSize(double newSize) {
     fontSize = newSize;

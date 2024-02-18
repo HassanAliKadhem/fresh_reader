@@ -15,6 +15,7 @@ An opinionated client for FreshRss (not affiliated) made just for me. but you ca
 - [x] show feed icon
 - [x] add date separator in article list
 - text formatting:
+    - [x] save formatting options to storage
     - [x] font size
     - [x] word spacing
     - [x] line height
@@ -22,7 +23,6 @@ An opinionated client for FreshRss (not affiliated) made just for me. but you ca
 ## Todo
 - [ ] sync read articles to server
 - text formatting:
-    - [ ] save formatting options
     - [ ] bionic reading
 
 ## Screenshots
