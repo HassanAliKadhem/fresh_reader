@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:fresh_reader/blur_bar.dart';
-import 'package:fresh_reader/data_types.dart';
+import 'package:fresh_reader/widget/blur_bar.dart';
+import 'package:fresh_reader/api/data_types.dart';
 
-import 'api.dart';
+import '../api/api.dart';
 import 'article_view.dart';
 
 class ArticleList extends StatefulWidget {
@@ -216,11 +216,7 @@ class _ArticleListState extends State<ArticleList> {
                   builder: (context) =>
                       ArticleView(index: index, articles: currentArticles)),
             ).then((value) {
-              setState(() {
-                if (value != null && value is int) {
-                  // TODO: add scroll to here
-                }
-              });
+              setState(() {});
             });
           },
         ),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'api.dart';
+import '../api/api.dart';
 
 class SettingsView extends StatefulWidget {
   const SettingsView({
@@ -27,7 +27,7 @@ class _SettingsViewState extends State<SettingsView> {
                   .then((value) {
                 if (value != null) {
                   Api.of(context).server = value;
-                  Api.of(context).storageSave();
+                  Api.of(context).save();
                   setState(() {});
                 }
               });
@@ -41,7 +41,7 @@ class _SettingsViewState extends State<SettingsView> {
                   .then((value) {
                 if (value != null) {
                   Api.of(context).userName = value;
-                  Api.of(context).storageSave();
+                  Api.of(context).save();
                   setState(() {});
                 }
               });
@@ -55,7 +55,7 @@ class _SettingsViewState extends State<SettingsView> {
                   .then((value) {
                 if (value != null) {
                   Api.of(context).password = value;
-                  Api.of(context).storageSave();
+                  Api.of(context).save();
                   setState(() {});
                 }
               });

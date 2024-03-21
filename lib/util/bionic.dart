@@ -51,7 +51,7 @@ Element _traverseChildren(Element element) {
 
 String _splitAndStrong(String oldWord) {
   String newWord = "";
-  newWord += "<em><strong>${oldWord.substring(0, oldWord.length ~/ 2)}</strong></em>";
+  newWord += "<strong>${oldWord.substring(0, oldWord.length ~/ 2)}</strong>";
   newWord += oldWord.substring(oldWord.length ~/ 2);
   return newWord;
 }

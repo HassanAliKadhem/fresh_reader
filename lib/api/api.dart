@@ -45,7 +45,7 @@ class ApiData extends ChangeNotifier {
 
   ApiData();
 
-  Future<bool> storageLoad() async {
+  Future<bool> load() async {
     final SharedPreferences preferences = await SharedPreferences.getInstance();
     for (var element in (jsonDecode(preferences.getString("subs") ?? "{}")
             as Map<String, dynamic>)
@@ -79,7 +79,7 @@ class ApiData extends ChangeNotifier {
     return true;
   }
 
-  Future<bool> storageSave() async {
+  Future<bool> save() async {
     final SharedPreferences preferences = await SharedPreferences.getInstance();
     await Future.wait([
       preferences.setString("subs", jsonEncode(subs)),
@@ -98,7 +98,7 @@ class ApiData extends ChangeNotifier {
     return true;
   }
 
-  Future<bool> networkLoad() async {
+  Future<bool> serverSync() async {
     if (auth == "") {
       await _getAuth(Uri.parse(
               "$server/accounts/ClientLogin?Email=$userName&Passwd=$password"))
@@ -173,7 +173,7 @@ class ApiData extends ChangeNotifier {
           ..sort((a, b) => b.value.published - a.value.published));
       }),
     ]);
-    await storageSave();
+    await save();
     return true;
   }
 
@@ -295,14 +295,14 @@ class ApiData extends ChangeNotifier {
           newUnread.addAll(ids);
         }
       }
-      storageSave();
+      save();
     }).catchError((onError) {
       if (isRead) {
         newRead.addAll(ids);
       } else {
         newUnread.addAll(ids);
       }
-      storageSave();
+      save();
     });
     return true;
   }
@@ -321,7 +321,7 @@ class ApiData extends ChangeNotifier {
         newRead.remove(id);
         newUnread.add(id);
       }
-      storageSave();
+      save();
       // notifyListeners();
     }
     _setUnread([id], isRead);

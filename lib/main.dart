@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'api.dart';
-import 'feed_list.dart';
+import 'api/api.dart';
+import 'view/feed_list.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,7 +22,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Api(
-      notifier: ApiData()..storageLoad(),
+      notifier: ApiData()..load(),
       child: MaterialApp(
         title: 'FreshReader',
         themeMode: ThemeMode.dark,

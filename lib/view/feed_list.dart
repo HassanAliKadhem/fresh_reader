@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:fresh_reader/blur_bar.dart';
-import 'package:fresh_reader/data_types.dart';
+import 'package:fresh_reader/widget/blur_bar.dart';
+import 'package:fresh_reader/api/data_types.dart';
 
-import 'api.dart';
+import '../api/api.dart';
 import 'article_list.dart';
 import 'settings_view.dart';
 
@@ -26,10 +26,10 @@ class _FeedListState extends State<FeedList> {
         actions: [
           DropdownButtonHideUnderline(
             child: DropdownButton<bool>(
-              // icon: Icon(Api.of(context).getShowAll()
-              //     ? Icons.filter_alt_off
-              //     : Icons.filter_alt),
-              icon: const SizedBox(),
+              icon: Icon(Api.of(context).getShowAll()
+                  ? Icons.filter_alt_off
+                  : Icons.filter_alt),
+              // icon: const SizedBox(),
               value: Api.of(context).getShowAll(),
               items: const [
                 DropdownMenuItem<bool>(
@@ -73,7 +73,7 @@ class UnreadCount extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(4.0),
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       decoration: BoxDecoration(
         borderRadius: const BorderRadius.all(Radius.circular(5)),
         color: Theme.of(context).dialogBackgroundColor,
@@ -113,7 +113,7 @@ class _CategoryListState extends State<CategoryList> {
     return RefreshIndicator.adaptive(
       displacement: kToolbarHeight * 2,
       onRefresh: () async {
-        await Api.of(context).networkLoad().then((value) {
+        await Api.of(context).serverSync().then((value) {
           setState(() {
             networkError = null;
           });
