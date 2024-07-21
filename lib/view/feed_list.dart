@@ -3,15 +3,12 @@ import 'package:fresh_reader/widget/blur_bar.dart';
 import 'package:fresh_reader/api/data_types.dart';
 
 import '../api/api.dart';
-import 'article_list.dart';
 import 'settings_view.dart';
 
 class FeedList extends StatefulWidget {
-  const FeedList({
-    super.key,
-    required this.title,
-  });
+  const FeedList({super.key, required this.title, required this.onSelect});
   final String title;
+  final Function(String) onSelect;
 
   @override
   State<FeedList> createState() => _FeedListState();
@@ -43,6 +40,9 @@ class _FeedListState extends State<FeedList> {
               ],
               onChanged: (showAll) {
                 Api.of(context).setShowAll(showAll ?? false);
+                setState(() {
+                  
+                });
               },
             ),
           ),
@@ -62,7 +62,9 @@ class _FeedListState extends State<FeedList> {
       ),
       extendBody: true,
       extendBodyBehindAppBar: true,
-      body: const CategoryList(),
+      body: CategoryList(
+        onSelect: widget.onSelect,
+      ),
     );
   }
 }
@@ -84,32 +86,28 @@ class UnreadCount extends StatelessWidget {
 }
 
 class CategoryList extends StatefulWidget {
-  const CategoryList({super.key});
+  const CategoryList({super.key, required this.onSelect});
+  final Function(String) onSelect;
 
   @override
   State<CategoryList> createState() => _CategoryListState();
 }
 
 class _CategoryListState extends State<CategoryList> {
-  void openArticleList(BuildContext context, String filter, String title) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ArticleList(
-          key: ValueKey(filter + Api.of(context).getShowAll().toString()),
-          title: title,
-          filter: filter,
-        ),
-      ),
-    ).then((value) {
-      setState(() {});
-    });
+  void openArticleList(BuildContext context, String filter) {
+    widget.onSelect(filter);
   }
 
   dynamic networkError;
 
   @override
   Widget build(BuildContext context) {
+    bool showAll = Api.of(context).getShowAll();
+    List<Article> allArticles = Api.of(context)
+        .articles
+        .values
+        .where((article) => showAll || !article.read)
+        .toList();
     return RefreshIndicator.adaptive(
       displacement: kToolbarHeight * 2,
       onRefresh: () async {
@@ -124,9 +122,14 @@ class _CategoryListState extends State<CategoryList> {
         });
       },
       child: networkError != null
-          ? SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Text(networkError.toString()),
+          ? ListView(
+              clipBehavior: Clip.none,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(networkError.toString()),
+                ),
+              ],
             )
           : ListView.builder(
               // padding: const EdgeInsets.all(8.0),
@@ -135,11 +138,8 @@ class _CategoryListState extends State<CategoryList> {
                 if (index == 0) {
                   return ListTile(
                     title: const Text("All Articles"),
-                    trailing: UnreadCount(Api.of(context)
-                        .getFilteredArticles("")
-                        .length
-                        .toString()),
-                    onTap: () => openArticleList(context, "", "All Articles"),
+                    trailing: UnreadCount(allArticles.length.toString()),
+                    onTap: () => openArticleList(context, ""),
                   );
                 } else {
                   String tag = Api.of(context).tags.elementAt(index - 1);
@@ -149,40 +149,42 @@ class _CategoryListState extends State<CategoryList> {
                       currentSubscriptions[key] = value;
                     }
                   });
-                  return ExpansionTile(
-                    title: Text(tag),
-                    shape: const Border(),
-                    initiallyExpanded: true,
-                    controlAffinity: ListTileControlAffinity.leading,
-                    childrenPadding: const EdgeInsets.only(left: 40.0),
-                    trailing: InkWell(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16.0, 16.0, 0, 16.0),
-                        child: UnreadCount(Api.of(context)
-                            .getFilteredArticles("")
-                            .values
-                            .where((element) => currentSubscriptions.keys
-                                .contains(element.feedId))
-                            .length
-                            .toString()),
-                      ),
-                      onTap: () => openArticleList(context, tag, tag),
-                    ),
-                    children: currentSubscriptions.keys
-                        .map((key) => ListTile(
-                              title: Text(currentSubscriptions[key]!.title),
-                              trailing: UnreadCount(Api.of(context)
-                                  .getFilteredArticles("")
-                                  .values
-                                  .where((element) => element.feedId == key)
+                  return Card(
+                    clipBehavior: Clip.hardEdge,
+                    margin: const EdgeInsets.all(8.0),
+                    child: ExpansionTile(
+                      title: Text(tag),
+                      shape: const Border(),
+                      initiallyExpanded: true,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      childrenPadding: const EdgeInsets.only(left: 40.0),
+                      children: currentSubscriptions.keys.map<Widget>((key) {
+                        int count = allArticles
+                            .where((element) => element.feedId == key)
+                            .length;
+                        return Visibility(
+                          visible: count > 0,
+                          child: ListTile(
+                            title: Text(currentSubscriptions[key]!.title),
+                            trailing: UnreadCount(count.toString()),
+                            onTap: () {
+                              openArticleList(context, key);
+                            },
+                          ),
+                        );
+                      }).toList()
+                        ..insert(
+                            0,
+                            ListTile(
+                              title: Text("All $tag"),
+                              onTap: () => openArticleList(context, tag),
+                              trailing: UnreadCount(allArticles
+                                  .where((element) => currentSubscriptions.keys
+                                      .contains(element.feedId))
                                   .length
                                   .toString()),
-                              onTap: () {
-                                openArticleList(context, key,
-                                    currentSubscriptions[key]!.title);
-                              },
-                            ))
-                        .toList(),
+                            )),
+                    ),
                   );
                 }
               },

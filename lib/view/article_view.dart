@@ -10,7 +10,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api.dart';
-import '../util/bionic.dart';
 import '../api/data_types.dart';
 
 class ArticleView extends StatefulWidget {
@@ -26,16 +25,14 @@ class ArticleView extends StatefulWidget {
 }
 
 class _ArticleViewState extends State<ArticleView> {
-  late PageController _pageController;
   bool showWebView = false;
   final FormattingSetting formattingSetting = FormattingSetting();
   int pageIndex = 0;
+  ValueNotifier<int> pageIndexNotifier = ValueNotifier<int>(0);
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: widget.index);
-    _pageController.addListener(_onPageChanged);
     pageIndex = widget.index;
   }
 
@@ -53,29 +50,17 @@ class _ArticleViewState extends State<ArticleView> {
     }
   }
 
-  void _onPageChanged() {
-    if (_pageController.page != null &&
-        _pageController.page?.round() == _pageController.page) {
-      Api.of(context)
-          .setRead(widget.articles[_pageController.page!.round()].id, true);
-      setState(() {
-        pageIndex = _pageController.page!.round();
-      });
-    }
+  void _onPageChanged(int page) {
+    pageIndex = page;
+    pageIndexNotifier.value = page;
+    Api.of(context).setRead(widget.articles[page].id, true);
   }
 
   List<Widget> bottomButtons() {
-    bool isRead = Api.of(context).isRead(widget.articles[pageIndex].id);
     return [
-      IconButton(
-        onPressed: () {
-          Api.of(context).setRead(widget.articles[pageIndex].id, !isRead);
-          setState(() {});
-        },
-        tooltip: isRead ? "Set Unread" : "Set Read",
-        icon: Icon(
-          isRead ? Icons.circle_outlined : Icons.circle_rounded,
-        ),
+      SetUnreadButton(
+        indexNotifier: pageIndexNotifier,
+        articles: widget.articles,
       ),
       Builder(builder: (context) {
         return IconButton(
@@ -139,22 +124,30 @@ class _ArticleViewState extends State<ArticleView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-          title: Text("${pageIndex + 1} / ${widget.articles.length}"),
-          flexibleSpace: const BlurBar()),
+        title: ArticleCount(
+          pageIndexNotifier: pageIndexNotifier,
+          count: widget.articles.length,
+        ),
+        actions:
+            screenSizeOf(context) == ScreenSize.small ? null : bottomButtons(),
+        flexibleSpace: const BlurBar(),
+      ),
       extendBodyBehindAppBar: !showWebView,
       extendBody: !showWebView,
-      bottomNavigationBar: BlurBar(
-        child: SafeArea(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: bottomButtons(),
-          ),
-        ),
-      ),
+      bottomNavigationBar: screenSizeOf(context) == ScreenSize.small
+          ? BlurBar(
+              child: SafeArea(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: bottomButtons(),
+                ),
+              ),
+            )
+          : null,
       body: PageView.builder(
-        controller: _pageController,
-        // onPageChanged: (value) => _onPageChanged(context, value),
+        controller: PageController(initialPage: widget.index),
+        onPageChanged: (value) => _onPageChanged(value),
         itemCount: widget.articles.length,
         itemBuilder: (context, index) {
           return ArticlePage(
@@ -164,6 +157,27 @@ class _ArticleViewState extends State<ArticleView> {
           );
         },
       ),
+    );
+  }
+}
+
+class ArticleCount extends StatelessWidget {
+  const ArticleCount({
+    super.key,
+    required this.pageIndexNotifier,
+    required this.count,
+  });
+
+  final ValueNotifier<int> pageIndexNotifier;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder(
+      valueListenable: pageIndexNotifier,
+      builder: (context, value, child) {
+        return Text("${value + 1} / $count");
+      },
     );
   }
 }
@@ -231,11 +245,6 @@ class FormattingSheet extends StatelessWidget {
                     },
                   ),
                 ),
-                SwitchListTile.adaptive(
-                  title: const Text("Use Bionic Reading ?"),
-                  value: formattingSetting.isBionic,
-                  onChanged: (value) => formattingSetting.setIsBionic(value),
-                ),
                 const ListTile(
                   title: Text("Font"),
                 ),
@@ -292,9 +301,7 @@ class ArticlePage extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: HtmlWidget(
-                    formattingSetting.isBionic
-                        ? getBionicContent(content)
-                        : content,
+                    content,
                     renderMode: const ColumnMode(),
                     onTapUrl: (url) {
                       launchUrl(
@@ -321,5 +328,38 @@ class ArticlePage extends StatelessWidget {
             );
           });
     }
+  }
+}
+
+class SetUnreadButton extends StatefulWidget {
+  const SetUnreadButton(
+      {super.key, required this.indexNotifier, required this.articles});
+  final ValueNotifier<int> indexNotifier;
+  final List<Article> articles;
+
+  @override
+  State<SetUnreadButton> createState() => _SetUnreadButtonState();
+}
+
+class _SetUnreadButtonState extends State<SetUnreadButton> {
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder(
+      valueListenable: widget.indexNotifier,
+      builder: (context, value, child) {
+        bool isRead = Api.of(context).isRead(widget.articles[value].id);
+        return IconButton(
+          onPressed: () {
+            setState(() {
+              Api.of(context).setRead(widget.articles[value].id, !isRead);
+            });
+          },
+          tooltip: isRead ? "Set Unread" : "Set Read",
+          icon: Icon(
+            isRead ? Icons.circle_outlined : Icons.circle_rounded,
+          ),
+        );
+      },
+    );
   }
 }

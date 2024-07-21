@@ -1,10 +1,21 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data_types.dart';
+
+ScreenSize screenSizeOf(BuildContext context) {
+  if (MediaQuery.sizeOf(context).shortestSide > 840) {
+    return ScreenSize.big;
+  } else if (MediaQuery.sizeOf(context).shortestSide > 640) {
+    return ScreenSize.medium;
+  } else {
+    return ScreenSize.small;
+  }
+}
 
 class Api extends InheritedNotifier<ApiData> {
   const Api({
@@ -39,11 +50,12 @@ class ApiData extends ChangeNotifier {
   bool _showAll = false;
   int updatedTime = 0;
   int unreadTotal = 0;
-  // Map<String, dynamic> unread = {};
-  Set<String> newUnread = <String>{};
-  Set<String> newRead = <String>{};
+  Map<String, DelayedAction> delayedActions = {};
 
-  ApiData();
+  String filter = "";
+  String title = "";
+  Map<String, Article>? filteredArticles;
+  int? filteredIndex;
 
   Future<bool> load() async {
     final SharedPreferences preferences = await SharedPreferences.getInstance();
@@ -65,15 +77,12 @@ class ApiData extends ChangeNotifier {
     password = preferences.getString("password") ?? "";
     auth = preferences.getString("auth") ?? "";
 
-    newRead = preferences.getStringList("newRead")?.toSet() ?? newRead;
-    newUnread = preferences.getStringList("newUnread")?.toSet() ?? newUnread;
-
-    // first time only
-    for (MapEntry<String, Article> element in articles.entries) {
-      if (element.value.read) {
-        newRead.add(element.key);
-      }
-    }
+    preferences.getStringList("newRead")?.forEach((id) {
+      delayedActions[id] = DelayedAction.read;
+    });
+    preferences.getStringList("newUnread")?.forEach((id) {
+      delayedActions[id] = DelayedAction.unread;
+    });
 
     notifyListeners();
     return true;
@@ -81,6 +90,15 @@ class ApiData extends ChangeNotifier {
 
   Future<bool> save() async {
     final SharedPreferences preferences = await SharedPreferences.getInstance();
+    List<String> newUnread = [];
+    List<String> newRead = [];
+    for (var entry in delayedActions.entries) {
+      if (entry.value == DelayedAction.read) {
+        newRead.add(entry.key);
+      } else if (entry.value == DelayedAction.unread) {
+        newUnread.add(entry.key);
+      }
+    }
     await Future.wait([
       preferences.setString("subs", jsonEncode(subs)),
       preferences.setStringList("tags", tags.toList()),
@@ -106,15 +124,22 @@ class ApiData extends ChangeNotifier {
         auth = value;
       });
     }
-    newRead.addAll(articles.values
-        .where((article) => article.read)
-        .map((article) => article.id));
-    for (var i = 0; i < newRead.length; i += 10) {
-      await _setUnread(newRead.skip(i).take(10).toList(), true);
+
+    if (delayedActions.isNotEmpty) {
+      _setUnread(
+          delayedActions.entries
+              .where((entry) => entry.value == DelayedAction.read)
+              .map((entry) => entry.key)
+              .toList(),
+          true);
+      _setUnread(
+          delayedActions.entries
+              .where((entry) => entry.value == DelayedAction.unread)
+              .map((entry) => entry.key)
+              .toList(),
+          false);
     }
-    for (var i = 0; i < newUnread.length; i += 10) {
-      await _setUnread(newUnread.skip(i).take(10).toList(), false);
-    }
+
     await Future.wait([
       // _getModifyAuth(auth)
       //     .then((value) => modifyAuth = value.body.replaceAll("\n", "")),
@@ -124,6 +149,11 @@ class ApiData extends ChangeNotifier {
         });
         List<String> list = tags.toList()..sort(); // sort the set
         tags = list.toSet();
+      }).catchError((onError) {
+        if (kDebugMode) {
+          throw onError;
+        }
+        debugPrint(onError.toString());
       }),
       _getSubscriptions(auth).then((value) {
         jsonDecode(value.body)["subscriptions"].forEach((element) {
@@ -132,22 +162,24 @@ class ApiData extends ChangeNotifier {
             categories.add(cat["label"]);
           });
           if (subs[element["id"]] == null) {
-            subs[element["id"]] = Subscription(
-              id: element["id"],
-              title: element["title"] ?? "",
-              url: element["url"] ?? "",
-              htmlUrl: element["htmlUrl"] ?? "",
-              iconUrl: element["iconUrl"] ?? "",
-              categories: categories,
-            );
+            subs[element["id"]] = Subscription.fromJson(element);
           } else {
-            subs[element["id"]]!.title = element["title"] ?? "";
-            subs[element["id"]]!.url = element["url"] ?? "";
-            subs[element["id"]]!.htmlUrl = element["htmlUrl"] ?? "";
-            subs[element["id"]]!.iconUrl = element["iconUrl"] ?? "";
+            subs[element["id"]]!.title =
+                element["title"] ?? subs[element["id"]]!.title;
+            subs[element["id"]]!.url =
+                element["url"] ?? subs[element["id"]]!.url;
+            subs[element["id"]]!.htmlUrl =
+                element["htmlUrl"] ?? subs[element["id"]]!.htmlUrl;
+            subs[element["id"]]!.iconUrl =
+                element["iconUrl"] ?? subs[element["id"]]!.iconUrl;
             subs[element["id"]]!.categories = categories;
           }
         });
+      }).catchError((onError) {
+        if (kDebugMode) {
+          throw onError;
+        }
+        debugPrint(onError.toString());
       }),
       // _getUnreadCounts(auth).then((value) {
       //   Map<String, dynamic> json = jsonDecode(value.body);
@@ -164,13 +196,25 @@ class ApiData extends ChangeNotifier {
       _getAllArticles(auth, "reading-list").then((value) {
         for (Article article in value) {
           if (articles.containsKey(article.id)) {
-            // articles[article.id]!.read = false;
+            articles[article.id]!.read = false;
+            delayedActions.remove(article.id);
           } else {
             articles[article.id] = article;
           }
         }
         articles = Map.fromEntries(articles.entries.toList()
           ..sort((a, b) => b.value.published - a.value.published));
+        //change read article
+        articles.forEach((id, article) {
+          if (value.where((test) => test.id == id).isEmpty) {
+            articles[id]!.read = true;
+          }
+        });
+      }).catchError((onError) {
+        if (kDebugMode) {
+          throw onError;
+        }
+        debugPrint(onError.toString());
       }),
     ]);
     await save();
@@ -208,7 +252,7 @@ class ApiData extends ChangeNotifier {
   }
 
   Future<http.Response> _getTags(String auth) {
-    return http.post(
+    return http.get(
       Uri.parse("$server/reader/api/0/tag/list?output=json"),
       headers: {
         'Content-Type': 'application/json',
@@ -235,75 +279,64 @@ class ApiData extends ChangeNotifier {
     String con = "";
     List<Article> newArticles = [];
     do {
-      http.Response response = await http.get(
+      await http.get(
         Uri.parse("$url${con == "" ? "" : "&c=$con"}"),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
           'Authorization': 'GoogleLogin auth=$auth',
         },
-      );
-      dynamic res = jsonDecode(String.fromCharCodes(response.bodyBytes));
-      updatedTime = res["updated"] ?? 0;
-      res["items"].forEach((element) {
-        newArticles.add(Article(
-          id: element["id"] ?? "",
-          feedId: element["origin"]["streamId"] ?? "",
-          title: element["title"] ?? "",
-          read: false,
-          published: element["published"] ?? 0,
-          content: element["summary"]["content"] ?? "",
-          url: element["origin"]["htmlUrl"] ?? "",
-          urls: (element["canonical"] ??
-                  [
-                    {"href": ""}
-                  ])
-              .map<String>((element) => element["href"] as String)
-              .toList(),
-          altUrls: (element["alternate"] ??
-                  [
-                    {"href": ""}
-                  ])
-              .map<String>((element) => element["href"] as String)
-              .toList(),
-        ));
+      ).then((value) {
+        dynamic res = jsonDecode(String.fromCharCodes(value.bodyBytes));
+        updatedTime = res["updated"] ?? 0;
+        res["items"].forEach((json) {
+          newArticles.add(Article.fromCloudJson(json));
+        });
+        con = res["continuation"]?.toString() ?? "";
+      }).catchError((onError) {
+        if (kDebugMode) {
+          throw onError;
+        }
+        debugPrint(onError.toString());
       });
-      con = res["continuation"]?.toString() ?? "";
     } while (con != "");
     return newArticles;
   }
 
   Future<bool> _setUnread(List<String> ids, bool isRead) async {
-    await http.post(
-      Uri.parse(
-          "$server/reader/api/0/edit-tag?i=${ids.join("&i=")}&${isRead ? "a" : "r"}=user/-/state/com.google/read"),
-      headers: {
-        // 'Content-Type': 'application/json',
-        // 'Accept': 'application/json',
-        'Authorization': 'GoogleLogin auth=$auth',
-      },
-    ).then((value) {
-      debugPrint(ids.toString());
-      debugPrint(value.body);
+    String idString = "?";
+    for (String id in ids) {
+      if (articles.containsKey(id) && subs.containsKey(articles[id]!.feedId)) {
+        idString += "s=feed/${subs[articles[id]!.feedId]!.url}&i=$id&";
+      }
+    }
+    idString = "$idString${isRead ? "a" : "r"}=user/-/state/com.google/read";
+    await http
+        .post(Uri.parse("$server/reader/api/0/edit-tag"),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Authorization': 'GoogleLogin auth=$auth',
+            },
+            body: idString)
+        .then((value) {
       if (value.body == "OK") {
-        newRead.removeAll(ids);
-        newUnread.removeAll(ids);
+        delayedActions.removeWhere((key, _) => ids.contains(key));
       } else {
-        if (isRead) {
-          newRead.addAll(ids);
-        } else {
-          newUnread.addAll(ids);
+        for (var id in ids) {
+          delayedActions[id] =
+              isRead ? DelayedAction.read : DelayedAction.unread;
         }
       }
-      save();
     }).catchError((onError) {
-      if (isRead) {
-        newRead.addAll(ids);
-      } else {
-        newUnread.addAll(ids);
+      for (var id in ids) {
+        delayedActions[id] = isRead ? DelayedAction.read : DelayedAction.unread;
       }
-      save();
+      if (kDebugMode) {
+        throw onError;
+      }
+      debugPrint(onError.toString());
     });
+    save();
     return true;
   }
 
@@ -314,20 +347,12 @@ class ApiData extends ChangeNotifier {
   void setRead(String id, bool isRead) {
     if (articles.containsKey(id)) {
       articles[id]!.read = isRead;
-      if (isRead) {
-        newUnread.remove(id);
-        newRead.add(id);
-      } else {
-        newRead.remove(id);
-        newUnread.add(id);
-      }
-      save();
-      // notifyListeners();
+      delayedActions[id] = isRead ? DelayedAction.read : DelayedAction.unread;
+      _setUnread([id], isRead);
     }
-    _setUnread([id], isRead);
   }
 
-  Map<String, Article> getFilteredArticles(String filter) {
+  void getFilteredArticles(String filter) {
     Map<String, Article> newList = {};
     articles.forEach((key, value) {
       newList[key] = value;
@@ -336,10 +361,10 @@ class ApiData extends ChangeNotifier {
       newList.removeWhere((key, value) => value.read);
     }
     if (filter == "") {
-      return newList;
+      filteredArticles = newList;
     } else if (filter.startsWith("feed/")) {
       newList.removeWhere((key, value) => value.feedId != filter);
-      return newList;
+      filteredArticles = newList;
     } else {
       Set<String> feedIds = <String>{};
       for (var key in subs.keys) {
@@ -348,8 +373,9 @@ class ApiData extends ChangeNotifier {
         }
       }
       newList.removeWhere((key, value) => !feedIds.contains(value.feedId));
-      return newList;
+      filteredArticles = newList;
     }
+    notifyListeners();
   }
 
   bool getShowAll() {
@@ -358,7 +384,7 @@ class ApiData extends ChangeNotifier {
 
   void setShowAll(bool newValue) {
     _showAll = newValue;
-    notifyListeners();
+    // notifyListeners();
   }
 
   String? getIconUrl(String feedId) {
@@ -373,7 +399,8 @@ class ApiData extends ChangeNotifier {
   }
 }
 
-String getFirstImage(String content) {
+// end of class
+String? getFirstImage(String content) {
   RegExpMatch? match = RegExp('(?<=src=")(.*?)(?=")').firstMatch(content);
   if (match?[0] == null) {
     for (RegExpMatch newMatch
@@ -387,7 +414,7 @@ String getFirstImage(String content) {
       }
     }
   }
-  return match?[0] ?? "";
+  return match?[0];
 }
 
 String getRelativeDate(int secondsSinceEpoch) {

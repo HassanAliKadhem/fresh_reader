@@ -21,7 +21,9 @@ class Subscription {
         url = json["url"] ?? "",
         htmlUrl = json["htmlUrl"] ?? "",
         iconUrl = json["iconUrl"] ?? "",
-        categories = (json["categories"] ?? []).map<String>((cat) => cat.toString()).toList();
+        categories = (json["categories"] ?? [])
+            .map<String>((cat) => cat.toString())
+            .toList();
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -58,24 +60,52 @@ class Article {
 
   Article.fromJson(Map<String, dynamic> json)
       : id = json['id'] ?? "",
-      feedId= json["feedId"] ?? "",
+        feedId = json["feedId"] ?? "",
         title = json['title'] ?? "",
         read = json["read"] ?? false,
         published = json["published"] ?? 0,
         content = json["content"] ?? "",
         url = json["url"] ?? "",
-        urls = (json["urls"] ?? []).map<String>((url) => url.toString()).toList(),
-        altUrls = (json["altUrls"] ?? []).map<String>((url) => url.toString()).toList();
+        urls =
+            (json["urls"] ?? []).map<String>((url) => url.toString()).toList(),
+        altUrls = (json["altUrls"] ?? [])
+            .map<String>((url) => url.toString())
+            .toList();
+
+  Article.fromCloudJson(Map<String, dynamic> json)
+      : id = json["id"] ?? "",
+        feedId = json["feedId"] ?? "",
+        title = json["title"] ?? "",
+        read = json["read"] ?? false,
+        published = json["published"] ?? 0,
+        content = json["summary"]["content"] ?? "",
+        url = json["origin"]["htmlUrl"] ?? "",
+        urls = (json["canonical"] ??
+                [
+                  {"href": ""}
+                ])
+            .map<String>((element) => element["href"] as String)
+            .toList(),
+        altUrls = (json["alternate"] ??
+                [
+                  {"href": ""}
+                ])
+            .map<String>((element) => element["href"] as String)
+            .toList();
 
   Map<String, dynamic> toJson() => {
-    "id": id,
-    "feedId": feedId,
-    "title": title,
-    "read": read,
-    "published": published,
-    "content": content,
-    "url": url,
-    "urls": urls,
-    "altUrls": altUrls,
-  };
+        "id": id,
+        "feedId": feedId,
+        "title": title,
+        "read": read,
+        "published": published,
+        "content": content,
+        "url": url,
+        "urls": urls,
+        "altUrls": altUrls,
+      };
 }
+
+enum DelayedAction { unread, read }
+
+enum ScreenSize { big, medium, small }

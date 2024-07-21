@@ -1,49 +1,46 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:fresh_reader/widget/blur_bar.dart';
 import 'package:fresh_reader/api/data_types.dart';
 
 import '../api/api.dart';
-import 'article_view.dart';
 
 class ArticleList extends StatefulWidget {
   const ArticleList({
     super.key,
-    required this.title,
-    required this.filter,
+    required this.onSelect,
   });
-  final String title;
-  final String filter;
+  final Function(int, String) onSelect;
+
   @override
   State<ArticleList> createState() => _ArticleListState();
 }
 
 class _ArticleListState extends State<ArticleList> {
-  late List<Article> articles = [];
   List<Article> currentArticles = [];
   final TextEditingController _searchController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
-    if (articles.isEmpty) {
-      articles =
-          Api.of(context).getFilteredArticles(widget.filter).values.toList();
-    }
-
-    if (_searchController.text == "") {
-      currentArticles = articles;
-    } else {
-      currentArticles = articles
-          .where((element) =>
-              element.title.toLowerCase().contains(_searchController.text) ||
-              element.content.toLowerCase().contains(_searchController.text))
-          .toList();
+    if (Api.of(context).filteredArticles != null) {
+      if (_searchController.text == "") {
+        currentArticles = Api.of(context).filteredArticles!.values.toList();
+      } else {
+        currentArticles = Api.of(context)
+            .filteredArticles!
+            .values
+            .where((element) =>
+                element.title.toLowerCase().contains(_searchController.text) ||
+                element.content.toLowerCase().contains(_searchController.text))
+            .toList();
+      }
     }
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: kToolbarHeight + 15,
         title: SearchBar(
+          hintText: "Search",
           controller: _searchController,
-          hintText: widget.title,
           trailing: [
             if (_searchController.text != "")
               IconButton(
@@ -71,9 +68,9 @@ class _ArticleListState extends State<ArticleList> {
     return ListView.separated(
       itemCount: currentArticles.length,
       separatorBuilder: (context, index) {
-        int day = getDifferenceInDays(articles[index].published);
-        String date = getRelativeDate(articles[index].published);
-        String nextDate = getRelativeDate(articles[index + 1].published);
+        int day = getDifferenceInDays(currentArticles[index].published);
+        String date = getRelativeDate(currentArticles[index].published);
+        String nextDate = getRelativeDate(currentArticles[index + 1].published);
         if (day > 0 && date != nextDate) {
           return Padding(
             padding:
@@ -89,7 +86,7 @@ class _ArticleListState extends State<ArticleList> {
       },
       itemBuilder: (context, index) {
         if (index == 0) {
-          String date = getRelativeDate(articles[index].published);
+          String date = getRelativeDate(currentArticles[index].published);
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -115,7 +112,7 @@ class _ArticleListState extends State<ArticleList> {
   Dismissible articleTile(int index) {
     Article article = currentArticles[index];
     String? iconUrl = Api.of(context).getIconUrl(article.feedId);
-    String imgLink = getFirstImage(article.content);
+    String? imgLink = getFirstImage(article.content);
     return Dismissible(
       key: ValueKey(article.id),
       direction: DismissDirection.endToStart,
@@ -163,22 +160,15 @@ class _ArticleListState extends State<ArticleList> {
               : SizedBox(
                   height: 28,
                   width: 28,
-                  child: Image.network(
-                    iconUrl,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) {
-                        return child;
-                      } else {
-                        return const Center(
-                          child: CircularProgressIndicator.adaptive(),
-                        );
-                      }
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      return const ColoredBox(
-                        color: Colors.grey,
-                      );
-                    },
+                  child: CachedNetworkImage(
+                    imageUrl: iconUrl,
+                    progressIndicatorBuilder:
+                        (context, url, downloadProgress) =>
+                            CircularProgressIndicator(
+                      value: downloadProgress.progress,
+                    ),
+                    errorWidget: (context, url, error) =>
+                        const Icon(Icons.error),
                   ),
                 ),
           trailing: Container(
@@ -189,36 +179,20 @@ class _ArticleListState extends State<ArticleList> {
               color: Colors.grey.shade800,
               borderRadius: const BorderRadius.all(Radius.circular(5)),
             ),
-            child: imgLink == ""
+            child: imgLink == null
                 ? null
-                : Image.network(
-                    imgLink,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) {
-                        return child;
-                      } else {
-                        return const Center(
-                          child: CircularProgressIndicator.adaptive(),
-                        );
-                      }
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      return const SizedBox();
-                    },
+                : CachedNetworkImage(
+                    imageUrl: imgLink,
+                    progressIndicatorBuilder:
+                        (context, url, downloadProgress) =>
+                            CircularProgressIndicator(
+                      value: downloadProgress.progress,
+                    ),
+                    errorWidget: (context, url, error) =>
+                        const Icon(Icons.error),
                   ),
           ),
-          onTap: () {
-            Api.of(context).setRead(article.id, true);
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) =>
-                      ArticleView(index: index, articles: currentArticles)),
-            ).then((value) {
-              setState(() {});
-            });
-          },
+          onTap: () => widget.onSelect(index, article.id),
         ),
       ),
     );

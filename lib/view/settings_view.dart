@@ -23,8 +23,11 @@ class _SettingsViewState extends State<SettingsView> {
             title: const Text("Server Url"),
             subtitle: Text(Api.of(context).server),
             onTap: () {
-              showValueChangerDialog(context, "Server link", Api.of(context).server)
-                  .then((value) {
+              showValueChangerDialog(
+                context: context,
+                title: "Server link",
+                currentValue: Api.of(context).server,
+              ).then((value) {
                 if (value != null) {
                   Api.of(context).server = value;
                   Api.of(context).save();
@@ -37,8 +40,11 @@ class _SettingsViewState extends State<SettingsView> {
             title: const Text("Username"),
             subtitle: Text(Api.of(context).userName),
             onTap: () {
-              showValueChangerDialog(context, "username", Api.of(context).userName)
-                  .then((value) {
+              showValueChangerDialog(
+                context: context,
+                title: "username",
+                currentValue: Api.of(context).userName,
+              ).then((value) {
                 if (value != null) {
                   Api.of(context).userName = value;
                   Api.of(context).save();
@@ -51,8 +57,12 @@ class _SettingsViewState extends State<SettingsView> {
             title: const Text("Password"),
             subtitle: Text("*" * Api.of(context).password.length),
             onTap: () {
-              showValueChangerDialog(context, "password", Api.of(context).password)
-                  .then((value) {
+              showValueChangerDialog(
+                context: context,
+                title: "password",
+                currentValue: Api.of(context).password,
+                hide: true,
+              ).then((value) {
                 if (value != null) {
                   Api.of(context).password = value;
                   Api.of(context).save();
@@ -66,8 +76,12 @@ class _SettingsViewState extends State<SettingsView> {
     );
   }
 
-  Future<dynamic> showValueChangerDialog(
-      BuildContext context, String title, String currentValue) {
+  Future<dynamic> showValueChangerDialog({
+    required BuildContext context,
+    required String title,
+    String currentValue = "",
+    bool hide = false,
+  }) {
     String newValue = currentValue;
     TextEditingController textEditingController =
         TextEditingController(text: newValue);
@@ -79,6 +93,7 @@ class _SettingsViewState extends State<SettingsView> {
           title: Text(title),
           content: TextField(
             controller: textEditingController,
+            obscureText: hide,
             onChanged: (value) => newValue = value,
           ),
           actions: [
