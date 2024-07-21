@@ -4,6 +4,7 @@ An opinionated client for FreshRss (not affiliated) made just for me. but you ca
 
 ## Features
 - [x] get unread articles from FreshRss Server
+- [x] sync read articles to server
 - [x] change the server link
 - [x] filter by tag
 - [x] filter by unread
@@ -21,7 +22,8 @@ An opinionated client for FreshRss (not affiliated) made just for me. but you ca
     - [x] line height
 
 ## Todo
-- [ ] sync read articles to server
+- [ ] edit tags
+- [ ] delete tags
 - text formatting:
     - [ ] bionic reading
 
