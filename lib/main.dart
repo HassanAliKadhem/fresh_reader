@@ -85,10 +85,14 @@ class _HomeWidgetState extends State<HomeWidget> {
         key: _navigatorKey,
         onPopPage: (route, result) {
           if (route.settings.name == "/article") {
-            Api.of(context).filteredIndex = null;
+            setState(() {
+              Api.of(context).filteredIndex = null;
+            });
           } else if (route.settings.name == "/list") {
-            Api.of(context).filteredIndex = null;
-            Api.of(context).filteredArticles = null;
+            setState(() {
+              Api.of(context).filteredIndex = null;
+              Api.of(context).filteredArticles = null;
+            });
           }
           return route.didPop(result);
         },

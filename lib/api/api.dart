@@ -126,13 +126,14 @@ class ApiData extends ChangeNotifier {
     }
 
     if (delayedActions.isNotEmpty) {
-      _setUnread(
+      print(delayedActions);
+      _setServerUnread(
           delayedActions.entries
               .where((entry) => entry.value == DelayedAction.read)
               .map((entry) => entry.key)
               .toList(),
           true);
-      _setUnread(
+      _setServerUnread(
           delayedActions.entries
               .where((entry) => entry.value == DelayedAction.unread)
               .map((entry) => entry.key)
@@ -143,44 +144,8 @@ class ApiData extends ChangeNotifier {
     await Future.wait([
       // _getModifyAuth(auth)
       //     .then((value) => modifyAuth = value.body.replaceAll("\n", "")),
-      _getTags(auth).then((value) {
-        jsonDecode(value.body)["tags"].forEach((element) {
-          tags.add(element["id"]?.split("/").last ?? "");
-        });
-        List<String> list = tags.toList()..sort(); // sort the set
-        tags = list.toSet();
-      }).catchError((onError) {
-        if (kDebugMode) {
-          throw onError;
-        }
-        debugPrint(onError.toString());
-      }),
-      _getSubscriptions(auth).then((value) {
-        jsonDecode(value.body)["subscriptions"].forEach((element) {
-          List<String> categories = [];
-          element["categories"].forEach((cat) {
-            categories.add(cat["label"]);
-          });
-          if (subs[element["id"]] == null) {
-            subs[element["id"]] = Subscription.fromJson(element);
-          } else {
-            subs[element["id"]]!.title =
-                element["title"] ?? subs[element["id"]]!.title;
-            subs[element["id"]]!.url =
-                element["url"] ?? subs[element["id"]]!.url;
-            subs[element["id"]]!.htmlUrl =
-                element["htmlUrl"] ?? subs[element["id"]]!.htmlUrl;
-            subs[element["id"]]!.iconUrl =
-                element["iconUrl"] ?? subs[element["id"]]!.iconUrl;
-            subs[element["id"]]!.categories = categories;
-          }
-        });
-      }).catchError((onError) {
-        if (kDebugMode) {
-          throw onError;
-        }
-        debugPrint(onError.toString());
-      }),
+      _getTags(auth),
+      _getSubscriptions(auth),
       // _getUnreadCounts(auth).then((value) {
       //   Map<String, dynamic> json = jsonDecode(value.body);
       //   unreadTotal = json["max"] ?? 0; // get total unread count
@@ -193,29 +158,7 @@ class ApiData extends ChangeNotifier {
       //     subs[element["id"]]["count"] = element["count"] ?? 0;
       //   });
       // }),
-      _getAllArticles(auth, "reading-list").then((value) {
-        for (Article article in value) {
-          if (articles.containsKey(article.id)) {
-            articles[article.id]!.read = false;
-            delayedActions.remove(article.id);
-          } else {
-            articles[article.id] = article;
-          }
-        }
-        articles = Map.fromEntries(articles.entries.toList()
-          ..sort((a, b) => b.value.published - a.value.published));
-        //change read article
-        articles.forEach((id, article) {
-          if (value.where((test) => test.id == id).isEmpty) {
-            articles[id]!.read = true;
-          }
-        });
-      }).catchError((onError) {
-        if (kDebugMode) {
-          throw onError;
-        }
-        debugPrint(onError.toString());
-      }),
+      _getAllArticles(auth, "reading-list"),
     ]);
     await save();
     return true;
@@ -240,44 +183,69 @@ class ApiData extends ChangeNotifier {
   //   );
   // }
 
-  Future<http.Response> _getSubscriptions(String auth) {
-    return http.get(
+  Future<void> _getSubscriptions(String auth) async {
+    http.get(
       Uri.parse("$server/reader/api/0/subscription/list?output=json"),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         'Authorization': 'GoogleLogin auth=$auth',
       },
-    );
+    ).then((value) {
+      jsonDecode(value.body)["subscriptions"].forEach((element) {
+        List<String> categories = [];
+        element["categories"].forEach((cat) {
+          categories.add(cat["label"]);
+        });
+        subs[element["id"]] = Subscription.fromJson(element);
+        // if (subs[element["id"]] == null) {
+        //   subs[element["id"]] = Subscription.fromJson(element);
+        // } else {
+        //   subs[element["id"]]!.title =
+        //       element["title"] ?? subs[element["id"]]!.title;
+        //   subs[element["id"]]!.url = element["url"] ?? subs[element["id"]]!.url;
+        //   subs[element["id"]]!.htmlUrl =
+        //       element["htmlUrl"] ?? subs[element["id"]]!.htmlUrl;
+        //   subs[element["id"]]!.iconUrl =
+        //       element["iconUrl"] ?? subs[element["id"]]!.iconUrl;
+        //   subs[element["id"]]!.categories = categories;
+        // }
+      });
+    }).catchError((onError) {
+      if (kDebugMode) {
+        throw onError;
+      }
+      debugPrint(onError.toString());
+    });
   }
 
-  Future<http.Response> _getTags(String auth) {
-    return http.get(
+  Future<void> _getTags(String auth) async {
+    http.get(
       Uri.parse("$server/reader/api/0/tag/list?output=json"),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         'Authorization': 'GoogleLogin auth=$auth',
       },
-    );
+    ).then((value) {
+      jsonDecode(value.body)["tags"].forEach((element) {
+        tags.add(element["id"]?.split("/").last ?? "");
+      });
+      List<String> list = tags.toList()..sort(); // sort the set
+      tags = list.toSet();
+    }).catchError((onError) {
+      if (kDebugMode) {
+        throw onError;
+      }
+      debugPrint(onError.toString());
+    });
   }
 
-  // Future<http.Response> _getUnreadCounts(String auth) {
-  //   return http.post(
-  //     Uri.parse("$urlBase/reader/api/0/unread-count?output=json"),
-  //     headers: {
-  //       'Content-Type': 'application/json',
-  //       'Accept': 'application/json',
-  //       'Authorization': 'GoogleLogin auth=$auth',
-  //     },
-  //   );
-  // }
-
-  Future<List<Article>> _getAllArticles(String auth, String feed) async {
+  Future<void> _getAllArticles(String auth, String feed) async {
     String url =
-        "$server/reader/api/0/stream/contents/$feed?xt=user/-/state/com.google/read&n=1000";
+        "$server/reader/api/0/stream/contents/$feed?xt=user/-/state/com.google/read&n=500";
     String con = "";
-    List<Article> newArticles = [];
+    dynamic res;
     do {
       await http.get(
         Uri.parse("$url${con == "" ? "" : "&c=$con"}"),
@@ -287,11 +255,28 @@ class ApiData extends ChangeNotifier {
           'Authorization': 'GoogleLogin auth=$auth',
         },
       ).then((value) {
-        dynamic res = jsonDecode(String.fromCharCodes(value.bodyBytes));
+        res = jsonDecode(String.fromCharCodes(value.bodyBytes));
         updatedTime = res["updated"] ?? 0;
         res["items"].forEach((json) {
-          newArticles.add(Article.fromCloudJson(json));
+          Article article = Article.fromCloudJson(json);
+          if (article.content.length > 5000) {
+            // debugPrint("Content too long: ${article.title}");
+            article.content = article.content.substring(0, 4000);
+          }
+
+          articles[article.id] = article;
+          // articles[article.id]?.read = false;
+          // delayedActions.remove(article.id);
         });
+        articles = Map.fromEntries(articles.entries.toList()
+          ..sort((a, b) => b.value.published - a.value.published));
+        //change read article
+        // articles.forEach((id, article) {
+        //   if (value.where((test) => test.id == id).isEmpty) {
+        //     articles[id]!.read = true;
+        //   }
+        // });
+
         con = res["continuation"]?.toString() ?? "";
       }).catchError((onError) {
         if (kDebugMode) {
@@ -300,12 +285,12 @@ class ApiData extends ChangeNotifier {
         debugPrint(onError.toString());
       });
     } while (con != "");
-    return newArticles;
   }
 
-  Future<bool> _setUnread(List<String> ids, bool isRead) async {
+  Future<bool> _setServerUnread(List<String> ids, bool isRead) async {
     String idString = "?";
     for (String id in ids) {
+      delayedActions[id] = isRead ? DelayedAction.read : DelayedAction.unread;
       if (articles.containsKey(id) && subs.containsKey(articles[id]!.feedId)) {
         idString += "s=feed/${subs[articles[id]!.feedId]!.url}&i=$id&";
       }
@@ -321,19 +306,19 @@ class ApiData extends ChangeNotifier {
         .then((value) {
       if (value.body == "OK") {
         delayedActions.removeWhere((key, _) => ids.contains(key));
-      } else {
-        for (var id in ids) {
-          delayedActions[id] =
-              isRead ? DelayedAction.read : DelayedAction.unread;
-        }
+      // } else {
+      //   for (var id in ids) {
+      //     delayedActions[id] =
+      //         isRead ? DelayedAction.read : DelayedAction.unread;
+      //   }
       }
     }).catchError((onError) {
-      for (var id in ids) {
-        delayedActions[id] = isRead ? DelayedAction.read : DelayedAction.unread;
-      }
-      if (kDebugMode) {
-        throw onError;
-      }
+      //   for (var id in ids) {
+      //     delayedActions[id] = isRead ? DelayedAction.read : DelayedAction.unread;
+      //   }
+      // if (kDebugMode) {
+      //   throw onError;
+      // }
       debugPrint(onError.toString());
     });
     save();
@@ -347,8 +332,7 @@ class ApiData extends ChangeNotifier {
   void setRead(String id, bool isRead) {
     if (articles.containsKey(id)) {
       articles[id]!.read = isRead;
-      delayedActions[id] = isRead ? DelayedAction.read : DelayedAction.unread;
-      _setUnread([id], isRead);
+      _setServerUnread([id], isRead);
     }
   }
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:fresh_reader/util/formatting_setting.dart';
+import 'package:fresh_reader/view/html_view.dart';
 import 'package:fresh_reader/widget/blur_bar.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:share_plus/share_plus.dart';
@@ -27,23 +28,17 @@ class ArticleView extends StatefulWidget {
 class _ArticleViewState extends State<ArticleView> {
   bool showWebView = false;
   final FormattingSetting formattingSetting = FormattingSetting();
-  int pageIndex = 0;
-  ValueNotifier<int> pageIndexNotifier = ValueNotifier<int>(0);
-
-  @override
-  void initState() {
-    super.initState();
-    pageIndex = widget.index;
-  }
+  late ValueNotifier<int> pageIndexNotifier = ValueNotifier<int>(widget.index);
 
   void _onShare(BuildContext context) {
     try {
-      Share.shareUri(Uri.parse(widget.articles[pageIndex].urls.first));
+      Share.shareUri(
+          Uri.parse(widget.articles[pageIndexNotifier.value].urls.first));
     } catch (e) {
       final box = context.findRenderObject() as RenderBox?;
       Share.share(
-        widget.articles[pageIndex].urls.first,
-        subject: widget.articles[pageIndex].title,
+        widget.articles[pageIndexNotifier.value].urls.first,
+        subject: widget.articles[pageIndexNotifier.value].title,
         sharePositionOrigin: box!.localToGlobal(Offset.zero) & box.size,
       );
       debugPrint(e.toString());
@@ -51,7 +46,6 @@ class _ArticleViewState extends State<ArticleView> {
   }
 
   void _onPageChanged(int page) {
-    pageIndex = page;
     pageIndexNotifier.value = page;
     Api.of(context).setRead(widget.articles[page].id, true);
   }
@@ -76,7 +70,7 @@ class _ArticleViewState extends State<ArticleView> {
       IconButton(
         onPressed: () {
           launchUrl(
-            Uri.parse(widget.articles[pageIndex].urls.first),
+            Uri.parse(widget.articles[pageIndexNotifier.value].urls.first),
             mode: LaunchMode.inAppBrowserView,
           );
         },
@@ -278,21 +272,103 @@ class ArticlePage extends StatelessWidget {
   final bool showWebView;
   final FormattingSetting formattingSetting;
 
+  void showLinkMenu(BuildContext context, String link, String title) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return SimpleDialog(
+          title: ListTile(
+            title: Text(title),
+            subtitle: Text(link),
+          ),
+          contentPadding: EdgeInsets.all(16.0),
+          children: [
+            const Divider(),
+            ListTile(
+                onTap: () {
+                  launchUrl(Uri.parse(link));
+                },
+                title: const Text("Open in browser")),
+            ListTile(
+                onTap: () {
+                  try {
+                    Share.shareUri(Uri.parse(link));
+                  } catch (e) {
+                    final box = context.findRenderObject() as RenderBox?;
+                    Share.share(
+                      link,
+                      subject: title,
+                      sharePositionOrigin:
+                          box!.localToGlobal(Offset.zero) & box.size,
+                    );
+                    debugPrint(e.toString());
+                  }
+                },
+                title: const Text("Share")),
+          ],
+        );
+      },
+    );
+  }
+
+  WidgetSpan LinkSpan(var element, BuildContext context) {
+    return WidgetSpan(
+      child: GestureDetector(
+        onTap: () {
+          launchUrl(Uri.parse(element.attributes["href"]!));
+        },
+        onLongPress: () {
+          showLinkMenu(context, element.attributes["href"]!, element.text);
+        },
+        child: Text(
+          element.text,
+          style: TextStyle(
+              decoration: TextDecoration.underline,
+              color: Theme.of(context).colorScheme.primary),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (showWebView) {
       WebViewController controller = WebViewController();
       controller.loadRequest(Uri.parse(article.urls.first));
       controller.setJavaScriptMode(JavaScriptMode.unrestricted);
+      controller.setNavigationDelegate(NavigationDelegate(
+        onNavigationRequest: (request) {
+          launchUrl(Uri.parse(request.url));
+          return NavigationDecision.prevent;
+        },
+      ));
       return WebViewWidget(
           controller: controller,
           gestureRecognizers: <Factory<VerticalDragGestureRecognizer>>{
             Factory<VerticalDragGestureRecognizer>(
-                () => VerticalDragGestureRecognizer())
+              () => VerticalDragGestureRecognizer(),
+            ),
           });
     } else {
       String content =
-          "<h2>${article.title}</h2><p>${Api.of(context).subs[article.feedId]?.title}<br>${getRelativeDate(article.published)}, ${DateTime.fromMillisecondsSinceEpoch(article.published * 1000)}</p>${article.content}";
+          "<a href=\"${article.url}\">${article.title}</a><p>${Api.of(context).subs[article.feedId]?.title}<br>${getRelativeDate(article.published)}, ${DateTime.fromMillisecondsSinceEpoch(article.published * 1000)}</p>${article.content}";
+      // print(content);
+      return ListView(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: HtmlView(
+              html: content,
+              onLinkTap: (p0) {
+                launchUrl(Uri.parse(p0));
+              },
+              onLinkLongPress: (p0) {
+                showLinkMenu(context, p0, article.title);
+              },
+            ),
+          ),
+        ],
+      );
       return ListenableBuilder(
           listenable: formattingSetting,
           child: SelectionArea(
@@ -303,11 +379,14 @@ class ArticlePage extends StatelessWidget {
                   child: HtmlWidget(
                     content,
                     renderMode: const ColumnMode(),
-                    onTapUrl: (url) {
-                      launchUrl(
-                        Uri.parse(url),
-                        mode: LaunchMode.inAppBrowserView,
+                    onLoadingBuilder: (context, element, loadingProgress) {
+                      return CircularProgressIndicator.adaptive(
+                        value: loadingProgress,
                       );
+                    },
+                    // enableCaching: true,
+                    onTapUrl: (p0) {
+                      launchUrl(Uri.parse(p0));
                       return true;
                     },
                   ),

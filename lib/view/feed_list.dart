@@ -40,9 +40,7 @@ class _FeedListState extends State<FeedList> {
               ],
               onChanged: (showAll) {
                 Api.of(context).setShowAll(showAll ?? false);
-                setState(() {
-                  
-                });
+                setState(() {});
               },
             ),
           ),

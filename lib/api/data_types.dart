@@ -74,7 +74,7 @@ class Article {
 
   Article.fromCloudJson(Map<String, dynamic> json)
       : id = json["id"] ?? "",
-        feedId = json["feedId"] ?? "",
+        feedId =  json["origin"]["streamId"] ?? "",
         title = json["title"] ?? "",
         read = json["read"] ?? false,
         published = json["published"] ?? 0,
