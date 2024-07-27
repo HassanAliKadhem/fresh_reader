@@ -1,7 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
-import 'package:html/dom.dart' as Dom;
+import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart';
+import 'package:video_player/video_player.dart';
 
 class HtmlFunctions extends InheritedWidget {
   const HtmlFunctions({
@@ -52,7 +54,7 @@ class HtmlView extends StatefulWidget {
 class _HtmlViewState extends State<HtmlView> {
   @override
   Widget build(BuildContext context) {
-    // print(widget.html);
+    print(widget.html);
     return HtmlFunctions(
       onImgLongPress: widget.onImgLongPress,
       onImgTap: widget.onImgTap,
@@ -79,17 +81,17 @@ class _HtmlViewState extends State<HtmlView> {
   }
 }
 
-InlineSpan getSpans(BuildContext context, Dom.Node node) {
+InlineSpan getSpans(BuildContext context, dom.Node node) {
   List<InlineSpan> spans = [];
   if (node.children.isEmpty) {
     // print("${node.nodeType}: ${node.text}");
     spans.add(generateSpan(context, node));
   } else {
-    for (Dom.Node child in node.nodes) {
+    for (dom.Node child in node.nodes) {
       // print("${child.nodeType}: ${child.text}");
       if (child.nodes.isNotEmpty) {
         spans.add(getSpans(context, child));
-      } else if ((child.nodeType == Dom.Node.TEXT_NODE &&
+      } else if ((child.nodeType == dom.Node.TEXT_NODE &&
               child.parent?.localName != "a" &&
               child.parent?.localName != "p") ||
           child.attributes.containsKey("src") ||
@@ -102,7 +104,7 @@ InlineSpan getSpans(BuildContext context, Dom.Node node) {
   return TextSpan(children: spans);
 }
 
-InlineSpan generateSpan(BuildContext context, Dom.Node element) {
+InlineSpan generateSpan(BuildContext context, dom.Node element) {
   if (element.attributes.containsKey("href")) {
     return WidgetSpan(
         child: GestureDetector(
@@ -128,45 +130,71 @@ InlineSpan generateSpan(BuildContext context, Dom.Node element) {
       ),
     ));
   } else if (element.attributes.containsKey("src")) {
-    return WidgetSpan(
-        child: Padding(
-      padding: const EdgeInsets.only(right: 8.0),
-      child: GestureDetector(
-        onTap: () {
-          if (HtmlFunctions.of(context).onImgTap != null &&
-              element.attributes.containsKey("src")) {
-            HtmlFunctions.of(context).onImgTap!(element.attributes["src"]!);
-          }
+    if (element.parent?.localName == "video") {
+      final VideoPlayerController videoPlayerController =
+          VideoPlayerController.networkUrl(
+              Uri.parse(element.attributes["src"]!));
+      ChewieController controller = ChewieController(
+        videoPlayerController: videoPlayerController,
+        autoPlay: true,
+        looping: true,
+        errorBuilder: (context, errorMessage) {
+          return Placeholder(
+              child: Text("${element.attributes["src"]} $errorMessage"));
         },
-        onLongPress: () {
-          if (HtmlFunctions.of(context).onImgLongPress != null &&
-              element.attributes.containsKey("src")) {
-            HtmlFunctions.of(context)
-                .onImgLongPress!(element.attributes["src"]!);
-          }
-        },
-        child: CachedNetworkImage(
-          fit: BoxFit.fitWidth,
-          width: double.infinity,
-          imageUrl: element.attributes["src"]!,
-          progressIndicatorBuilder: (context, url, progress) {
-            return SizedBox(
-              height: 48,
-                  width: 48,
-              child: FittedBox(
-                child: CircularProgressIndicator.adaptive(
-                  value: progress.progress,
+      );
+      return WidgetSpan(
+        child: LayoutBuilder(builder: (context, constraints) {
+          return AspectRatio(
+            aspectRatio: videoPlayerController.value.aspectRatio,
+            child: SizedBox(
+              width: constraints.maxWidth,
+              child: Chewie(controller: controller),
+            ),
+          );
+        }),
+      );
+    } else {
+      return WidgetSpan(
+          child: Padding(
+        padding: const EdgeInsets.only(right: 8.0),
+        child: GestureDetector(
+          onTap: () {
+            if (HtmlFunctions.of(context).onImgTap != null &&
+                element.attributes.containsKey("src")) {
+              HtmlFunctions.of(context).onImgTap!(element.attributes["src"]!);
+            }
+          },
+          onLongPress: () {
+            if (HtmlFunctions.of(context).onImgLongPress != null &&
+                element.attributes.containsKey("src")) {
+              HtmlFunctions.of(context)
+                  .onImgLongPress!(element.attributes["src"]!);
+            }
+          },
+          child: CachedNetworkImage(
+            fit: BoxFit.fitWidth,
+            width: double.infinity,
+            imageUrl: element.attributes["src"]!,
+            progressIndicatorBuilder: (context, url, progress) {
+              return SizedBox(
+                height: 48,
+                width: 48,
+                child: FittedBox(
+                  child: CircularProgressIndicator.adaptive(
+                    value: progress.progress,
+                  ),
                 ),
-              ),
-            );
-          },
-          errorWidget: (context, url, error) {
-            debugPrint("$url: $error");
-            return Placeholder(child: Text(error.toString()));
-          },
+              );
+            },
+            errorWidget: (context, url, error) {
+              debugPrint("$url: $error");
+              return Placeholder(child: Text(error.toString()));
+            },
+          ),
         ),
-      ),
-    ));
+      ));
+    }
   } else if (element.nodeType == 1) {
     return TextSpan(text: "\n${element.text}\n");
   } else {

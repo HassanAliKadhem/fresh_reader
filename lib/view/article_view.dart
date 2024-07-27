@@ -1,12 +1,11 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:fresh_reader/util/formatting_setting.dart';
-import 'package:fresh_reader/view/html_view.dart';
 import 'package:fresh_reader/widget/blur_bar.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -17,10 +16,10 @@ class ArticleView extends StatefulWidget {
   const ArticleView({
     super.key,
     required this.index,
-    required this.articles,
+    required this.articleIDs,
   });
   final int index;
-  final List<Article> articles;
+  final Set<String> articleIDs;
   @override
   State<ArticleView> createState() => _ArticleViewState();
 }
@@ -28,33 +27,48 @@ class ArticleView extends StatefulWidget {
 class _ArticleViewState extends State<ArticleView> {
   bool showWebView = false;
   final FormattingSetting formattingSetting = FormattingSetting();
-  late ValueNotifier<int> pageIndexNotifier = ValueNotifier<int>(widget.index);
+  ValueNotifier<Article?> currentArticleNotifier =
+      ValueNotifier<Article?>(null);
 
   void _onShare(BuildContext context) {
-    try {
-      Share.shareUri(
-          Uri.parse(widget.articles[pageIndexNotifier.value].urls.first));
-    } catch (e) {
-      final box = context.findRenderObject() as RenderBox?;
-      Share.share(
-        widget.articles[pageIndexNotifier.value].urls.first,
-        subject: widget.articles[pageIndexNotifier.value].title,
-        sharePositionOrigin: box!.localToGlobal(Offset.zero) & box.size,
-      );
-      debugPrint(e.toString());
+    if (currentArticleNotifier.value != null) {
+      try {
+        Share.shareUri(Uri.parse(currentArticleNotifier.value!.url));
+      } catch (e) {
+        final box = context.findRenderObject() as RenderBox?;
+        Share.share(
+          currentArticleNotifier.value!.url,
+          subject: currentArticleNotifier.value!.title,
+          sharePositionOrigin: box!.localToGlobal(Offset.zero) & box.size,
+        );
+        debugPrint(e.toString());
+      }
     }
   }
 
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(
+      () => _onPageChanged(Api.of(context).filteredIndex!),
+    );
+  }
+
   void _onPageChanged(int page) {
-    pageIndexNotifier.value = page;
-    Api.of(context).setRead(widget.articles[page].id, true);
+    Api.of(context)
+        .db!
+        .loadArticle(widget.articleIDs.elementAt(page))
+        .then((article) {
+      currentArticleNotifier.value = article;
+      Api.of(context).setRead(article.id, article.subID, true);
+      currentArticleNotifier.value!.read = true;
+    });
   }
 
   List<Widget> bottomButtons() {
     return [
       SetUnreadButton(
-        indexNotifier: pageIndexNotifier,
-        articles: widget.articles,
+        articleNotifier: currentArticleNotifier,
       ),
       Builder(builder: (context) {
         return IconButton(
@@ -69,10 +83,12 @@ class _ArticleViewState extends State<ArticleView> {
       }),
       IconButton(
         onPressed: () {
-          launchUrl(
-            Uri.parse(widget.articles[pageIndexNotifier.value].urls.first),
-            mode: LaunchMode.inAppBrowserView,
-          );
+          if (currentArticleNotifier.value != null) {
+            launchUrl(
+              Uri.parse(currentArticleNotifier.value!.url),
+              mode: LaunchMode.inAppBrowserView,
+            );
+          }
         },
         tooltip: "Open In Browser",
         icon: const Icon(
@@ -119,15 +135,15 @@ class _ArticleViewState extends State<ArticleView> {
     return Scaffold(
       appBar: AppBar(
         title: ArticleCount(
-          pageIndexNotifier: pageIndexNotifier,
-          count: widget.articles.length,
+          currentArticleNotifier: currentArticleNotifier,
+          articleIDS: widget.articleIDs,
         ),
         actions:
             screenSizeOf(context) == ScreenSize.small ? null : bottomButtons(),
         flexibleSpace: const BlurBar(),
       ),
-      extendBodyBehindAppBar: !showWebView,
-      extendBody: !showWebView,
+      // extendBodyBehindAppBar: !showWebView,
+      // extendBody: !showWebView,
       bottomNavigationBar: screenSizeOf(context) == ScreenSize.small
           ? BlurBar(
               child: SafeArea(
@@ -142,12 +158,32 @@ class _ArticleViewState extends State<ArticleView> {
       body: PageView.builder(
         controller: PageController(initialPage: widget.index),
         onPageChanged: (value) => _onPageChanged(value),
-        itemCount: widget.articles.length,
+        itemCount: widget.articleIDs.length,
         itemBuilder: (context, index) {
-          return ArticlePage(
-            article: widget.articles[index],
-            showWebView: showWebView,
-            formattingSetting: formattingSetting,
+          return FutureBuilder(
+            future: Api.of(context)
+                .db!
+                .loadArticle(widget.articleIDs.elementAt(index)),
+            builder: (context, snapshot) {
+              if (snapshot.data != null) {
+                return ArticlePage(
+                  key: ValueKey("${snapshot.data}$showWebView"),
+                  article: snapshot.data!,
+                  showWebView: showWebView,
+                  formattingSetting: formattingSetting,
+                );
+              } else {
+                return const Center(
+                  child: SizedBox(
+                    height: 48,
+                    width: 48,
+                    child: FittedBox(
+                      child: CircularProgressIndicator.adaptive(),
+                    ),
+                  ),
+                );
+              }
+            },
           );
         },
       ),
@@ -158,19 +194,24 @@ class _ArticleViewState extends State<ArticleView> {
 class ArticleCount extends StatelessWidget {
   const ArticleCount({
     super.key,
-    required this.pageIndexNotifier,
-    required this.count,
+    required this.currentArticleNotifier,
+    required this.articleIDS,
   });
 
-  final ValueNotifier<int> pageIndexNotifier;
-  final int count;
+  final ValueNotifier<Article?> currentArticleNotifier;
+  final Set<String> articleIDS;
 
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder(
-      valueListenable: pageIndexNotifier,
+      valueListenable: currentArticleNotifier,
       builder: (context, value, child) {
-        return Text("${value + 1} / $count");
+        if (value != null) {
+          return Text(
+              "${articleIDS.toList().indexOf(value.id) + 1} / ${articleIDS.length}");
+        } else {
+          return Text("1 / ${articleIDS.length}");
+        }
       },
     );
   }
@@ -260,7 +301,7 @@ class FormattingSheet extends StatelessWidget {
   }
 }
 
-class ArticlePage extends StatelessWidget {
+class ArticlePage extends StatefulWidget {
   const ArticlePage({
     super.key,
     required this.article,
@@ -272,149 +313,190 @@ class ArticlePage extends StatelessWidget {
   final bool showWebView;
   final FormattingSetting formattingSetting;
 
-  void showLinkMenu(BuildContext context, String link, String title) {
+  @override
+  State<ArticlePage> createState() => _ArticlePageState();
+}
+
+class _ArticlePageState extends State<ArticlePage> {
+  void showLinkMenu(BuildContext context, String link) {
     showDialog(
       context: context,
       builder: (context) {
-        return SimpleDialog(
-          title: ListTile(
-            title: Text(title),
-            subtitle: Text(link),
-          ),
-          contentPadding: EdgeInsets.all(16.0),
-          children: [
-            const Divider(),
-            ListTile(
-                onTap: () {
-                  launchUrl(Uri.parse(link));
-                },
-                title: const Text("Open in browser")),
-            ListTile(
-                onTap: () {
-                  try {
-                    Share.shareUri(Uri.parse(link));
-                  } catch (e) {
-                    final box = context.findRenderObject() as RenderBox?;
-                    Share.share(
-                      link,
-                      subject: title,
-                      sharePositionOrigin:
-                          box!.localToGlobal(Offset.zero) & box.size,
-                    );
-                    debugPrint(e.toString());
-                  }
-                },
-                title: const Text("Share")),
-          ],
-        );
+        Widget? image;
+        if (link.endsWith(".JPG") ||
+            link.endsWith(".jpg") ||
+            link.endsWith(".jpeg") ||
+            link.endsWith(".png")) {
+          image = CachedNetworkImage(
+            imageUrl: link,
+            width: 128,
+            height: 128,
+          );
+        }
+        return AlertDialog(
+            icon: image,
+            title: Text(
+              link,
+              textScaler: const TextScaler.linear(0.75),
+            ),
+            contentPadding: EdgeInsets.zero,
+            clipBehavior: Clip.hardEdge,
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Divider(),
+                  ListTile(
+                    title: const Text("Open in browser"),
+                    trailing: const Icon(Icons.open_in_browser),
+                    onTap: () {
+                      launchUrl(Uri.parse(link));
+                    },
+                  ),
+                  ListTile(
+                    title: const Text("Share Link"),
+                    trailing: const Icon(Icons.share),
+                    onTap: () {
+                      try {
+                        Share.shareUri(Uri.parse(link));
+                      } catch (e) {
+                        final box = context.findRenderObject() as RenderBox?;
+                        Share.share(
+                          link,
+                          subject: "",
+                          sharePositionOrigin:
+                              box!.localToGlobal(Offset.zero) & box.size,
+                        );
+                        debugPrint(e.toString());
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ));
       },
     );
   }
 
-  WidgetSpan LinkSpan(var element, BuildContext context) {
-    return WidgetSpan(
-      child: GestureDetector(
-        onTap: () {
-          launchUrl(Uri.parse(element.attributes["href"]!));
-        },
-        onLongPress: () {
-          showLinkMenu(context, element.attributes["href"]!, element.text);
-        },
-        child: Text(
-          element.text,
-          style: TextStyle(
-              decoration: TextDecoration.underline,
-              color: Theme.of(context).colorScheme.primary),
-        ),
-      ),
+  InAppWebViewController? controller;
+  InAppWebViewSettings settings = InAppWebViewSettings(
+    isInspectable: kDebugMode,
+    mediaPlaybackRequiresUserGesture: false,
+    allowsInlineMediaPlayback: true,
+    hardwareAcceleration: true,
+    iframeAllowFullscreen: true,
+    javaScriptEnabled: true,
+    transparentBackground: true,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    widget.formattingSetting.addListener(updateFormatting);
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    widget.formattingSetting.removeListener(updateFormatting);
+  }
+
+  void updateFormatting() {
+    controller?.evaluateJavascript(
+      source:
+          '''document.body.style.fontSize = "${widget.formattingSetting.fontSize.toInt() / 5}em";
+        document.body.style.lineHeight = "${widget.formattingSetting.lineHeight}";
+        document.body.style.wordSpacing = "${widget.formattingSetting.wordSpacing}";''',
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (showWebView) {
-      WebViewController controller = WebViewController();
-      controller.loadRequest(Uri.parse(article.urls.first));
-      controller.setJavaScriptMode(JavaScriptMode.unrestricted);
-      controller.setNavigationDelegate(NavigationDelegate(
-        onNavigationRequest: (request) {
-          launchUrl(Uri.parse(request.url));
-          return NavigationDecision.prevent;
-        },
-      ));
-      return WebViewWidget(
-          controller: controller,
-          gestureRecognizers: <Factory<VerticalDragGestureRecognizer>>{
+    // controller?.set(NavigationDelegate(
+    //   onNavigationRequest: (request) {
+    //     launchUrl(Uri.parse(request.url));
+    //     return NavigationDecision.prevent;
+    //   },
+    //   onPageFinished: (url) {
+    //     controller.setBackgroundColor(Theme.of(context).canvasColor);
+    //     updateFormatting();
+    //   },
+    // ));
+
+    if (widget.showWebView) {
+      return InAppWebView(
+          initialUrlRequest: URLRequest(url: WebUri(widget.article.url)),
+          // onWebViewCreated: (controller) {
+          //   this.controller = controller;
+          // },
+          onLongPressHitTestResult: (controller, hitTestResult) {
+            if (hitTestResult.extra != null) {
+              showLinkMenu(context, hitTestResult.extra!);
+            }
+          },
+          shouldOverrideUrlLoading: (controller, navigationAction) async {
+            if (navigationAction.request.url != null) {
+              launchUrl(navigationAction.request.url!);
+            }
+            return NavigationActionPolicy.CANCEL;
+          },
+          gestureRecognizers: {
+            Factory<LongPressGestureRecognizer>(
+              () => LongPressGestureRecognizer(),
+            ),
             Factory<VerticalDragGestureRecognizer>(
               () => VerticalDragGestureRecognizer(),
             ),
           });
     } else {
       String content =
-          "<a href=\"${article.url}\">${article.title}</a><p>${Api.of(context).subs[article.feedId]?.title}<br>${getRelativeDate(article.published)}, ${DateTime.fromMillisecondsSinceEpoch(article.published * 1000)}</p>${article.content}";
-      // print(content);
-      return ListView(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: HtmlView(
-              html: content,
-              onLinkTap: (p0) {
-                launchUrl(Uri.parse(p0));
-              },
-              onLinkLongPress: (p0) {
-                showLinkMenu(context, p0, article.title);
-              },
-            ),
+          '''<a href=\"${widget.article.url}\">${widget.article.title}</a>
+          <p>
+          ${Api.of(context).subs[widget.article.subID]?.title}<br>
+          ${getRelativeDate(widget.article.published)}, ${DateTime.fromMillisecondsSinceEpoch(widget.article.published * 1000)}
+          </p>
+          ${widget.article.content}
+          <style>
+          body {accent-color: #d8bbff; width: 100vw; margin: 2rem; color: rgba(255, 255, 255, 0.87); font-size: ${widget.formattingSetting.fontSize.toInt() / 5}em; line-height: ${widget.formattingSetting.lineHeight}; word-spacing:${widget.formattingSetting.wordSpacing};}
+          img, video, figure, svg {max-width: 100vw;}
+          a {color: #d8bbff;}
+          </style>''';
+          //background-color: #121212; 
+      return InAppWebView(
+        initialData: InAppWebViewInitialData(data: content),
+        initialSettings: settings,
+        onWebViewCreated: (controller) {
+          this.controller = controller;
+          controller.loadData(data: content);
+          updateFormatting();
+        },
+        onLongPressHitTestResult: (controller, hitTestResult) {
+          if (hitTestResult.extra != null) {
+            showLinkMenu(context, hitTestResult.extra!);
+          }
+        },
+        shouldOverrideUrlLoading: (controller, navigationAction) async {
+          if (navigationAction.request.url != null) {
+            launchUrl(navigationAction.request.url!);
+          }
+          return NavigationActionPolicy.CANCEL;
+        },
+        gestureRecognizers: {
+          Factory<LongPressGestureRecognizer>(
+            () => LongPressGestureRecognizer(),
           ),
-        ],
+          Factory<VerticalDragGestureRecognizer>(
+            () => VerticalDragGestureRecognizer(),
+          ),
+        },
       );
-      return ListenableBuilder(
-          listenable: formattingSetting,
-          child: SelectionArea(
-            child: ListView(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: HtmlWidget(
-                    content,
-                    renderMode: const ColumnMode(),
-                    onLoadingBuilder: (context, element, loadingProgress) {
-                      return CircularProgressIndicator.adaptive(
-                        value: loadingProgress,
-                      );
-                    },
-                    // enableCaching: true,
-                    onTapUrl: (p0) {
-                      launchUrl(Uri.parse(p0));
-                      return true;
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-          builder: (context, child) {
-            return AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 200),
-              style: TextStyle(
-                wordSpacing: formattingSetting.wordSpacing,
-                fontSize: formattingSetting.fontSize,
-                height: formattingSetting.lineHeight,
-                fontFamily: formattingSetting.font,
-              ),
-              child: child!,
-            );
-          });
     }
   }
 }
 
 class SetUnreadButton extends StatefulWidget {
-  const SetUnreadButton(
-      {super.key, required this.indexNotifier, required this.articles});
-  final ValueNotifier<int> indexNotifier;
-  final List<Article> articles;
+  const SetUnreadButton({super.key, required this.articleNotifier});
+  final ValueNotifier<Article?> articleNotifier;
 
   @override
   State<SetUnreadButton> createState() => _SetUnreadButtonState();
@@ -424,14 +506,17 @@ class _SetUnreadButtonState extends State<SetUnreadButton> {
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder(
-      valueListenable: widget.indexNotifier,
+      valueListenable: widget.articleNotifier,
       builder: (context, value, child) {
-        bool isRead = Api.of(context).isRead(widget.articles[value].id);
+        bool isRead = value?.read ?? true;
         return IconButton(
           onPressed: () {
-            setState(() {
-              Api.of(context).setRead(widget.articles[value].id, !isRead);
-            });
+            if (value != null) {
+              value.read = !isRead;
+              setState(() {
+                Api.of(context).setRead(value.id, value.subID, !isRead);
+              });
+            }
           },
           tooltip: isRead ? "Set Unread" : "Set Read",
           icon: Icon(

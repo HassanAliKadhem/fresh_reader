@@ -7,6 +7,8 @@ import 'api/api.dart';
 import 'api/data_types.dart';
 import 'view/feed_list.dart';
 
+ApiData _apiData = ApiData();
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(
@@ -15,7 +17,9 @@ void main() {
       SystemUiOverlay.top,
     ],
   ).then((_) {
-    runApp(const MyApp());
+    _apiData.load().then((_) {
+      runApp(const MyApp());
+    });
   });
 }
 
@@ -32,7 +36,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return Api(
-      notifier: apiData,
+      notifier: _apiData,
       child: MaterialApp(
         title: 'FreshReader',
         themeMode: ThemeMode.dark,
@@ -91,7 +95,7 @@ class _HomeWidgetState extends State<HomeWidget> {
           } else if (route.settings.name == "/list") {
             setState(() {
               Api.of(context).filteredIndex = null;
-              Api.of(context).filteredArticles = null;
+              Api.of(context).filteredArticleIDs = null;
             });
           }
           return route.didPop(result);
@@ -122,7 +126,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   ),
           ),
           if (screenSizeOf(context) == ScreenSize.small &&
-              Api.of(context).filteredArticles != null)
+              Api.of(context).filteredArticleIDs != null)
             MaterialPage(
               name: "/list",
               child: ArticleList(onSelect: _onChooseArticle),
@@ -133,7 +137,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               name: "/article",
               child: ArticleView(
                 index: Api.of(context).filteredIndex!,
-                articles: Api.of(context).filteredArticles!.values.toList(),
+                articleIDs: Api.of(context).filteredArticleIDs!,
               ),
             ),
         ],
@@ -141,14 +145,17 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  void _onChooseFeed(String feed) {
-    Api.of(context).getFilteredArticles(feed);
-    setState(() {});
+  void _onChooseFeed(String? column, String? value) {
+    Api.of(context)
+        .getFilteredArticles(Api.of(context).getShowAll(), column, value)
+        .then((_) {
+      setState(() {});
+    });
   }
 
   void _onChooseArticle(int index, String articleID) {
     Api.of(context).filteredIndex = index;
-    Api.of(context).setRead(articleID, true);
+    // Api.of(context).setRead(articleID, true);
     setState(() {});
   }
 }

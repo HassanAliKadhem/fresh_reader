@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api.dart';
 
@@ -70,6 +71,25 @@ class _SettingsViewState extends State<SettingsView> {
                 }
               });
             },
+          ),
+          const Divider(
+            indent: 8.0,
+            endIndent: 8.0,
+          ),
+          AboutListTile(
+            applicationVersion: "0.9.7",
+            aboutBoxChildren: [
+              const ListTile(
+                title: Text("Made By"),
+                subtitle: Text("Hasan Kadhem"),
+              ),
+              ListTile(
+                title: const Text("Source Code"),
+                subtitle: const Text("https://github.com/HassanAliKadhem/fresh_reader"),
+                trailing: const Icon(Icons.open_in_browser),
+                onTap: () => launchUrl(Uri.parse("https://github.com/HassanAliKadhem/fresh_reader")),
+              ),
+            ],
           ),
         ],
       ),
