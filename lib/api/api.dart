@@ -129,16 +129,15 @@ class DatabaseManager {
     return Article.fromDB(articles.first);
   }
 
-  Future<String> loadArticleSubID(String articleID) async {
-    List<Map<String, Object?>> result = await db.query(
-      "Article",
-      columns: [
-        "subID",
-      ],
-      where: "articleID = ?",
-      whereArgs: [articleID],
-    );
-    return result.first.values.first as String;
+  Future<String?> loadArticleSubID(String articleID) async {
+    List<Map<String, Object?>> result = await db.query("Article",
+        columns: [
+          "subID",
+        ],
+        where: "articleID = ?",
+        whereArgs: [articleID],
+        orderBy: "timeStampPublished DESC");
+    return result.isNotEmpty ? result.first.values.first as String : null;
   }
 
   Future<int> countArticles(
@@ -176,12 +175,12 @@ class DatabaseManager {
     for (var element in categories) {
       await db
           .rawQuery(
-              "Select COUNT(id) from Article where subID in (select subID from Category where name = '${element["name"]}')")
+              "Select COUNT(id) from Article where subID in (select subID from Category where name = '${element["name"]}') ${showAll == false ? "and isRead = 'false'" : ""}")
           .then((count) {
         counts[element["name"] as String] = count.first["COUNT(id)"] as int;
       });
     }
-  
+
     return counts;
   }
 
@@ -191,7 +190,8 @@ class DatabaseManager {
     if (filterColumn == "tag") {
       articles = await db.rawQuery(
           "select articleID, subID from Article where subID in (select subID from category where name = '$filterValue') " +
-              (showAll == false ? "and isRead = 'false'" : ""));
+              (showAll == false ? "and isRead = 'false'" : "") +
+              " order by timeStampPublished DESC");
     } else {
       String? where;
       List<String> args = [];
@@ -213,18 +213,22 @@ class DatabaseManager {
         ],
         where: where,
         whereArgs: args.isNotEmpty ? args : null,
+        orderBy: "timeStampPublished DESC",
       );
     }
     return articles.asMap().map((key, element) =>
         MapEntry(element["articleID"] as String, element["subID"] as String));
   }
 
-  void saveArticles(List<Article> articles) {
+  void saveArticles(
+      List<Article> articles, Map<String, DelayedAction> delayedActions) {
     final Batch batch = db.batch();
     for (Article article in articles) {
-      batch.insert("Article", article.toDB());
-      batch.update("Article", {"isRead": "false"},
-          where: "articleID = ?", whereArgs: [article.id]);
+      if (delayedActions[article.id] != DelayedAction.unread) {
+        batch.insert("Article", article.toDB());
+        batch.update("Article", {"isRead": "false"},
+            where: "articleID = ?", whereArgs: [article.id]);
+      }
     }
     batch.commit(continueOnError: true);
   }
@@ -325,15 +329,15 @@ class ApiData extends ChangeNotifier {
       await db!.getDatabase();
     }
 
-    List<String> newUnread = [];
-    List<String> newRead = [];
-    for (var entry in delayedActions.entries) {
-      if (entry.value == DelayedAction.read) {
-        newRead.add(entry.key);
-      } else if (entry.value == DelayedAction.unread) {
-        newUnread.add(entry.key);
-      }
-    }
+    // List<String> newUnread = [];
+    // List<String> newRead = [];
+    // for (var entry in delayedActions.entries) {
+    //   if (entry.value == DelayedAction.read) {
+    //     newRead.add(entry.key);
+    //   } else if (entry.value == DelayedAction.unread) {
+    //     newUnread.add(entry.key);
+    //   }
+    // }
 
     db!.saveDelayedActions(delayedActions);
     // db!.saveArticles(articles.values.toList());
@@ -350,29 +354,41 @@ class ApiData extends ChangeNotifier {
       });
     }
 
-    // if (delayedActions.isNotEmpty) {
-    //   debugPrint(delayedActions.toString());
-    //   List<String> ids = delayedActions.entries
-    //       .where((entry) => entry.value == DelayedAction.read)
-    //       .map((entry) => entry.key)
-    //       .toList();
-    //   _setServerUnread(
-    //     ids,
-    //     ids.map((id) async {
-    //       return await db!.loadArticleSubID(id);
-    //     }).toList(),
-    //     true,
-    //   );
-    //   List<String> unreadIDs = delayedActions.entries
-    //       .where((entry) => entry.value == DelayedAction.unread)
-    //       .map((entry) => entry.key)
-    //       .toList();
-    //   _setServerUnread(
-    //     unreadIDs,
-    //     [],
-    //     false,
-    //   );
-    // }
+    if (delayedActions.isNotEmpty) {
+      // debugPrint(delayedActions.toString());
+      Map<String, String> articleSub = {};
+      for (var element in delayedActions.keys) {
+        await db!.loadArticleSubID(element).then((value) {
+          if (value != null) {
+            articleSub[element] = value;
+          }
+        });
+      }
+      Map<String, String> readIds = {};
+      Map<String, String> unReadIds = {};
+
+      for (var element in delayedActions.entries) {
+        if (articleSub[element.key] != null) {
+          if (element.value == DelayedAction.read) {
+            readIds[element.key] = articleSub[element.key]!;
+          } else {
+            unReadIds[element.key] = articleSub[element.key]!;
+          }
+        }
+      }
+      // debugPrint(readIds.toString());
+      // debugPrint(unReadIds.toString());
+      _setServerUnread(
+        readIds.keys.toList(),
+        readIds.values.toList(),
+        true,
+      );
+      _setServerUnread(
+        unReadIds.keys.toList(),
+        unReadIds.values.toList(),
+        false,
+      );
+    }
 
     await Future.wait([
       // _getModifyAuth(auth)
@@ -492,7 +508,7 @@ class ApiData extends ChangeNotifier {
           articles.add(article);
         });
 
-        db!.saveArticles(articles);
+        db!.saveArticles(articles, delayedActions);
         con = res["continuation"]?.toString() ?? "";
       }).catchError((onError) {
         if (kDebugMode) {
@@ -505,7 +521,10 @@ class ApiData extends ChangeNotifier {
   }
 
   Future<bool> _setServerUnread(
-      List<String> ids, List<String> subIDs, bool isRead) async {
+    List<String> ids,
+    List<String> subIDs,
+    bool isRead,
+  ) async {
     String idString = "?";
     for (int i = 0; i < ids.length; i++) {
       delayedActions[ids[i]] =
@@ -547,17 +566,20 @@ class ApiData extends ChangeNotifier {
     db!.updateArticleRead(id, isRead);
   }
 
-  Future<void> getFilteredArticles(bool? showAll,
-      String? filterColumn, String? filterValue) async {
+  Future<void> getFilteredArticles(
+      bool? showAll, String? filterColumn, String? filterValue) async {
     await db!
-        .loadArticleIDs(showAll: showAll,filterColumn: filterColumn, filterValue: filterValue)
+        .loadArticleIDs(
+            showAll: showAll,
+            filterColumn: filterColumn,
+            filterValue: filterValue)
         .then((value) {
       filteredArticleIDs = value.keys.toSet();
     });
     if (filterValue != null && filterValue.startsWith("feed/")) {
       filteredTitle = subs[filterValue]?.title;
     } else {
-    filteredTitle = filterValue?? "All Articles";
+      filteredTitle = filterValue ?? "All Articles";
     }
     // notifyListeners();
   }

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -142,8 +144,8 @@ class _ArticleViewState extends State<ArticleView> {
             screenSizeOf(context) == ScreenSize.small ? null : bottomButtons(),
         flexibleSpace: const BlurBar(),
       ),
-      // extendBodyBehindAppBar: !showWebView,
-      // extendBody: !showWebView,
+      extendBodyBehindAppBar: !showWebView,
+      extendBody: !showWebView,
       bottomNavigationBar: screenSizeOf(context) == ScreenSize.small
           ? BlurBar(
               child: SafeArea(
@@ -404,7 +406,7 @@ class _ArticlePageState extends State<ArticlePage> {
   void updateFormatting() {
     controller?.evaluateJavascript(
       source:
-          '''document.body.style.fontSize = "${widget.formattingSetting.fontSize.toInt() / 5}em";
+          '''document.body.style.fontSize = "${widget.formattingSetting.fontSize.toInt() / 15}em";
         document.body.style.lineHeight = "${widget.formattingSetting.lineHeight}";
         document.body.style.wordSpacing = "${widget.formattingSetting.wordSpacing}";''',
     );
@@ -449,19 +451,20 @@ class _ArticlePageState extends State<ArticlePage> {
             ),
           });
     } else {
-      String content =
-          '''<a href=\"${widget.article.url}\">${widget.article.title}</a>
+      String content = '''<head>
+          <meta name="viewport" content=" initial-scale=1.0">
+          </head>
+          <a href=\"${widget.article.url}\">${widget.article.title}</a>
           <p>
           ${Api.of(context).subs[widget.article.subID]?.title}<br>
           ${getRelativeDate(widget.article.published)}, ${DateTime.fromMillisecondsSinceEpoch(widget.article.published * 1000)}
           </p>
           ${widget.article.content}
           <style>
-          body {accent-color: #d8bbff; width: 100vw; margin: 2rem; color: rgba(255, 255, 255, 0.87); font-size: ${widget.formattingSetting.fontSize.toInt() / 5}em; line-height: ${widget.formattingSetting.lineHeight}; word-spacing:${widget.formattingSetting.wordSpacing};}
-          img, video, figure, svg {max-width: 100vw;}
+          body {accent-color: #d8bbff; width: 94vw; margin: ${max(MediaQuery.of(context).padding.top, MediaQuery.of(context).padding.bottom) * 1.1}px 3vw; color: rgba(255, 255, 255, 0.87); font-size: ${widget.formattingSetting.fontSize.toInt() / 15}em; line-height: ${widget.formattingSetting.lineHeight}; word-spacing:${widget.formattingSetting.wordSpacing};}
+          img, video, figure, svg {max-width: 90vw; margin-left: auto; margin-right: auto;}
           a {color: #d8bbff;}
           </style>''';
-          //background-color: #121212; 
       return InAppWebView(
         initialData: InAppWebViewInitialData(data: content),
         initialSettings: settings,

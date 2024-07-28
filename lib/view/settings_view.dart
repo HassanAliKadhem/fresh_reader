@@ -76,6 +76,55 @@ class _SettingsViewState extends State<SettingsView> {
             indent: 8.0,
             endIndent: 8.0,
           ),
+          // if (kDebugMode)
+          ExpansionTile(
+            shape: const Border(),
+            title: const Text("Developer options"),
+            children: [
+              ListTile(
+                title: const Text("Last sync time"),
+                subtitle: Text(DateTime.fromMillisecondsSinceEpoch(
+                        Api.of(context).updatedTime * 1000)
+                    .toString()),
+              ),
+              ListTile(
+                title: const Text("Total articles"),
+                subtitle: FutureBuilder(
+                  future: Api.of(context).db!.countAllArticles(true),
+                  builder: (context, snapshot) {
+                    if (snapshot.data != null) {
+                      return Text(snapshot.data!.values.length.toString());
+                    }
+                    return const Text("Please wait");
+                  },
+                ),
+              ),
+              ListTile(
+                title: const Text("Delete Data"),
+                onTap: () async {
+                  Api.of(context).db!.db.execute(
+                      "Delete from Article; Delete from Category; Delete from Subscription; Delete from DelayedAction;");
+                  Api.of(context).save();
+                  Api.of(context).articleIDs = {};
+                  Api.of(context).filteredIndex = null;
+                  Api.of(context).filteredArticleIDs = {};
+                  Api.of(context).delayedActions = {};
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Data Cleared"),
+                    ),
+                  );
+                  setState(() {
+                    
+                  });
+                },
+              ),
+            ],
+          ),
+          const Divider(
+            indent: 8.0,
+            endIndent: 8.0,
+          ),
           AboutListTile(
             applicationVersion: "0.9.7",
             aboutBoxChildren: [
@@ -85,9 +134,11 @@ class _SettingsViewState extends State<SettingsView> {
               ),
               ListTile(
                 title: const Text("Source Code"),
-                subtitle: const Text("https://github.com/HassanAliKadhem/fresh_reader"),
+                subtitle: const Text(
+                    "https://github.com/HassanAliKadhem/fresh_reader"),
                 trailing: const Icon(Icons.open_in_browser),
-                onTap: () => launchUrl(Uri.parse("https://github.com/HassanAliKadhem/fresh_reader")),
+                onTap: () => launchUrl(Uri.parse(
+                    "https://github.com/HassanAliKadhem/fresh_reader")),
               ),
             ],
           ),
