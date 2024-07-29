@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -6,10 +5,11 @@ class FormattingSetting extends ChangeNotifier {
   double fontSize = 14.0;
   double wordSpacing = 0.0;
   double lineHeight = 1.5;
-  String font = Platform.isAndroid ? "Roboto" : "SF UI Text";
+  String font = "Arial";
   List<String> fonts = [
-    Platform.isAndroid ? "Roboto" : "SF UI Text",
+    "Arial",
     "Courier",
+    "Times New Roman",
   ];
   bool isBionic = false;
 

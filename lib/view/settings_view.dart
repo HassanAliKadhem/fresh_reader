@@ -93,7 +93,13 @@ class _SettingsViewState extends State<SettingsView> {
                   future: Api.of(context).db!.countAllArticles(true),
                   builder: (context, snapshot) {
                     if (snapshot.data != null) {
-                      return Text(snapshot.data!.values.length.toString());
+                      int allCount = 0;
+                      for (var element in snapshot.data!.entries) {
+                        if (element.key.startsWith("feed")) {
+                          allCount += element.value;
+                        }
+                      }
+                      return Text(allCount.toString());
                     }
                     return const Text("Please wait");
                   },
@@ -102,20 +108,47 @@ class _SettingsViewState extends State<SettingsView> {
               ListTile(
                 title: const Text("Delete Data"),
                 onTap: () async {
-                  Api.of(context).db!.db.execute(
-                      "Delete from Article; Delete from Category; Delete from Subscription; Delete from DelayedAction;");
-                  Api.of(context).save();
-                  Api.of(context).articleIDs = {};
-                  Api.of(context).filteredIndex = null;
-                  Api.of(context).filteredArticleIDs = {};
-                  Api.of(context).delayedActions = {};
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Data Cleared"),
-                    ),
-                  );
-                  setState(() {
-                    
+                  showAdaptiveDialog(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog.adaptive(
+                        title: Text("Are you sure?"),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Api.of(context).db!.db.execute(
+                                  "Delete from Article; Delete from Category; Delete from Subscription; Delete from DelayedAction;");
+                              Api.of(context).updatedTime = 0;
+                              Api.of(context).articleIDs = {};
+                              Api.of(context).filteredIndex = null;
+                              Api.of(context).filteredArticleIDs = null;
+                              Api.of(context).delayedActions = {};
+                              Api.of(context).save();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Data Cleared"),
+                                ),
+                              );
+                              Navigator.pop(context);
+                            },
+                            child: Text(
+                              "Delete Everything",
+                              style: TextStyle(
+                                color: Colors.red[300],
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                            child: const Text("Cancel"),
+                          )
+                        ],
+                      );
+                    },
+                  ).then((_) {
+                    setState(() {});
                   });
                 },
               ),

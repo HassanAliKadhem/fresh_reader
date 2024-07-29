@@ -15,6 +15,7 @@ class ArticleList extends StatefulWidget {
   State<ArticleList> createState() => _ArticleListState();
 }
 
+
 class _ArticleListState extends State<ArticleList> {
   // final TextEditingController _searchController = TextEditingController();
   Set<String> currentArticlesIDs = <String>{};
@@ -30,13 +31,15 @@ class _ArticleListState extends State<ArticleList> {
     });
   }
 
-  // @override
+  @override
   Widget build(BuildContext context) {
     // Set<String> articleIDs = <String>{};
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: kToolbarHeight + 15,
-        title: Text(Api.of(context).filteredTitle == null ? "" : Api.of(context).filteredTitle!.split("/").last),
+        title: Text(Api.of(context).filteredTitle == null
+            ? ""
+            : Api.of(context).filteredTitle!.split("/").last),
         // title: SearchBar(
         //   hintText: "Search",
         //   controller: _searchController,
@@ -65,6 +68,7 @@ class _ArticleListState extends State<ArticleList> {
 
   ListView articlesListView() {
     return ListView.separated(
+      cacheExtent: 250,
       itemCount: currentArticlesIDs.length,
       separatorBuilder: (context, index) {
         return const SizedBox();
@@ -140,6 +144,7 @@ class _ArticleListState extends State<ArticleList> {
                         : null,
                   ),
                 ),
+                onTap: () => widget.onSelect(index, snapshot.data!.id),
                 subtitle: Text(
                   "${Api.of(context).subs[snapshot.data!.subID]?.title ?? ""}\n${getRelativeDate(snapshot.data!.published)}",
                   style: TextStyle(
@@ -155,39 +160,26 @@ class _ArticleListState extends State<ArticleList> {
                         width: 28,
                         child: CachedNetworkImage(
                           imageUrl: iconUrl,
-                          // progressIndicatorBuilder:
-                          //     (context, url, downloadProgress) =>
-                          //         CircularProgressIndicator(
-                          //   value: downloadProgress.progress,
-                          // ),
                           errorWidget: (context, url, error) =>
                               const Icon(Icons.error),
                         ),
                       ),
-                trailing: Container(
-                  height: 48,
-                  width: 48,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade800,
-                    borderRadius: const BorderRadius.all(Radius.circular(5)),
-                  ),
-                  child: imgLink == null
-                      ? null
-                      : CachedNetworkImage(
-                          imageUrl: imgLink,
-                          progressIndicatorBuilder:
-                              (context, url, downloadProgress) => Padding(
-                            padding: const EdgeInsets.all(4.0),
-                            child: CircularProgressIndicator(
-                              value: downloadProgress.progress,
-                            ),
-                          ),
-                          errorWidget: (context, url, error) =>
-                              const Icon(Icons.error),
-                        ),
-                ),
-                onTap: () => widget.onSelect(index, snapshot.data!.id),
+                trailing: imgLink == null
+                    ? null
+                    : CachedNetworkImage(
+                        imageUrl: imgLink,
+                        height: 48,
+                        width: 48,
+                        placeholder: (context, url) {
+                          return Container(
+                            color: Colors.grey.shade800,
+                            height: 48,
+                            width: 48,
+                          );
+                        },
+                        errorWidget: (context, url, error) =>
+                            const Icon(Icons.error),
+                      ),
               ),
             ),
           );

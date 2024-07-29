@@ -158,6 +158,7 @@ class _ArticleViewState extends State<ArticleView> {
             )
           : null,
       body: PageView.builder(
+        allowImplicitScrolling: true,
         controller: PageController(initialPage: widget.index),
         onPageChanged: (value) => _onPageChanged(value),
         itemCount: widget.articleIDs.length,
@@ -408,50 +409,14 @@ class _ArticlePageState extends State<ArticlePage> {
       source:
           '''document.body.style.fontSize = "${widget.formattingSetting.fontSize.toInt() / 15}em";
         document.body.style.lineHeight = "${widget.formattingSetting.lineHeight}";
-        document.body.style.wordSpacing = "${widget.formattingSetting.wordSpacing}";''',
+        document.body.style.wordSpacing = "${widget.formattingSetting.wordSpacing}";
+        document.body.style.fontFamily = '"${widget.formattingSetting.font}"\'''',
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // controller?.set(NavigationDelegate(
-    //   onNavigationRequest: (request) {
-    //     launchUrl(Uri.parse(request.url));
-    //     return NavigationDecision.prevent;
-    //   },
-    //   onPageFinished: (url) {
-    //     controller.setBackgroundColor(Theme.of(context).canvasColor);
-    //     updateFormatting();
-    //   },
-    // ));
-
-    if (widget.showWebView) {
-      return InAppWebView(
-          initialUrlRequest: URLRequest(url: WebUri(widget.article.url)),
-          // onWebViewCreated: (controller) {
-          //   this.controller = controller;
-          // },
-          onLongPressHitTestResult: (controller, hitTestResult) {
-            if (hitTestResult.extra != null) {
-              showLinkMenu(context, hitTestResult.extra!);
-            }
-          },
-          shouldOverrideUrlLoading: (controller, navigationAction) async {
-            if (navigationAction.request.url != null) {
-              launchUrl(navigationAction.request.url!);
-            }
-            return NavigationActionPolicy.CANCEL;
-          },
-          gestureRecognizers: {
-            Factory<LongPressGestureRecognizer>(
-              () => LongPressGestureRecognizer(),
-            ),
-            Factory<VerticalDragGestureRecognizer>(
-              () => VerticalDragGestureRecognizer(),
-            ),
-          });
-    } else {
-      String content = '''<head>
+    String content = '''<head>
           <meta name="viewport" content=" initial-scale=1.0">
           </head>
           <a href=\"${widget.article.url}\">${widget.article.title}</a>
@@ -465,35 +430,42 @@ class _ArticlePageState extends State<ArticlePage> {
           img, video, figure, svg {max-width: 90vw; margin-left: auto; margin-right: auto;}
           a {color: #d8bbff;}
           </style>''';
-      return InAppWebView(
-        initialData: InAppWebViewInitialData(data: content),
-        initialSettings: settings,
-        onWebViewCreated: (controller) {
+    return InAppWebView(
+      initialUrlRequest: widget.showWebView
+          ? URLRequest(url: WebUri(widget.article.url))
+          : null,
+      initialData:
+          widget.showWebView ? null : InAppWebViewInitialData(data: content),
+      initialSettings: settings,
+      onWebViewCreated: (controller) {
+        if (!widget.showWebView) {
           this.controller = controller;
-          controller.loadData(data: content);
           updateFormatting();
-        },
-        onLongPressHitTestResult: (controller, hitTestResult) {
-          if (hitTestResult.extra != null) {
-            showLinkMenu(context, hitTestResult.extra!);
-          }
-        },
-        shouldOverrideUrlLoading: (controller, navigationAction) async {
-          if (navigationAction.request.url != null) {
-            launchUrl(navigationAction.request.url!);
-          }
-          return NavigationActionPolicy.CANCEL;
-        },
-        gestureRecognizers: {
-          Factory<LongPressGestureRecognizer>(
-            () => LongPressGestureRecognizer(),
-          ),
-          Factory<VerticalDragGestureRecognizer>(
-            () => VerticalDragGestureRecognizer(),
-          ),
-        },
-      );
-    }
+        }
+      },
+      onLongPressHitTestResult: (controller, hitTestResult) {
+        if (hitTestResult.extra != null) {
+          showLinkMenu(context, hitTestResult.extra!);
+        }
+      },
+      shouldOverrideUrlLoading: (controller, navigationAction) async {
+        if (navigationAction.isRedirect == true) {
+          return NavigationActionPolicy.ALLOW;
+        }
+        if (navigationAction.request.url != null) {
+          launchUrl(navigationAction.request.url!);
+        }
+        return NavigationActionPolicy.CANCEL;
+      },
+      gestureRecognizers: {
+        Factory<LongPressGestureRecognizer>(
+          () => LongPressGestureRecognizer(),
+        ),
+        Factory<VerticalDragGestureRecognizer>(
+          () => VerticalDragGestureRecognizer(),
+        ),
+      },
+    );
   }
 }
 

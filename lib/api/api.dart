@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:fresh_reader/main.dart';
 
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -56,6 +57,11 @@ class DatabaseManager {
         await db.execute(
             'CREATE TABLE DelayedAction (id INTEGER PRIMARY KEY, articleID TEXT , action INTEGER)');
       },
+      // onUpgrade: (db, oldVersion, newVersion) {
+      //   if (oldVersion == 1 && newVersion == 2) {
+
+      //   }
+      // },
       // singleInstance: true,
     ).then((value) {
       db = value;
@@ -189,9 +195,7 @@ class DatabaseManager {
     late List<Map<String, Object?>> articles;
     if (filterColumn == "tag") {
       articles = await db.rawQuery(
-          "select articleID, subID from Article where subID in (select subID from category where name = '$filterValue') " +
-              (showAll == false ? "and isRead = 'false'" : "") +
-              " order by timeStampPublished DESC");
+          "select articleID, subID from Article where subID in (select subID from category where name = '$filterValue') ${showAll == false ? "and isRead = 'false'" : ""} order by timeStampPublished DESC");
     } else {
       String? where;
       List<String> args = [];
@@ -238,8 +242,8 @@ class DatabaseManager {
         where: "articleID = ?", whereArgs: [articleId]);
   }
 
-  void syncArticlesRead(Set<String> articleIDs) {
-    db.rawUpdate(
+  Future<void> syncArticlesRead(Set<String> articleIDs) async {
+    await db.rawUpdate(
         "Update Article set isRead = 'true' where articleID not in ('${articleIDs.join("','")}')");
   }
 
@@ -276,7 +280,7 @@ class ApiData extends ChangeNotifier {
   String userName = "";
   String password = "";
   String auth = "";
-  // String modifyAuth = "";
+  String modifyAuth = "";
   Map<String, Subscription> subs = {};
   Set<String> tags = <String>{};
   Set<String> articleIDs = <String>{};
@@ -284,45 +288,50 @@ class ApiData extends ChangeNotifier {
 
   bool _showAll = false;
   int updatedTime = 0;
-  int unreadTotal = 0;
 
   Set<String>? filteredArticleIDs;
   String? filteredTitle;
   int? filteredIndex;
 
   Future<bool> load() async {
-    preferences = await SharedPreferences.getInstance();
-    updatedTime = preferences!.getInt("updatedTime") ?? updatedTime;
-    unreadTotal = preferences!.getInt("unreadTotal") ?? unreadTotal;
+    try {
+      preferences = await SharedPreferences.getInstance();
+      updatedTime = preferences!.getInt("updatedTime") ?? updatedTime;
 
-    server = preferences!.getString("server") ?? "";
-    userName = preferences!.getString("userName") ?? "";
-    password = preferences!.getString("password") ?? "";
-    auth = preferences!.getString("auth") ?? "";
+      server = preferences!.getString("server") ?? server;
+      userName = preferences!.getString("userName") ?? userName;
+      password = preferences!.getString("password") ?? password;
+      auth = preferences!.getString("auth") ?? auth;
+      modifyAuth = preferences!.getString("modifyAuth") ?? modifyAuth;
 
-    if (db == null) {
-      db = DatabaseManager();
-      await db!.getDatabase();
-    }
-
-    subs = await db!.loadAllSubs();
-    for (var element in subs.entries) {
-      for (var tag in element.value.categories) {
-        tags.add(tag);
+      if (db == null) {
+        db = DatabaseManager();
+        await db!.getDatabase();
       }
+
+      // tags.add("user/-/state/com.google/starred");
+      subs = await db!.loadAllSubs();
+      for (var element in subs.entries) {
+        for (var tag in element.value.categories) {
+          tags.add(tag);
+        }
+      }
+      delayedActions = await db!.loadDelayedActions();
+      articleIDs.addAll((await db!.loadArticleIDs()).keys);
+    } catch (e) {
+      mainLoadError = e;
     }
-    delayedActions = await db!.loadDelayedActions();
-    articleIDs.addAll((await db!.loadArticleIDs()).keys);
+    // return (preferences!.getString("server") ?? "") != "";
     return true;
   }
 
   Future<bool> save() async {
     await preferences!.setInt("updatedTime", updatedTime);
-    await preferences!.setInt("unreadTotal", unreadTotal);
     await preferences!.setString("server", server);
     await preferences!.setString("userName", userName);
     await preferences!.setString("password", password);
     await preferences!.setString("auth", auth);
+    await preferences!.setString("modifyAuth", modifyAuth);
 
     if (db == null) {
       db = DatabaseManager();
@@ -340,19 +349,18 @@ class ApiData extends ChangeNotifier {
     // }
 
     db!.saveDelayedActions(delayedActions);
-    // db!.saveArticles(articles.values.toList());
 
     return true;
   }
 
   Future<bool> serverSync() async {
-    if (auth == "") {
-      await _getAuth(Uri.parse(
-              "$server/accounts/ClientLogin?Email=$userName&Passwd=$password"))
-          .then((value) {
-        auth = value;
-      });
-    }
+    // if (auth == "") {
+    await _getAuth(Uri.parse(
+            "$server/accounts/ClientLogin?Email=$userName&Passwd=$password"))
+        .then((value) {
+      auth = value;
+    });
+    // }
 
     if (delayedActions.isNotEmpty) {
       // debugPrint(delayedActions.toString());
@@ -378,37 +386,26 @@ class ApiData extends ChangeNotifier {
       }
       // debugPrint(readIds.toString());
       // debugPrint(unReadIds.toString());
-      _setServerUnread(
+      await _setServerUnread(
         readIds.keys.toList(),
         readIds.values.toList(),
         true,
       );
-      _setServerUnread(
+      await _setServerUnread(
         unReadIds.keys.toList(),
         unReadIds.values.toList(),
         false,
       );
     }
 
-    await Future.wait([
-      // _getModifyAuth(auth)
-      //     .then((value) => modifyAuth = value.body.replaceAll("\n", "")),
-      _getTags(auth),
-      _getSubscriptions(auth),
-      // _getUnreadCounts(auth).then((value) {
-      //   Map<String, dynamic> json = jsonDecode(value.body);
-      //   unreadTotal = json["max"] ?? 0; // get total unread count
-
-      //   // get unread counts for each subscription
-      //   json["unreadcounts"].forEach((element) {
-      //     if (subs[element["id"]] == null) {
-      //       subs[element["id"]] = {};
-      //     }
-      //     subs[element["id"]]["count"] = element["count"] ?? 0;
-      //   });
-      // }),
-      _getAllArticles(auth, "reading-list"),
-    ]);
+    // _getModifyAuth(auth)
+    //     .then((value) => modifyAuth = value.body.replaceAll("\n", "")),
+    await _getTags(auth);
+    await _getSubscriptions(auth);
+    await _getAllArticles(auth, "reading-list");
+    await _getReadIds(auth);
+    //https://github.com/FreshRSS/FreshRSS/issues/2566
+    updatedTime = (DateTime.now().millisecondsSinceEpoch / 1000).floor();
     await save();
     return true;
   }
@@ -421,16 +418,16 @@ class ApiData extends ChangeNotifier {
     return res.body.split("Auth=").last.replaceAll("\n", "");
   }
 
-  // Future<http.Response> _getModifyAuth(String auth) {
-  //   return http.post(
-  //     Uri.parse("$server/reader/api/0/token"),
-  //     headers: {
-  //       'Content-Type': 'application/json',
-  //       'Accept': 'application/json',
-  //       'Authorization': 'GoogleLogin auth=$auth',
-  //     },
-  //   );
-  // }
+  Future<http.Response> _getModifyAuth(String auth) {
+    return http.post(
+      Uri.parse("$server/reader/api/0/token"),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': 'GoogleLogin auth=$auth',
+      },
+    );
+  }
 
   Future<void> _getSubscriptions(String auth) async {
     http.get(
@@ -482,9 +479,8 @@ class ApiData extends ChangeNotifier {
 
   Future<void> _getAllArticles(String auth, String feed) async {
     String url =
-        "$server/reader/api/0/stream/contents/$feed?xt=user/-/state/com.google/read&n=500";
+        "$server/reader/api/0/stream/contents/$feed?xt=user/-/state/com.google/read&n=1000&ot=$updatedTime";
     String con = "";
-    Set<String> syncedArticleIDs = <String>{};
     dynamic res;
     do {
       await http.get(
@@ -496,7 +492,6 @@ class ApiData extends ChangeNotifier {
         },
       ).then((value) {
         res = jsonDecode(String.fromCharCodes(value.bodyBytes));
-        updatedTime = res["updated"] ?? 0;
         List<Article> articles = [];
         res["items"].forEach((json) {
           Article article = Article.fromCloudJson(json);
@@ -504,7 +499,6 @@ class ApiData extends ChangeNotifier {
           //   article.content = article.content.substring(0, 4000);
           // }
           articleIDs.add(article.id);
-          syncedArticleIDs.add(article.id);
           articles.add(article);
         });
 
@@ -517,7 +511,37 @@ class ApiData extends ChangeNotifier {
         debugPrint(onError.toString());
       });
     } while (con != "");
-    db!.syncArticlesRead(syncedArticleIDs);
+  }
+
+  Future<void> _getReadIds(String auth) async {
+    Set<String> syncedArticleIDs = <String>{};
+    String con = "";
+    do {
+      http.Response response = await http.get(
+        Uri.parse(
+            "$server/reader/api/0/stream/items/ids?s=user/-/state/com.google/reading-list&merge=true&xt=user/-/state/com.google/read&merge=true&ot=0&output=json&n=10000${con == "" ? "" : "&c=$con"}"),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'GoogleLogin auth=$auth',
+        },
+      );
+      if (response.statusCode == 200 && (response.contentLength ?? 0) > 0) {
+        dynamic res = jsonDecode(String.fromCharCodes(response.bodyBytes));
+        if (res["itemRefs"] != null) {
+          res["itemRefs"].forEach((json) {
+            if (json["id"] != null) {
+              syncedArticleIDs.add(
+                  "tag:google.com,2005:reader/item/${int.parse(json["id"]).toRadixString(16).padLeft(16, "0")}");
+            }
+          });
+        }
+        con = res["continuation"]?.toString() ?? "";
+      } else {
+        debugPrint(response.body);
+      }
+    } while (con != "");
+    await db!.syncArticlesRead(syncedArticleIDs);
   }
 
   Future<bool> _setServerUnread(
@@ -612,8 +636,11 @@ String? getFirstImage(String content) {
     for (RegExpMatch newMatch
         in RegExp('(?<=href=")(.*?)(?=")').allMatches(content)) {
       if (newMatch[0]!.endsWith(".jpg") ||
+          newMatch[0]!.endsWith(".JPG") ||
+          newMatch[0]!.endsWith(".JPEG") ||
           newMatch[0]!.endsWith(".jpeg") ||
           newMatch[0]!.endsWith(".png") ||
+          newMatch[0]!.endsWith(".PNG") ||
           newMatch[0]!.endsWith(".webp") ||
           newMatch[0]!.endsWith(".gif")) {
         return newMatch[0]!;

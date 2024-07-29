@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:fresh_reader/view/article_list.dart';
-import 'package:fresh_reader/view/article_view.dart';
 
 import 'api/api.dart';
 import 'api/data_types.dart';
+import 'view/article_list.dart';
+import 'view/article_view.dart';
 import 'view/feed_list.dart';
 
 ApiData _apiData = ApiData();
+dynamic mainLoadError;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,8 +32,6 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  final ApiData apiData = ApiData()..load();
-
   @override
   Widget build(BuildContext context) {
     return Api(
@@ -104,23 +103,19 @@ class _HomeWidgetState extends State<HomeWidget> {
           MaterialPage(
             name: "/",
             child: screenSizeOf(context) == ScreenSize.small
-                ? FeedList(
-                    title: "FreshReader",
-                    onSelect: _onChooseFeed,
-                  )
+                ? FeedList(onSelect: _onChooseFeed)
                 : Row(
                     children: [
                       Expanded(
                         flex: 3,
-                        child: FeedList(
-                          title: 'FreshReader',
-                          onSelect: _onChooseFeed,
-                        ),
+                        child: FeedList(onSelect: _onChooseFeed),
                       ),
                       Expanded(
                         flex:
                             screenSizeOf(context) == ScreenSize.medium ? 3 : 7,
-                        child: ArticleList(onSelect: _onChooseArticle),
+                        child: ArticleList(
+                          onSelect: _onChooseArticle,
+                        ),
                       ),
                     ],
                   ),
