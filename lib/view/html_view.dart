@@ -54,7 +54,6 @@ class HtmlView extends StatefulWidget {
 class _HtmlViewState extends State<HtmlView> {
   @override
   Widget build(BuildContext context) {
-    print(widget.html);
     return HtmlFunctions(
       onImgLongPress: widget.onImgLongPress,
       onImgTap: widget.onImgTap,

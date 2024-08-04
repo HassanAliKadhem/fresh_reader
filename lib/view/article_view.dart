@@ -1,18 +1,17 @@
-import 'dart:math';
-
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-import 'package:fresh_reader/util/formatting_setting.dart';
-import 'package:fresh_reader/widget/blur_bar.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 import '../api/api.dart';
 import '../api/data_types.dart';
+import '../util/formatting_setting.dart';
+import '../widget/blur_bar.dart';
 
 class ArticleView extends StatefulWidget {
   const ArticleView({
@@ -70,6 +69,9 @@ class _ArticleViewState extends State<ArticleView> {
   List<Widget> bottomButtons() {
     return [
       SetUnreadButton(
+        articleNotifier: currentArticleNotifier,
+      ),
+      SetStarButton(
         articleNotifier: currentArticleNotifier,
       ),
       Builder(builder: (context) {
@@ -149,10 +151,19 @@ class _ArticleViewState extends State<ArticleView> {
       bottomNavigationBar: screenSizeOf(context) == ScreenSize.small
           ? BlurBar(
               child: SafeArea(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: bottomButtons(),
+                child: IconButtonTheme(
+                  data: const IconButtonThemeData(
+                    style: ButtonStyle(
+                      padding: WidgetStatePropertyAll(
+                        EdgeInsets.all(12.0),
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: bottomButtons(),
+                  ),
                 ),
               ),
             )
@@ -296,7 +307,6 @@ class FormattingSheet extends StatelessWidget {
                             formattingSetting.setFontFamily(font);
                           },
                         ))
-                    .toList()
               ],
             ),
           );
@@ -337,135 +347,197 @@ class _ArticlePageState extends State<ArticlePage> {
           );
         }
         return AlertDialog(
-            icon: image,
-            title: Text(
-              link,
-              textScaler: const TextScaler.linear(0.75),
+          icon: image,
+          title: Text(
+            link,
+            textScaler: const TextScaler.linear(0.75),
+          ),
+          contentPadding: EdgeInsets.zero,
+          clipBehavior: Clip.hardEdge,
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Divider(),
+                ListTile(
+                  title: const Text("Open in browser"),
+                  trailing: const Icon(Icons.open_in_browser),
+                  onTap: () {
+                    launchUrl(Uri.parse(link));
+                  },
+                ),
+                ListTile(
+                  title: const Text("Share Link"),
+                  trailing: const Icon(Icons.share),
+                  onTap: () {
+                    try {
+                      Share.shareUri(Uri.parse(link));
+                    } catch (e) {
+                      final box = context.findRenderObject() as RenderBox?;
+                      Share.share(
+                        link,
+                        subject: "",
+                        sharePositionOrigin:
+                            box!.localToGlobal(Offset.zero) & box.size,
+                      );
+                      debugPrint(e.toString());
+                    }
+                  },
+                ),
+              ],
             ),
-            contentPadding: EdgeInsets.zero,
-            clipBehavior: Clip.hardEdge,
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+          ),
+        );
+      },
+    );
+  }
+
+  void showImage(BuildContext context, ImageMetadata imageMetaData) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog.fullscreen(
+          backgroundColor: Colors.black38,
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: GestureDetector(
+              onTap: () {
+                Navigator.of(context).pop();
+              },
+              child: Center(
+                child: CachedNetworkImage(
+                  imageUrl: imageMetaData.sources.first.url,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+            bottomNavigationBar: BlurBar(
+              child: Row(
                 children: [
-                  const Divider(),
-                  ListTile(
-                    title: const Text("Open in browser"),
-                    trailing: const Icon(Icons.open_in_browser),
-                    onTap: () {
-                      launchUrl(Uri.parse(link));
-                    },
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(
+                          "${imageMetaData.title ?? ""}${(imageMetaData.alt != null && imageMetaData.alt != "") ? "\n${imageMetaData.alt!}" : ""}"),
+                    ),
                   ),
-                  ListTile(
-                    title: const Text("Share Link"),
-                    trailing: const Icon(Icons.share),
-                    onTap: () {
-                      try {
-                        Share.shareUri(Uri.parse(link));
-                      } catch (e) {
-                        final box = context.findRenderObject() as RenderBox?;
-                        Share.share(
-                          link,
-                          subject: "",
-                          sharePositionOrigin:
-                              box!.localToGlobal(Offset.zero) & box.size,
-                        );
-                        debugPrint(e.toString());
-                      }
+                  IconButton(
+                    onPressed: () {
+                      Share.shareUri(
+                          Uri.parse(imageMetaData.sources.first.url));
                     },
+                    icon: const Icon(Icons.share),
                   ),
                 ],
               ),
-            ));
+            ),
+          ),
+        );
       },
     );
   }
 
-  InAppWebViewController? controller;
-  InAppWebViewSettings settings = InAppWebViewSettings(
-    isInspectable: kDebugMode,
-    mediaPlaybackRequiresUserGesture: false,
-    allowsInlineMediaPlayback: true,
-    hardwareAcceleration: true,
-    iframeAllowFullscreen: true,
-    javaScriptEnabled: true,
-    transparentBackground: true,
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    widget.formattingSetting.addListener(updateFormatting);
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    widget.formattingSetting.removeListener(updateFormatting);
-  }
-
-  void updateFormatting() {
-    controller?.evaluateJavascript(
-      source:
-          '''document.body.style.fontSize = "${widget.formattingSetting.fontSize.toInt() / 15}em";
-        document.body.style.lineHeight = "${widget.formattingSetting.lineHeight}";
-        document.body.style.wordSpacing = "${widget.formattingSetting.wordSpacing}";
-        document.body.style.fontFamily = '"${widget.formattingSetting.font}"\'''',
-    );
-  }
+  WebViewController webViewController = WebViewController();
 
   @override
   Widget build(BuildContext context) {
-    String content = '''<head>
-          <meta name="viewport" content=" initial-scale=1.0">
-          </head>
-          <a href=\"${widget.article.url}\">${widget.article.title}</a>
+    if (widget.showWebView) {
+      webViewController.loadRequest(Uri.parse(widget.article.url));
+      webViewController.setJavaScriptMode(JavaScriptMode.unrestricted);
+      return WebViewWidget(
+        controller: webViewController,
+        gestureRecognizers: {
+          Factory<LongPressGestureRecognizer>(
+            () => LongPressGestureRecognizer(),
+          ),
+          Factory<VerticalDragGestureRecognizer>(
+            () => VerticalDragGestureRecognizer(),
+          ),
+        },
+      );
+    } else {
+      String content = '''
+          <a class="link" href="${widget.article.url}">${widget.article.title}</a>
           <p>
-          ${Api.of(context).subs[widget.article.subID]?.title}<br>
-          ${getRelativeDate(widget.article.published)}, ${DateTime.fromMillisecondsSinceEpoch(widget.article.published * 1000)}
+          <img height="16" width="16" src="${Api.of(context).getIconUrl(widget.article.subID)}"/> ${Api.of(context).subs[widget.article.subID]?.title}<br>
+          ${getRelativeDate(widget.article.published)}, ${DateTime.fromMillisecondsSinceEpoch(widget.article.published * 1000).toString().split(".").first}
           </p>
-          ${widget.article.content}
-          <style>
-          body {accent-color: #d8bbff; width: 94vw; margin: ${max(MediaQuery.of(context).padding.top, MediaQuery.of(context).padding.bottom) * 1.1}px 3vw; color: rgba(255, 255, 255, 0.87); font-size: ${widget.formattingSetting.fontSize.toInt() / 15}em; line-height: ${widget.formattingSetting.lineHeight}; word-spacing:${widget.formattingSetting.wordSpacing};}
-          img, video, figure, svg {max-width: 90vw; margin-left: auto; margin-right: auto;}
-          a {color: #d8bbff;}
-          </style>''';
-    return InAppWebView(
-      initialUrlRequest: widget.showWebView
-          ? URLRequest(url: WebUri(widget.article.url))
-          : null,
-      initialData:
-          widget.showWebView ? null : InAppWebViewInitialData(data: content),
-      initialSettings: settings,
-      onWebViewCreated: (controller) {
-        if (!widget.showWebView) {
-          this.controller = controller;
-          updateFormatting();
-        }
-      },
-      onLongPressHitTestResult: (controller, hitTestResult) {
-        if (hitTestResult.extra != null) {
-          showLinkMenu(context, hitTestResult.extra!);
-        }
-      },
-      shouldOverrideUrlLoading: (controller, navigationAction) async {
-        if (navigationAction.isRedirect == true) {
-          return NavigationActionPolicy.ALLOW;
-        }
-        if (navigationAction.request.url != null) {
-          launchUrl(navigationAction.request.url!);
-        }
-        return NavigationActionPolicy.CANCEL;
-      },
-      gestureRecognizers: {
-        Factory<LongPressGestureRecognizer>(
-          () => LongPressGestureRecognizer(),
+          <hr style="color: grey;">
+          ${widget.article.content.replaceAll("<a", "<a class=\"link\"")}
+          ''';
+      return ListenableBuilder(
+        listenable: widget.formattingSetting,
+        builder: (context, child) {
+          return AnimatedDefaultTextStyle(
+            style: TextStyle(
+              fontFamily: widget.formattingSetting.font,
+              fontSize: widget.formattingSetting.fontSize,
+              wordSpacing: widget.formattingSetting.wordSpacing,
+              height: widget.formattingSetting.lineHeight,
+            ),
+            duration: const Duration(milliseconds: 100),
+            child: child!,
+          );
+        },
+        child: SelectionArea(
+          child: HtmlWidget(
+            content,
+            buildAsync: true,
+            enableCaching: true,
+            onTapImage: (p0) {
+              showImage(context, p0);
+            },
+            renderMode: ListViewMode(
+              padding: EdgeInsets.only(
+                left: 16.0,
+                right: 16.0,
+                top: MediaQuery.of(context).padding.top + 16.0,
+                bottom: MediaQuery.of(context).padding.bottom + 16.0,
+              ),
+            ),
+            onErrorBuilder: (context, element, error) {
+              return Placeholder(
+                child: Text(error.toString()),
+              );
+            },
+            customWidgetBuilder: (element) {
+              if (element.classes.contains("link")) {
+                return InlineCustomWidget(
+                  child: GestureDetector(
+                    onLongPress: () {
+                      if (element.attributes["href"] != null) {
+                        showLinkMenu(context, element.attributes["href"]!);
+                      } else {
+                        debugPrint(element.attributes.toString());
+                        debugPrint(element.text.toString());
+                        debugPrint("No link found");
+                      }
+                    },
+                    onTap: () {
+                      if (element.attributes["href"] != null) {
+                        launchUrl(Uri.parse(element.attributes["href"]!));
+                      } else {
+                        debugPrint(element.attributes.toString());
+                        debugPrint(element.text.toString());
+                        debugPrint("No link found");
+                      }
+                    },
+                    child: Text(
+                      element.text,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                );
+              }
+              return null;
+            },
+          ),
         ),
-        Factory<VerticalDragGestureRecognizer>(
-          () => VerticalDragGestureRecognizer(),
-        ),
-      },
-    );
+      );
+    }
   }
 }
 
@@ -497,6 +569,36 @@ class _SetUnreadButtonState extends State<SetUnreadButton> {
           icon: Icon(
             isRead ? Icons.circle_outlined : Icons.circle_rounded,
           ),
+        );
+      },
+    );
+  }
+}
+
+class SetStarButton extends StatefulWidget {
+  const SetStarButton({super.key, required this.articleNotifier});
+  final ValueNotifier<Article?> articleNotifier;
+
+  @override
+  State<SetStarButton> createState() => _SetStarButtonState();
+}
+
+class _SetStarButtonState extends State<SetStarButton> {
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder(
+      valueListenable: widget.articleNotifier,
+      builder: (context, value, child) {
+        bool isStarred = value?.starred ?? false;
+        return IconButton(
+          onPressed: () {
+            value!.starred = !isStarred;
+            setState(() {
+              Api.of(context).setStarred(value.id, value.subID, !isStarred);
+            });
+          },
+          tooltip: isStarred ? "UnFavorite" : "Favorite",
+          icon: Icon(isStarred ? Icons.star : Icons.star_border),
         );
       },
     );

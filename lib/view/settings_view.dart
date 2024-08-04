@@ -86,6 +86,21 @@ class _SettingsViewState extends State<SettingsView> {
                 subtitle: Text(DateTime.fromMillisecondsSinceEpoch(
                         Api.of(context).updatedTime * 1000)
                     .toString()),
+                onTap: () {
+                  showDatePicker(
+                    context: context,
+                    firstDate: DateTime(0),
+                    lastDate: DateTime.now(),
+                    initialDate: DateTime.fromMillisecondsSinceEpoch(
+                        Api.of(context).updatedTime * 1000),
+                  ).then((value) {
+                    if (value != null) {
+                      Api.of(context).updatedTime =
+                          (value.millisecondsSinceEpoch / 1000).floor();
+                      setState(() {});
+                    }
+                  });
+                },
               ),
               ListTile(
                 title: const Text("Total articles"),
@@ -112,7 +127,7 @@ class _SettingsViewState extends State<SettingsView> {
                     context: context,
                     builder: (context) {
                       return AlertDialog.adaptive(
-                        title: Text("Are you sure?"),
+                        title: const Text("Are you sure?"),
                         actions: [
                           TextButton(
                             onPressed: () {
@@ -159,7 +174,7 @@ class _SettingsViewState extends State<SettingsView> {
             endIndent: 8.0,
           ),
           AboutListTile(
-            applicationVersion: "0.9.7",
+            applicationVersion: "0.9.14",
             aboutBoxChildren: [
               const ListTile(
                 title: Text("Made By"),

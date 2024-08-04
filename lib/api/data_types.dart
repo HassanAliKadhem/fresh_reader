@@ -59,6 +59,7 @@ class Article {
   String subID;
   String title;
   bool read;
+  bool starred;
   int published;
   String content;
   String url;
@@ -70,6 +71,7 @@ class Article {
     required this.subID,
     required this.title,
     required this.read,
+    required this.starred,
     required this.published,
     required this.content,
     required this.url,
@@ -77,25 +79,12 @@ class Article {
     // required this.altUrls,
   });
 
-  Article.fromJson(Map<String, dynamic> json)
-      : id = json['articleID'] ?? "",
-        subID = json["feedId"] ?? "",
-        title = json['title'] ?? "",
-        read = json["read"] ?? false,
-        published = json["published"] ?? 0,
-        content = json["content"] ?? "",
-        url = json["url"] ?? "";
-  // urls =
-  //     (json["urls"] ?? []).map<String>((url) => url.toString()).toList(),
-  // altUrls = (json["altUrls"] ?? [])
-  //     .map<String>((url) => url.toString())
-  //     .toList();
-
   Article.fromCloudJson(Map<String, dynamic> json)
       : id = json["id"],
         subID = json["origin"]["streamId"],
         title = json["title"],
         read = json["read"] ?? false,
+        starred = false,
         published = json["published"],
         content = json["summary"]["content"],
         url = (json["canonical"])[0]["href"] as String;
@@ -118,35 +107,25 @@ class Article {
         subID = element["subID"] as String,
         title = element["title"] as String,
         read = element["isRead"] == "true",
+        starred = element["isStarred"] == "true",
         published = element["timeStampPublished"] as int,
         content = element["content"] as String,
         url = element["url"] as String;
   // urls = [],
   // altUrls = [];
 
-  Map<String, dynamic> toJson() => {
-        "id": id,
-        "feedId": subID,
-        "title": title,
-        "read": read,
-        "published": published,
-        "content": content,
-        "url": url,
-        // "urls": urls,
-        // "altUrls": altUrls,
-      };
-
   Map<String, Object?> toDB() => {
         "articleID": id,
         "subID": subID,
         "title": title,
         "isRead": read ? "true" : "false",
+        "isStarred": starred ? "true" : "false",
         "timeStampPublished": published,
         "content": content,
         "url": url
       };
 }
 
-enum DelayedAction { unread, read }
+enum DelayedAction { unread, read, star, unstar }
 
 enum ScreenSize { big, medium, small }

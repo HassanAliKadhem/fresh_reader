@@ -13,7 +13,7 @@ class BlurBar extends StatelessWidget {
         filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
         child: Container(
           decoration: BoxDecoration(
-            color: Theme.of(context).canvasColor.withOpacity(0.75),
+            color: Theme.of(context).canvasColor.withOpacity(0.5),
             border: Border(
               bottom: BorderSide(
                 color: Theme.of(context).dividerColor.withOpacity(0.15),

@@ -185,6 +185,12 @@ class _CategoryListState extends State<CategoryList> {
                       trailing: UnreadCount(allCount),
                       onTap: () => openArticleList(context, null, null),
                     ),
+                    ListTile(
+                      title: const Text("Starred"),
+                      trailing: UnreadCount(snapshot.data!["Starred"] ?? 0),
+                      onTap: () =>
+                          openArticleList(context, "isStarred", "true"),
+                    ),
                     ...Api.of(context).tags.map(
                       (tag) {
                         Map<String, Subscription> currentSubscriptions = {};

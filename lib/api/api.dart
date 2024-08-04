@@ -46,22 +46,23 @@ class DatabaseManager {
   Future<bool> getDatabase() async {
     await openDatabase(
       'my_db.db',
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         await db.execute(
             'CREATE TABLE Subscription (id INTEGER PRIMARY KEY, subID TEXT UNIQUE, title TEXT, url TEXT, htmlUrl TEXT, iconUrl TEXT)');
         await db.execute(
             'CREATE TABLE Category (id INTEGER PRIMARY KEY, catID TEXT, subID TEXT, name TEXT)');
         await db.execute(
-            'CREATE TABLE Article (id INTEGER PRIMARY KEY, articleID TEXT UNIQUE, subID TEXT, title TEXT, isRead TEXT, timeStampPublished INTEGER, content TEXT, url TEXT)');
+            'CREATE TABLE Article (id INTEGER PRIMARY KEY, articleID TEXT UNIQUE, subID TEXT, title TEXT, isRead TEXT, isStarred TEXT, timeStampPublished INTEGER, content TEXT, url TEXT)');
         await db.execute(
             'CREATE TABLE DelayedAction (id INTEGER PRIMARY KEY, articleID TEXT , action INTEGER)');
       },
-      // onUpgrade: (db, oldVersion, newVersion) {
-      //   if (oldVersion == 1 && newVersion == 2) {
-
-      //   }
-      // },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion == 1 && newVersion == 2) {
+          await db.execute('ALTER TABLE Article add column isStarred TEXT');
+          await db.update("Article", {"isStarred": "false"});
+        }
+      },
       // singleInstance: true,
     ).then((value) {
       db = value;
@@ -124,6 +125,7 @@ class DatabaseManager {
         "subID",
         "title",
         "isRead",
+        "isStarred",
         "timeStampPublished",
         "content",
         "url"
@@ -187,6 +189,12 @@ class DatabaseManager {
       });
     }
 
+    await db
+        .rawQuery(
+            "select COUNT(id) from Article where isStarred = 'true' ${showAll == false ? "and isRead = 'false'" : ""}")
+        .then((value) {
+      counts["Starred"] = value.first.values.first as int;
+    });
     return counts;
   }
 
@@ -237,14 +245,35 @@ class DatabaseManager {
     batch.commit(continueOnError: true);
   }
 
+  void saveReadArticles(List<Article> articles) {
+    final Batch batch = db.batch();
+    for (Article article in articles) {
+      batch.insert("Article", article.toDB());
+    }
+    batch.commit(continueOnError: true);
+  }
+
   void updateArticleRead(String articleId, bool isRead) {
     db.update("Article", {"isRead": isRead ? "true" : "false"},
+        where: "articleID = ?", whereArgs: [articleId]);
+  }
+
+  void updateArticleStar(String articleId, bool isStarred) {
+    db.update("Article", {"isStarred": isStarred ? "true" : "false"},
         where: "articleID = ?", whereArgs: [articleId]);
   }
 
   Future<void> syncArticlesRead(Set<String> articleIDs) async {
     await db.rawUpdate(
         "Update Article set isRead = 'true' where articleID not in ('${articleIDs.join("','")}')");
+  }
+
+  Future<void> syncArticlesStar(Set<String> articleIDs) async {
+    //user/-/state/com.google/starred
+    await db.rawUpdate(
+        "Update Article set isStarred = 'true' where articleID in ('${articleIDs.join("','")}')");
+    await db.rawUpdate(
+        "Update Article set isStarred = 'false' where articleID not in ('${articleIDs.join("','")}') and isRead = 'true'");
   }
 
   // Delayed Actions
@@ -374,26 +403,42 @@ class ApiData extends ChangeNotifier {
       }
       Map<String, String> readIds = {};
       Map<String, String> unReadIds = {};
+      Map<String, String> starIds = {};
+      Map<String, String> unstarIds = {};
 
       for (var element in delayedActions.entries) {
         if (articleSub[element.key] != null) {
           if (element.value == DelayedAction.read) {
             readIds[element.key] = articleSub[element.key]!;
-          } else {
+          } else if (element.value == DelayedAction.unread) {
             unReadIds[element.key] = articleSub[element.key]!;
+          } else if (element.value == DelayedAction.star) {
+            starIds[element.key] = articleSub[element.key]!;
+          } else if (element.value == DelayedAction.unstar) {
+            unstarIds[element.key] = articleSub[element.key]!;
           }
         }
       }
       // debugPrint(readIds.toString());
       // debugPrint(unReadIds.toString());
-      await _setServerUnread(
+      await _setServerRead(
         readIds.keys.toList(),
         readIds.values.toList(),
         true,
       );
-      await _setServerUnread(
+      await _setServerRead(
         unReadIds.keys.toList(),
         unReadIds.values.toList(),
+        false,
+      );
+      await _setServerStar(
+        starIds.keys.toList(),
+        starIds.values.toList(),
+        true,
+      );
+      await _setServerStar(
+        unstarIds.keys.toList(),
+        unstarIds.values.toList(),
         false,
       );
     }
@@ -404,6 +449,8 @@ class ApiData extends ChangeNotifier {
     await _getSubscriptions(auth);
     await _getAllArticles(auth, "reading-list");
     await _getReadIds(auth);
+    await _getStarredIds(auth);
+    await _getStarredArticles(auth);
     //https://github.com/FreshRSS/FreshRSS/issues/2566
     updatedTime = (DateTime.now().millisecondsSinceEpoch / 1000).floor();
     await save();
@@ -495,13 +542,9 @@ class ApiData extends ChangeNotifier {
         List<Article> articles = [];
         res["items"].forEach((json) {
           Article article = Article.fromCloudJson(json);
-          // if (article.content.length > 5000) {
-          //   article.content = article.content.substring(0, 4000);
-          // }
           articleIDs.add(article.id);
           articles.add(article);
         });
-
         db!.saveArticles(articles, delayedActions);
         con = res["continuation"]?.toString() ?? "";
       }).catchError((onError) {
@@ -519,7 +562,7 @@ class ApiData extends ChangeNotifier {
     do {
       http.Response response = await http.get(
         Uri.parse(
-            "$server/reader/api/0/stream/items/ids?s=user/-/state/com.google/reading-list&merge=true&xt=user/-/state/com.google/read&merge=true&ot=0&output=json&n=10000${con == "" ? "" : "&c=$con"}"),
+            "$server/reader/api/0/stream/items/ids?s=user/-/state/com.google/reading-list&xt=user/-/state/com.google/read&merge=true&ot=0&output=json&n=10000${con == "" ? "" : "&c=$con"}"),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -544,7 +587,68 @@ class ApiData extends ChangeNotifier {
     await db!.syncArticlesRead(syncedArticleIDs);
   }
 
-  Future<bool> _setServerUnread(
+  Future<void> _getStarredIds(String auth) async {
+    Set<String> syncedArticleIDs = <String>{};
+    String con = "";
+    do {
+      http.Response response = await http.get(
+        Uri.parse(
+            "$server/reader/api/0/stream/items/ids?s=user/-/state/com.google/starred&merge=true&xt=user/-/state/com.google/read&ot=$updatedTime&output=json&n=10000${con == "" ? "" : "&c=$con"}"),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'GoogleLogin auth=$auth',
+        },
+      );
+      if (response.statusCode == 200 && (response.contentLength ?? 0) > 0) {
+        dynamic res = jsonDecode(String.fromCharCodes(response.bodyBytes));
+        if (res["itemRefs"] != null) {
+          res["itemRefs"].forEach((json) {
+            if (json["id"] != null) {
+              syncedArticleIDs.add(
+                  "tag:google.com,2005:reader/item/${int.parse(json["id"]).toRadixString(16).padLeft(16, "0")}");
+            }
+          });
+        }
+        con = res["continuation"]?.toString() ?? "";
+      } else {
+        debugPrint(response.body);
+      }
+    } while (con != "");
+    await db!.syncArticlesStar(syncedArticleIDs);
+  }
+
+  Future<void> _getStarredArticles(String auth) async {
+    String con = "";
+    do {
+      http.Response response = await http.get(
+        Uri.parse(
+            "$server/reader/api/0/stream/contents/user/-/state/com.google/starred?it=user/-/state/com.google/read&xt=user/-/state/com.google/reading-list&ot=0&output=json&n=1000${con == "" ? "" : "&c=$con"}"),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'GoogleLogin auth=$auth',
+        },
+      );
+      if (response.statusCode == 200 && (response.contentLength ?? 0) > 0) {
+        dynamic res = jsonDecode(String.fromCharCodes(response.bodyBytes));
+        List<Article> articles = [];
+        res["items"].forEach((json) {
+          Article article = Article.fromCloudJson(json);
+          article.read = true;
+          article.starred = true;
+          articleIDs.add(article.id);
+          articles.add(article);
+        });
+        db!.saveReadArticles(articles);
+        con = res["continuation"]?.toString() ?? "";
+      } else {
+        debugPrint(response.body);
+      }
+    } while (con != "");
+  }
+
+  Future<bool> _setServerRead(
     List<String> ids,
     List<String> subIDs,
     bool isRead,
@@ -585,9 +689,44 @@ class ApiData extends ChangeNotifier {
     return true;
   }
 
+  Future<bool> _setServerStar(
+    List<String> ids,
+    List<String> subIDs,
+    bool isStar,
+  ) async {
+    String idString = "?";
+    for (int i = 0; i < ids.length; i++) {
+      delayedActions[ids[i]] =
+          isStar ? DelayedAction.star : DelayedAction.unstar;
+      idString += "s=${subIDs[i]}&i=${ids[i]}&";
+    }
+    idString = "$idString${isStar ? "a" : "r"}=user/-/state/com.google/starred";
+    await http
+        .post(Uri.parse("$server/reader/api/0/edit-tag"),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Authorization': 'GoogleLogin auth=$auth',
+            },
+            body: idString)
+        .then((value) {
+      if (value.body == "OK") {
+        delayedActions.removeWhere((key, _) => ids.contains(key));
+      }
+    }).catchError((onError) {
+      debugPrint(onError.toString());
+    });
+    save();
+    return true;
+  }
+
   void setRead(String id, String subID, bool isRead) {
-    _setServerUnread([id], [subID], isRead);
+    _setServerRead([id], [subID], isRead);
     db!.updateArticleRead(id, isRead);
+  }
+
+  void setStarred(String id, String subID, bool isStarred) {
+    _setServerStar([id], [subID], isStarred);
+    db!.updateArticleStar(id, isStarred);
   }
 
   Future<void> getFilteredArticles(
@@ -602,6 +741,8 @@ class ApiData extends ChangeNotifier {
     });
     if (filterValue != null && filterValue.startsWith("feed/")) {
       filteredTitle = subs[filterValue]?.title;
+    } else if (filterColumn == "isStarred" && filterValue == "true") {
+      filteredTitle = "Starred";
     } else {
       filteredTitle = filterValue ?? "All Articles";
     }
