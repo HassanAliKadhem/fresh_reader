@@ -82,9 +82,9 @@ class _SettingsViewState extends State<SettingsView> {
             title: const Text("Developer options"),
             children: [
               ListTile(
-                title: const Text("Last sync time"),
+                title: const Text("Last sync articles time"),
                 subtitle: Text(DateTime.fromMillisecondsSinceEpoch(
-                        Api.of(context).updatedTime * 1000)
+                        Api.of(context).updatedArticleTime * 1000)
                     .toString()),
                 onTap: () {
                   showDatePicker(
@@ -92,10 +92,31 @@ class _SettingsViewState extends State<SettingsView> {
                     firstDate: DateTime(0),
                     lastDate: DateTime.now(),
                     initialDate: DateTime.fromMillisecondsSinceEpoch(
-                        Api.of(context).updatedTime * 1000),
+                        Api.of(context).updatedArticleTime * 1000),
                   ).then((value) {
                     if (value != null) {
-                      Api.of(context).updatedTime =
+                      Api.of(context).updatedArticleTime =
+                          (value.millisecondsSinceEpoch / 1000).floor();
+                      setState(() {});
+                    }
+                  });
+                },
+              ),
+              ListTile(
+                title: const Text("Last sync starred time"),
+                subtitle: Text(DateTime.fromMillisecondsSinceEpoch(
+                        Api.of(context).updatedStarredTime * 1000)
+                    .toString()),
+                onTap: () {
+                  showDatePicker(
+                    context: context,
+                    firstDate: DateTime(0),
+                    lastDate: DateTime.now(),
+                    initialDate: DateTime.fromMillisecondsSinceEpoch(
+                        Api.of(context).updatedStarredTime * 1000),
+                  ).then((value) {
+                    if (value != null) {
+                      Api.of(context).updatedStarredTime =
                           (value.millisecondsSinceEpoch / 1000).floor();
                       setState(() {});
                     }
@@ -133,7 +154,8 @@ class _SettingsViewState extends State<SettingsView> {
                             onPressed: () {
                               Api.of(context).db!.db.execute(
                                   "Delete from Article; Delete from Category; Delete from Subscription; Delete from DelayedAction;");
-                              Api.of(context).updatedTime = 0;
+                              Api.of(context).updatedArticleTime = 0;
+                              Api.of(context).updatedStarredTime = 0;
                               Api.of(context).articleIDs = {};
                               Api.of(context).filteredIndex = null;
                               Api.of(context).filteredArticleIDs = null;
@@ -174,7 +196,7 @@ class _SettingsViewState extends State<SettingsView> {
             endIndent: 8.0,
           ),
           AboutListTile(
-            applicationVersion: "0.9.14",
+            applicationVersion: "0.9.15",
             aboutBoxChildren: [
               const ListTile(
                 title: Text("Made By"),

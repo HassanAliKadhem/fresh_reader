@@ -66,6 +66,11 @@ class _ArticleListState extends State<ArticleList> {
       ),
       extendBody: true,
       extendBodyBehindAppBar: true,
+      bottomNavigationBar: BlurBar(
+        child: SizedBox(
+          height: MediaQuery.paddingOf(context).bottom,
+        ),
+      ),
       body: articlesListView(),
     );
   }
@@ -135,7 +140,7 @@ class _ArticleListState extends State<ArticleList> {
                               : Icons.star,
                         ),
                         Text(
-                          snapshot.data!.read ? "UnFavorite" : "Favorite",
+                          snapshot.data!.starred ? "UnFavorite" : "Favorite",
                           textAlign: TextAlign.end,
                         ),
                       ],

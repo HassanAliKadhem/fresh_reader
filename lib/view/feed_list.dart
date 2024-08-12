@@ -82,6 +82,11 @@ class _FeedListState extends State<FeedList> {
       body: CategoryList(
         onSelect: widget.onSelect,
       ),
+      bottomNavigationBar: BlurBar(
+        child: SizedBox(
+          height: MediaQuery.paddingOf(context).bottom,
+        ),
+      ),
     );
   }
 }

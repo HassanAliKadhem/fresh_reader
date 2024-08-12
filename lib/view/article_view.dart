@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:fresh_reader/widget/image_viewer.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -297,16 +298,15 @@ class FormattingSheet extends StatelessWidget {
                 const ListTile(
                   title: Text("Font"),
                 ),
-                ...formattingSetting.fonts
-                    .map((font) => RadioListTile.adaptive(
-                          groupValue: formattingSetting.font,
-                          value: font,
-                          dense: true,
-                          title: Text(font),
-                          onChanged: (value) {
-                            formattingSetting.setFontFamily(font);
-                          },
-                        ))
+                ...formattingSetting.fonts.map((font) => RadioListTile.adaptive(
+                      groupValue: formattingSetting.font,
+                      value: font,
+                      dense: true,
+                      title: Text(font),
+                      onChanged: (value) {
+                        formattingSetting.setFontFamily(font);
+                      },
+                    ))
               ],
             ),
           );
@@ -331,211 +331,23 @@ class ArticlePage extends StatefulWidget {
 }
 
 class _ArticlePageState extends State<ArticlePage> {
-  void showLinkMenu(BuildContext context, String link) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        Widget? image;
-        if (link.endsWith(".JPG") ||
-            link.endsWith(".jpg") ||
-            link.endsWith(".jpeg") ||
-            link.endsWith(".png")) {
-          image = CachedNetworkImage(
-            imageUrl: link,
-            width: 128,
-            height: 128,
-          );
-        }
-        return AlertDialog(
-          icon: image,
-          title: Text(
-            link,
-            textScaler: const TextScaler.linear(0.75),
-          ),
-          contentPadding: EdgeInsets.zero,
-          clipBehavior: Clip.hardEdge,
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Divider(),
-                ListTile(
-                  title: const Text("Open in browser"),
-                  trailing: const Icon(Icons.open_in_browser),
-                  onTap: () {
-                    launchUrl(Uri.parse(link));
-                  },
-                ),
-                ListTile(
-                  title: const Text("Share Link"),
-                  trailing: const Icon(Icons.share),
-                  onTap: () {
-                    try {
-                      Share.shareUri(Uri.parse(link));
-                    } catch (e) {
-                      final box = context.findRenderObject() as RenderBox?;
-                      Share.share(
-                        link,
-                        subject: "",
-                        sharePositionOrigin:
-                            box!.localToGlobal(Offset.zero) & box.size,
-                      );
-                      debugPrint(e.toString());
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void showImage(BuildContext context, ImageMetadata imageMetaData) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Dialog.fullscreen(
-          backgroundColor: Colors.black38,
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            body: GestureDetector(
-              onTap: () {
-                Navigator.of(context).pop();
-              },
-              child: Center(
-                child: CachedNetworkImage(
-                  imageUrl: imageMetaData.sources.first.url,
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-            bottomNavigationBar: BlurBar(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text(
-                          "${imageMetaData.title ?? ""}${(imageMetaData.alt != null && imageMetaData.alt != "") ? "\n${imageMetaData.alt!}" : ""}"),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      Share.shareUri(
-                          Uri.parse(imageMetaData.sources.first.url));
-                    },
-                    icon: const Icon(Icons.share),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  WebViewController webViewController = WebViewController();
-
   @override
   Widget build(BuildContext context) {
     if (widget.showWebView) {
-      webViewController.loadRequest(Uri.parse(widget.article.url));
-      webViewController.setJavaScriptMode(JavaScriptMode.unrestricted);
-      return WebViewWidget(
-        controller: webViewController,
-        gestureRecognizers: {
-          Factory<LongPressGestureRecognizer>(
-            () => LongPressGestureRecognizer(),
-          ),
-          Factory<VerticalDragGestureRecognizer>(
-            () => VerticalDragGestureRecognizer(),
-          ),
-        },
+      return ArticleWebWidget(
+        key: ValueKey(widget.article.url),
+        url: widget.article.url,
       );
     } else {
-      String content = '''
-          <a class="link" href="${widget.article.url}">${widget.article.title}</a>
-          <p>
-          <img height="16" width="16" src="${Api.of(context).getIconUrl(widget.article.subID)}"/> ${Api.of(context).subs[widget.article.subID]?.title}<br>
-          ${getRelativeDate(widget.article.published)}, ${DateTime.fromMillisecondsSinceEpoch(widget.article.published * 1000).toString().split(".").first}
-          </p>
-          <hr style="color: grey;">
-          ${widget.article.content.replaceAll("<a", "<a class=\"link\"")}
-          ''';
-      return ListenableBuilder(
-        listenable: widget.formattingSetting,
-        builder: (context, child) {
-          return AnimatedDefaultTextStyle(
-            style: TextStyle(
-              fontFamily: widget.formattingSetting.font,
-              fontSize: widget.formattingSetting.fontSize,
-              wordSpacing: widget.formattingSetting.wordSpacing,
-              height: widget.formattingSetting.lineHeight,
-            ),
-            duration: const Duration(milliseconds: 100),
-            child: child!,
-          );
-        },
-        child: SelectionArea(
-          child: HtmlWidget(
-            content,
-            buildAsync: true,
-            enableCaching: true,
-            onTapImage: (p0) {
-              showImage(context, p0);
-            },
-            renderMode: ListViewMode(
-              padding: EdgeInsets.only(
-                left: 16.0,
-                right: 16.0,
-                top: MediaQuery.of(context).padding.top + 16.0,
-                bottom: MediaQuery.of(context).padding.bottom + 16.0,
-              ),
-            ),
-            onErrorBuilder: (context, element, error) {
-              return Placeholder(
-                child: Text(error.toString()),
-              );
-            },
-            customWidgetBuilder: (element) {
-              if (element.classes.contains("link")) {
-                return InlineCustomWidget(
-                  child: GestureDetector(
-                    onLongPress: () {
-                      if (element.attributes["href"] != null) {
-                        showLinkMenu(context, element.attributes["href"]!);
-                      } else {
-                        debugPrint(element.attributes.toString());
-                        debugPrint(element.text.toString());
-                        debugPrint("No link found");
-                      }
-                    },
-                    onTap: () {
-                      if (element.attributes["href"] != null) {
-                        launchUrl(Uri.parse(element.attributes["href"]!));
-                      } else {
-                        debugPrint(element.attributes.toString());
-                        debugPrint(element.text.toString());
-                        debugPrint("No link found");
-                      }
-                    },
-                    child: Text(
-                      element.text,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.primary,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ),
-                );
-              }
-              return null;
-            },
-          ),
-        ),
+      return ArticleTextWidget(
+        key: ValueKey("text_${widget.article.url}"),
+        url: widget.article.url,
+        title: widget.article.title,
+        content: widget.article.content,
+        feedTitle: Api.of(context).subs[widget.article.subID]?.title,
+        timePublished: widget.article.published,
+        iconUrl: Api.of(context).getIconUrl(widget.article.subID),
+        formattingSetting: widget.formattingSetting,
       );
     }
   }
@@ -601,6 +413,252 @@ class _SetStarButtonState extends State<SetStarButton> {
           icon: Icon(isStarred ? Icons.star : Icons.star_border),
         );
       },
+    );
+  }
+}
+
+class ArticleWebWidget extends StatelessWidget {
+  ArticleWebWidget({super.key, required this.url});
+  final String url;
+  late final WebViewController webViewController = WebViewController()
+    ..setJavaScriptMode(JavaScriptMode.unrestricted)
+    ..loadRequest(Uri.parse(url));
+
+  @override
+  Widget build(BuildContext context) {
+    return WebViewWidget(
+      controller: webViewController,
+      gestureRecognizers: {
+        Factory<LongPressGestureRecognizer>(
+          () => LongPressGestureRecognizer(),
+        ),
+        Factory<VerticalDragGestureRecognizer>(
+          () => VerticalDragGestureRecognizer(),
+        ),
+      },
+    );
+  }
+}
+
+List<String> imgExtensions = [
+  ".jpg",
+  ".jpeg",
+  ".apng",
+  ".png",
+  ".gif",
+  ".webp",
+  ".tiff",
+  ".avif",
+  ".bmp"
+];
+
+class ArticleTextWidget extends StatelessWidget {
+  const ArticleTextWidget({
+    super.key,
+    required this.url,
+    required this.title,
+    required this.content,
+    this.iconUrl,
+    this.feedTitle,
+    required this.timePublished,
+    required this.formattingSetting,
+  });
+  final String url;
+  final String title;
+  final String content;
+  final String? iconUrl;
+  final String? feedTitle;
+  final int timePublished;
+  final FormattingSetting formattingSetting;
+
+  void showLinkMenu(BuildContext context, String link) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        Widget? image;
+        if (imgExtensions.any((ext) => link.toLowerCase().endsWith(ext))) {
+          image = CachedNetworkImage(
+            imageUrl: link,
+            width: 128,
+            height: 128,
+          );
+        }
+        return AlertDialog(
+          icon: image,
+          title: Text(
+            link,
+            textScaler: const TextScaler.linear(0.75),
+          ),
+          contentPadding: EdgeInsets.zero,
+          clipBehavior: Clip.hardEdge,
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Divider(),
+                ListTile(
+                  title: const Text("Open in browser"),
+                  trailing: const Icon(Icons.open_in_browser),
+                  onTap: () {
+                    launchUrl(Uri.parse(link));
+                  },
+                ),
+                ListTile(
+                  title: const Text("Share Link"),
+                  trailing: const Icon(Icons.share),
+                  onTap: () {
+                    try {
+                      Share.shareUri(Uri.parse(link));
+                    } catch (e) {
+                      final box = context.findRenderObject() as RenderBox?;
+                      Share.share(
+                        link,
+                        subject: "",
+                        sharePositionOrigin:
+                            box!.localToGlobal(Offset.zero) & box.size,
+                      );
+                      debugPrint(e.toString());
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void showImage(BuildContext context, String title, String url) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return ImageViewer(
+          image: CachedNetworkImage(
+            imageUrl: url,
+          ),
+          text: title,
+          url: url,
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    String articleContent = '''
+      <a class="link ignore" href="$url">$title</a>
+      <p>
+      <img height="16" width="16" src="$iconUrl"/> $feedTitle<br>
+      ${getRelativeDate(timePublished)}, ${DateTime.fromMillisecondsSinceEpoch(timePublished * 1000).toString().split(".").first}
+      </p>
+      <hr style="color: grey;">
+      ${content.replaceAll("<a", "<a class=\"link\"")}
+      ''';
+    return ListenableBuilder(
+      listenable: formattingSetting,
+      builder: (context, child) {
+        return AnimatedDefaultTextStyle(
+          style: TextStyle(
+            fontFamily: formattingSetting.font,
+            fontSize: formattingSetting.fontSize,
+            wordSpacing: formattingSetting.wordSpacing,
+            height: formattingSetting.lineHeight,
+          ),
+          duration: const Duration(milliseconds: 100),
+          child: child!,
+        );
+      },
+      child: SelectionArea(
+        child: HtmlWidget(
+          articleContent,
+          buildAsync: true,
+          enableCaching: true,
+          renderMode: ListViewMode(
+            padding: EdgeInsets.only(
+              left: 16.0,
+              right: 16.0,
+              top: MediaQuery.of(context).padding.top + 16.0,
+              bottom: MediaQuery.of(context).padding.bottom + 16.0,
+            ),
+          ),
+          onErrorBuilder: (context, element, error) {
+            return Placeholder(
+              child: Text(error.toString()),
+            );
+          },
+          onTapImage: (p0) {
+            if (p0.sources.isNotEmpty) {
+              showImage(
+                  context,
+                  "${p0.alt != null ? "${p0.alt}, " : ""}${p0.title}",
+                  p0.sources.first.url);
+            }
+          },
+          customWidgetBuilder: (element) {
+            if (element.classes.contains("link")) {
+              bool isImg = false;
+              Widget? imgWidget;
+              if (element.children.any((child) => child.localName == "img")) {
+                for (var child in element.children) {
+                  if (child.localName == "img") {
+                    isImg = true;
+                    imgWidget = CachedNetworkImage(
+                      fit: BoxFit.fitWidth,
+                      imageUrl: child.attributes["src"] ?? "",
+                      width: double.tryParse(child.attributes["width"] ?? ""),
+                      height: double.tryParse(child.attributes["height"] ?? ""),
+                      errorWidget: (context, url, error) {
+                        return Placeholder(
+                          child: Text(error.toString()),
+                        );
+                      },
+                    );
+                  }
+                }
+              }
+              return InlineCustomWidget(
+                child: GestureDetector(
+                  onLongPress: () {
+                    // if (isImg) {
+                    //   showImage(
+                    //       context,
+                    //       "${element.attributes["alt"] != null ? "${element.attributes["alt"]}, " : ""}${element.text}",
+                    //       element.attributes["href"]!);
+                    // } else {
+                    showLinkMenu(context, element.attributes["href"]!);
+                    // }
+                  },
+                  onTap: () {
+                    // if (isImg) {
+                    //   showImage(
+                    //       context,
+                    //       "${element.attributes["alt"] != null ? "${element.attributes["alt"]}, " : ""}${element.text}",
+                    //       element.attributes["href"]!);
+                    // } else {
+                    launchUrl(Uri.parse(element.attributes["href"]!));
+                    // }
+                  },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (imgWidget != null) imgWidget,
+                      Text(
+                        element.text,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+            return null;
+          },
+        ),
+      ),
     );
   }
 }

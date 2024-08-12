@@ -5,16 +5,16 @@ An opinionated client for FreshRss (not affiliated) made just for me. but you ca
 ## Features
 - [x] get unread articles from FreshRss Server
 - [x] sync read articles to server
+- [x] sync starred articles from server
 - [x] change the server link
 - [x] filter by tag
 - [x] filter by unread
-- [X] search articles
 - [x] render article as html
 - [x] share article link
 - [x] open in browser
 - [x] in app browser view
 - [x] show feed icon
-- [x] add date separator in article list
+- [x] image viewer with zoom
 - text formatting:
     - [x] save formatting options to storage
     - [x] font size
@@ -22,6 +22,8 @@ An opinionated client for FreshRss (not affiliated) made just for me. but you ca
     - [x] line height
 
 ## Todo
+- [ ] search articles
+- [ ] add date separator in article list
 - [ ] edit tags
 - [ ] delete tags
 - text formatting:

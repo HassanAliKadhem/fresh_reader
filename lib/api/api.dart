@@ -316,7 +316,8 @@ class ApiData extends ChangeNotifier {
   Map<String, DelayedAction> delayedActions = {};
 
   bool _showAll = false;
-  int updatedTime = 0;
+  int updatedArticleTime = 0;
+  int updatedStarredTime = 0;
 
   Set<String>? filteredArticleIDs;
   String? filteredTitle;
@@ -325,7 +326,8 @@ class ApiData extends ChangeNotifier {
   Future<bool> load() async {
     try {
       preferences = await SharedPreferences.getInstance();
-      updatedTime = preferences!.getInt("updatedTime") ?? updatedTime;
+      updatedArticleTime = preferences!.getInt("updatedArticleTime") ?? updatedArticleTime;
+      updatedStarredTime = preferences!.getInt("updatedStarredTime") ?? updatedStarredTime;
 
       server = preferences!.getString("server") ?? server;
       userName = preferences!.getString("userName") ?? userName;
@@ -355,7 +357,8 @@ class ApiData extends ChangeNotifier {
   }
 
   Future<bool> save() async {
-    await preferences!.setInt("updatedTime", updatedTime);
+    await preferences!.setInt("updatedArticleTime", updatedArticleTime);
+    await preferences!.setInt("updatedStarredTime", updatedStarredTime);
     await preferences!.setString("server", server);
     await preferences!.setString("userName", userName);
     await preferences!.setString("password", password);
@@ -452,7 +455,6 @@ class ApiData extends ChangeNotifier {
     await _getStarredIds(auth);
     await _getStarredArticles(auth);
     //https://github.com/FreshRSS/FreshRSS/issues/2566
-    updatedTime = (DateTime.now().millisecondsSinceEpoch / 1000).floor();
     await save();
     return true;
   }
@@ -525,8 +527,9 @@ class ApiData extends ChangeNotifier {
   }
 
   Future<void> _getAllArticles(String auth, String feed) async {
+    bool updateTime = true;
     String url =
-        "$server/reader/api/0/stream/contents/$feed?xt=user/-/state/com.google/read&n=1000&ot=$updatedTime";
+        "$server/reader/api/0/stream/contents/$feed?xt=user/-/state/com.google/read&n=1000&ot=$updatedArticleTime";
     String con = "";
     dynamic res;
     do {
@@ -551,9 +554,13 @@ class ApiData extends ChangeNotifier {
         if (kDebugMode) {
           throw onError;
         }
+        updateTime = false;
         debugPrint(onError.toString());
       });
     } while (con != "");
+    if (updateTime) {
+      updatedArticleTime = (DateTime.now().millisecondsSinceEpoch / 1000).floor();
+    }
   }
 
   Future<void> _getReadIds(String auth) async {
@@ -588,12 +595,13 @@ class ApiData extends ChangeNotifier {
   }
 
   Future<void> _getStarredIds(String auth) async {
+    bool updateTime = true;
     Set<String> syncedArticleIDs = <String>{};
     String con = "";
     do {
       http.Response response = await http.get(
         Uri.parse(
-            "$server/reader/api/0/stream/items/ids?s=user/-/state/com.google/starred&merge=true&xt=user/-/state/com.google/read&ot=$updatedTime&output=json&n=10000${con == "" ? "" : "&c=$con"}"),
+            "$server/reader/api/0/stream/items/ids?s=user/-/state/com.google/starred&merge=true&xt=user/-/state/com.google/read&ot=$updatedStarredTime&output=json&n=10000${con == "" ? "" : "&c=$con"}"),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -613,9 +621,14 @@ class ApiData extends ChangeNotifier {
         con = res["continuation"]?.toString() ?? "";
       } else {
         debugPrint(response.body);
+        updateTime = false;
       }
     } while (con != "");
     await db!.syncArticlesStar(syncedArticleIDs);
+
+    if (updateTime) {
+      updatedStarredTime = (DateTime.now().millisecondsSinceEpoch / 1000).floor();
+    }
   }
 
   Future<void> _getStarredArticles(String auth) async {
