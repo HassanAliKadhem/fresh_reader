@@ -70,6 +70,10 @@ class DatabaseManager {
     return true;
   }
 
+  void closeDatabase() {
+    db.close();
+  }
+
   // Subs
   Future<Map<String, Subscription>> loadAllSubs() async {
     List<Map<String, Object?>> subs = await db.query(
@@ -323,11 +327,19 @@ class ApiData extends ChangeNotifier {
   String? filteredTitle;
   int? filteredIndex;
 
+  @override
+  void dispose() {
+    db?.closeDatabase();
+    super.dispose();
+  }
+
   Future<bool> load() async {
     try {
       preferences = await SharedPreferences.getInstance();
-      updatedArticleTime = preferences!.getInt("updatedArticleTime") ?? updatedArticleTime;
-      updatedStarredTime = preferences!.getInt("updatedStarredTime") ?? updatedStarredTime;
+      updatedArticleTime =
+          preferences!.getInt("updatedArticleTime") ?? updatedArticleTime;
+      updatedStarredTime =
+          preferences!.getInt("updatedStarredTime") ?? updatedStarredTime;
 
       server = preferences!.getString("server") ?? server;
       userName = preferences!.getString("userName") ?? userName;
@@ -559,7 +571,8 @@ class ApiData extends ChangeNotifier {
       });
     } while (con != "");
     if (updateTime) {
-      updatedArticleTime = (DateTime.now().millisecondsSinceEpoch / 1000).floor();
+      updatedArticleTime =
+          (DateTime.now().millisecondsSinceEpoch / 1000).floor();
     }
   }
 
@@ -627,7 +640,8 @@ class ApiData extends ChangeNotifier {
     await db!.syncArticlesStar(syncedArticleIDs);
 
     if (updateTime) {
-      updatedStarredTime = (DateTime.now().millisecondsSinceEpoch / 1000).floor();
+      updatedStarredTime =
+          (DateTime.now().millisecondsSinceEpoch / 1000).floor();
     }
   }
 
