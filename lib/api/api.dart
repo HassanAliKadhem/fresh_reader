@@ -121,7 +121,7 @@ class DatabaseManager {
   //       MapEntry(element["articleID"] as String, Article.fromDB(element)));
   // }
 
-  Future<Article> loadArticle(String articleID) async {
+  Future<Article> loadArticle(String articleID, bool loadContent) async {
     List<Map<String, Object?>> articles = await db.query(
       "Article",
       columns: [
@@ -132,13 +132,12 @@ class DatabaseManager {
         "isStarred",
         "timeStampPublished",
         "content",
-        "url"
+        "url",
       ],
       where: "articleID = ?",
       whereArgs: [articleID],
     );
-    // print("hello; " + (articles.first["articleID"] as String));
-    return Article.fromDB(articles.first);
+    return Article.fromDB(articles.first, loadContent);
   }
 
   Future<String?> loadArticleSubID(String articleID) async {
@@ -324,6 +323,7 @@ class ApiData extends ChangeNotifier {
   int updatedStarredTime = 0;
 
   Set<String>? filteredArticleIDs;
+  Map<String, Article>? filteredArticles;
   String? filteredTitle;
   int? filteredIndex;
 
@@ -747,17 +747,23 @@ class ApiData extends ChangeNotifier {
   }
 
   void setRead(String id, String subID, bool isRead) {
+    filteredArticles?[id]?.read = isRead;
     _setServerRead([id], [subID], isRead);
     db!.updateArticleRead(id, isRead);
+    notifyListeners();
   }
 
   void setStarred(String id, String subID, bool isStarred) {
+    filteredArticles?[id]?.starred = isStarred;
     _setServerStar([id], [subID], isStarred);
     db!.updateArticleStar(id, isStarred);
+    notifyListeners();
   }
 
   Future<void> getFilteredArticles(
       bool? showAll, String? filterColumn, String? filterValue) async {
+    filteredArticleIDs = null;
+    filteredArticles = null;
     await db!
         .loadArticleIDs(
             showAll: showAll,
@@ -765,6 +771,15 @@ class ApiData extends ChangeNotifier {
             filterValue: filterValue)
         .then((value) {
       filteredArticleIDs = value.keys.toSet();
+    });
+    Future.wait(
+            filteredArticleIDs!.map((String id) => db!.loadArticle(id, false)))
+        .then((List<Article> arts) {
+      filteredArticles = {};
+      for (var article in arts) {
+        filteredArticles![article.id] = article;
+      }
+      notifyListeners();
     });
     if (filterValue != null && filterValue.startsWith("feed/")) {
       filteredTitle = subs[filterValue]?.title;

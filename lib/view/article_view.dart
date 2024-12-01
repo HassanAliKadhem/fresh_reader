@@ -26,11 +26,11 @@ class ArticleView extends StatefulWidget {
   State<ArticleView> createState() => _ArticleViewState();
 }
 
+ValueNotifier<Article?> currentArticleNotifier = ValueNotifier<Article?>(null);
+
 class _ArticleViewState extends State<ArticleView> {
   bool showWebView = false;
   final FormattingSetting formattingSetting = FormattingSetting();
-  ValueNotifier<Article?> currentArticleNotifier =
-      ValueNotifier<Article?>(null);
 
   void _onShare(BuildContext context) {
     if (currentArticleNotifier.value != null) {
@@ -59,7 +59,7 @@ class _ArticleViewState extends State<ArticleView> {
   void _onPageChanged(int page) {
     Api.of(context)
         .db!
-        .loadArticle(widget.articleIDs.elementAt(page))
+        .loadArticle(widget.articleIDs.elementAt(page), true)
         .then((article) {
       currentArticleNotifier.value = article;
       Api.of(context).setRead(article.id, article.subID, true);
@@ -178,7 +178,7 @@ class _ArticleViewState extends State<ArticleView> {
           return FutureBuilder(
             future: Api.of(context)
                 .db!
-                .loadArticle(widget.articleIDs.elementAt(index)),
+                .loadArticle(widget.articleIDs.elementAt(index), true),
             builder: (context, snapshot) {
               if (snapshot.data != null) {
                 return ArticlePage(

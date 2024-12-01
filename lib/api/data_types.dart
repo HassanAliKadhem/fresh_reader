@@ -1,3 +1,5 @@
+import 'package:fresh_reader/api/api.dart';
+
 class Subscription {
   String id;
   String title;
@@ -63,6 +65,7 @@ class Article {
   int published;
   String content;
   String url;
+  String? image;
   // List<String> urls;
   // List<String> altUrls;
 
@@ -75,6 +78,7 @@ class Article {
     required this.published,
     required this.content,
     required this.url,
+    this.image,
     // required this.urls,
     // required this.altUrls,
   });
@@ -102,15 +106,16 @@ class Article {
   //     .map<String>((element) => element["href"] as String)
   //     .toList();
 
-  Article.fromDB(Map<String, Object?> element)
+  Article.fromDB(Map<String, Object?> element, bool loadContent)
       : id = element["articleID"] as String,
         subID = element["subID"] as String,
         title = element["title"] as String,
         read = element["isRead"] == "true",
         starred = element["isStarred"] == "true",
         published = element["timeStampPublished"] as int,
-        content = element["content"] as String,
-        url = element["url"] as String;
+        content = loadContent ? element["content"] as String : "",
+        url = element["url"] as String,
+        image = getFirstImage(element["content"] as String);
   // urls = [],
   // altUrls = [];
 
