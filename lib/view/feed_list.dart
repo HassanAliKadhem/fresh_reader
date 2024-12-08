@@ -17,22 +17,6 @@ class FeedList extends StatefulWidget {
 
 class _FeedListState extends State<FeedList> {
   @override
-  void initState() {
-    super.initState();
-    Future.microtask(
-      () {
-        if (Api.of(context).server == "") {
-          Navigator.push(context, MaterialPageRoute(
-            builder: (context) {
-              return const SettingsView();
-            },
-          ));
-        }
-      },
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(

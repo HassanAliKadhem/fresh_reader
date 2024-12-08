@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:fresh_reader/view/settings_view.dart';
 
 import 'api/api.dart';
 import 'api/data_types.dart';
@@ -75,72 +76,97 @@ class HomeWidget extends StatefulWidget {
   State<HomeWidget> createState() => _HomeWidgetState();
 }
 
-class _HomeWidgetState extends State<HomeWidget> {
-  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
+class _HomeWidgetState extends State<HomeWidget> {
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        return !await _navigatorKey.currentState!.maybePop();
-      },
-      child: Navigator(
-        key: _navigatorKey,
-        onPopPage: (route, result) {
-          if (route.settings.name == "/article") {
-            setState(() {
-              Api.of(context).filteredIndex = null;
-            });
-          } else if (route.settings.name == "/list") {
-            setState(() {
-              Api.of(context).filteredIndex = null;
-              Api.of(context).filteredArticleIDs = null;
-            });
+    return Container(
+      color: Theme.of(context).cardColor,
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) {
+            _navigatorKey.currentState!.maybePop();
           }
-          return route.didPop(result);
         },
-        pages: [
-          MaterialPage(
-            name: "/",
-            child: screenSizeOf(context) == ScreenSize.small
-                ? FeedList(onSelect: _onChooseFeed)
-                : Row(
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: FeedList(onSelect: _onChooseFeed),
-                      ),
-                      Expanded(
-                        flex:
-                            screenSizeOf(context) == ScreenSize.medium ? 3 : 7,
-                        child: ArticleList(
-                          onSelect: _onChooseArticle,
+        child: Navigator(
+          key: _navigatorKey,
+          onDidRemovePage: (page) {
+            if (page.name == "/article") {
+              setState(() {
+                Api.of(context).filteredIndex = null;
+              });
+            } else if (page.name == "/list") {
+              setState(() {
+                Api.of(context).filteredIndex = null;
+                Api.of(context).filteredArticleIDs = null;
+              });
+            }
+          },
+          pages: [
+            MaterialPage(
+              name: "/",
+              child: screenSizeOf(context) == ScreenSize.small
+                  ? FeedList(onSelect: _onChooseFeed)
+                  : Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: FeedList(onSelect: _onChooseFeed),
                         ),
-                      ),
-                    ],
-                  ),
-          ),
-          if (screenSizeOf(context) == ScreenSize.small &&
-              Api.of(context).filteredArticleIDs != null)
-            MaterialPage(
-              name: "/list",
-              child: ArticleList(onSelect: _onChooseArticle),
+                        const SizedBox(
+                          width: 5,
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: ArticleList(
+                            onSelect: _onChooseArticle,
+                          ),
+                        ),
+                        const SizedBox(
+                          width: 5,
+                        ),
+                        if (screenSizeOf(context) == ScreenSize.big)
+                          Expanded(
+                            flex: 3,
+                            child: ArticleView(
+                              key: ValueKey(Api.of(context).filteredTitle),
+                              index: Api.of(context).filteredIndex,
+                              articleIDs: Api.of(context).filteredArticleIDs,
+                            ),
+                          ),
+                      ],
+                    ),
             ),
-          if (Api.of(context).filteredIndex != null &&
-              Api.of(context).filteredIndex != null)
-            MaterialPage(
-              name: "/article",
-              child: ArticleView(
-                index: Api.of(context).filteredIndex!,
-                articleIDs: Api.of(context).filteredArticleIDs!,
+            if (Api.of(context).server == "" && Api.of(context).justBooted)
+              const MaterialPage(
+                name: "/settings",
+                child: SettingsView(),
               ),
-            ),
-        ],
+            if (screenSizeOf(context) == ScreenSize.small &&
+                Api.of(context).filteredArticleIDs != null)
+              MaterialPage(
+                name: "/list",
+                child: ArticleList(onSelect: _onChooseArticle),
+              ),
+            if (screenSizeOf(context) != ScreenSize.big &&
+                Api.of(context).filteredIndex != null)
+              MaterialPage(
+                name: "/article",
+                child: ArticleView(
+                  index: Api.of(context).filteredIndex ?? 0,
+                  articleIDs: Api.of(context).filteredArticleIDs ?? {},
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 
   void _onChooseFeed(String? column, String? value) {
+    currentArticleNotifier.value = null;
     Api.of(context)
         .getFilteredArticles(Api.of(context).getShowAll(), column, value)
         .then((_) {
@@ -149,8 +175,6 @@ class _HomeWidgetState extends State<HomeWidget> {
   }
 
   void _onChooseArticle(int index, String articleID) {
-    Api.of(context).filteredIndex = index;
-    // Api.of(context).setRead(articleID, true);
     setState(() {});
   }
 }

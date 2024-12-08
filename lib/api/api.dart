@@ -10,9 +10,9 @@ import 'package:sqflite/sqflite.dart';
 import 'data_types.dart';
 
 ScreenSize screenSizeOf(BuildContext context) {
-  if (MediaQuery.sizeOf(context).shortestSide > 840) {
+  if (MediaQuery.sizeOf(context).width > 840) {
     return ScreenSize.big;
-  } else if (MediaQuery.sizeOf(context).shortestSide > 640) {
+  } else if (MediaQuery.sizeOf(context).width > 640) {
     return ScreenSize.medium;
   } else {
     return ScreenSize.small;
@@ -138,6 +138,15 @@ class DatabaseManager {
       whereArgs: [articleID],
     );
     return Article.fromDB(articles.first, loadContent);
+  }
+
+  Future<List<Article>> loadArticles(
+      List<String> articleIDs, bool loadContent) async {
+    List<Map<String, Object?>> articles = await db.rawQuery(
+        "select articleID ,subID, title, isRead, isStarred, timeStampPublished, content, url from Article where articleID in ('${articleIDs.join("','")}') order by timeStampPublished desc");
+    return articles
+        .map((article) => Article.fromDB(article, loadContent))
+        .toList();
   }
 
   Future<String?> loadArticleSubID(String articleID) async {
@@ -308,6 +317,7 @@ class ApiData extends ChangeNotifier {
   DatabaseManager? db;
   SharedPreferences? preferences;
 
+  bool justBooted = true;
   String server = "";
   String userName = "";
   String password = "";
@@ -764,6 +774,8 @@ class ApiData extends ChangeNotifier {
       bool? showAll, String? filterColumn, String? filterValue) async {
     filteredArticleIDs = null;
     filteredArticles = null;
+    filteredIndex = null;
+    filteredTitle = null;
     await db!
         .loadArticleIDs(
             showAll: showAll,
@@ -772,8 +784,8 @@ class ApiData extends ChangeNotifier {
         .then((value) {
       filteredArticleIDs = value.keys.toSet();
     });
-    Future.wait(
-            filteredArticleIDs!.map((String id) => db!.loadArticle(id, false)))
+    db!
+        .loadArticles(filteredArticleIDs!.toList(), false)
         .then((List<Article> arts) {
       filteredArticles = {};
       for (var article in arts) {

@@ -14,6 +14,7 @@ class SettingsView extends StatefulWidget {
 class _SettingsViewState extends State<SettingsView> {
   @override
   Widget build(BuildContext context) {
+    Api.of(context).justBooted = false;
     return Scaffold(
       appBar: AppBar(
         title: const Text("Settings"),

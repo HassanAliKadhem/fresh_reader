@@ -4,6 +4,7 @@ import 'package:fresh_reader/widget/blur_bar.dart';
 
 import '../api/api.dart';
 import '../api/data_types.dart';
+import 'article_view.dart';
 
 class ArticleList extends StatefulWidget {
   const ArticleList({
@@ -18,40 +19,44 @@ class ArticleList extends StatefulWidget {
 
 class _ArticleListState extends State<ArticleList> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    currentArticleNotifier.addListener(scrollToCurrent);
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    currentArticleNotifier.removeListener(scrollToCurrent);
+  }
+
+  void scrollToCurrent() {
+    if (Api.of(context).filteredArticleIDs != null &&
+        _scrollController.hasClients) {
+      double scrollTarget = (Api.of(context)
+              .filteredArticleIDs!
+              .toList()
+              .indexOf(currentArticleNotifier.value?.id ?? "") *
+          128);
+      _scrollController.animateTo(
+        curve: Curves.linear,
+        duration: const Duration(milliseconds: 300),
+        scrollTarget,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
+          flexibleSpace: const BlurBar(),
           title: Text(Api.of(context).filteredTitle == null
               ? ""
               : Api.of(context).filteredTitle!.split("/").last),
-          bottom: PreferredSize(
-            preferredSize: const Size(double.infinity, kToolbarHeight),
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: SearchBar(
-                hintText: "Search",
-                controller: _searchController,
-                backgroundColor: const WidgetStatePropertyAll(Colors.black26),
-                trailing: [
-                  if (_searchController.text != "")
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _searchController.text = "";
-                        });
-                      },
-                      icon: const Icon(Icons.clear),
-                    ),
-                ],
-                onChanged: (value) {
-                  setState(() {});
-                },
-              ),
-            ),
-          ),
-          flexibleSpace: const BlurBar(),
         ),
         extendBody: true,
         extendBodyBehindAppBar: true,
@@ -61,7 +66,7 @@ class _ArticleListState extends State<ArticleList> {
           ),
         ),
         body: Api.of(context).filteredArticles == null
-            ? const Center(child: CircularProgressIndicator.adaptive())
+            ? const SizedBox()
             : Builder(builder: (context) {
                 List<Article> currentArticles = Api.of(context)
                     .filteredArticles!
@@ -72,28 +77,43 @@ class _ArticleListState extends State<ArticleList> {
                     .toList();
                 return ListView.builder(
                   key: const PageStorageKey(0),
-                  itemCount: currentArticles.length,
-                  // separatorBuilder: (context, index) {
-                  //   return const SizedBox(height: 16,);
-                  // int day = getDifferenceInDays(currentArticles[index].published);
-                  // String date = getRelativeDate(currentArticles[index].published);
-                  // String nextDate = getRelativeDate(currentArticles[index + 1].published);
-                  // if (day > 0 && date != nextDate) {
-                  //   return Padding(
-                  //     padding:
-                  //         const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-                  //     child: Text(
-                  //       nextDate,
-                  //       style: TextStyle(color: Theme.of(context).colorScheme.primary),
-                  //     ),
-                  //   );
-                  // } else {
-                  //   return const SizedBox();
-                  // }
-                  // },
+                  itemCount: currentArticles.length + 1,
+                  controller: _scrollController,
                   itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return SizedBox(
+                        height: 64,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: SearchBar(
+                            hintText: "Search",
+                            controller: _searchController,
+                            backgroundColor:
+                                const WidgetStatePropertyAll(Colors.black26),
+                            trailing: [
+                              _searchController.text != ""
+                                  ? IconButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _searchController.text = "";
+                                        });
+                                      },
+                                      icon: const Icon(Icons.clear),
+                                    )
+                                  : const Padding(
+                                      padding: EdgeInsets.only(right: 10.0),
+                                      child: Icon(Icons.search),
+                                    ),
+                            ],
+                            onChanged: (value) {
+                              setState(() {});
+                            },
+                          ),
+                        ),
+                      );
+                    }
                     return ArticleTile(
-                        currentArticles[index], index, widget.onSelect);
+                        currentArticles[index - 1], index - 1, widget.onSelect);
                   },
                 );
               }));
@@ -163,7 +183,19 @@ class _ArticleTileState extends State<ArticleTile> {
         ),
         child: ArticleWidget(
           article: widget.article,
-          onSelect: () => widget.onSelect(widget.index, widget.article.id),
+          onSelect: () {
+            widget.onSelect(widget.index, widget.article.id);
+            Api.of(context).filteredIndex = widget.index;
+            if (Api.of(context).filteredArticles != null &&
+                Api.of(context).filteredArticles![widget.article.id] != null) {
+              Api.of(context).setRead(
+                  widget.article.id,
+                  Api.of(context).filteredArticles![widget.article.id]!.subID,
+                  true);
+              currentArticleNotifier.value =
+                  Api.of(context).filteredArticles![widget.article.id]!;
+            }
+          },
         ));
   }
 }
@@ -177,139 +209,79 @@ class ArticleWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     String? iconUrl = Api.of(context).getIconUrl(article.subID);
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
-      clipBehavior: Clip.hardEdge,
-      child: SizedBox(
-        height: 120,
-        child: Opacity(
-          opacity: (article.read) ? 0.5 : 1,
-          child: InkWell(
-            onTap: onSelect,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (article.image != null)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8.0),
-                    child: Container(
-                      clipBehavior: Clip.hardEdge,
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(5),
-                        color: Colors.grey.shade800,
-                      ),
-                      child: CachedNetworkImage(
-                        imageUrl: article.image!,
-                        fit: BoxFit.cover,
-                        errorWidget: (context, url, error) =>
-                            const Icon(Icons.error),
-                      ),
+    return SizedBox(
+      height: 128,
+      child: Opacity(
+        opacity: (article.read) ? 0.5 : 1,
+        child: InkWell(
+          onTap: onSelect,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (article.image != null)
+                Padding(
+                  padding: const EdgeInsets.only(left: 8.0),
+                  child: Container(
+                    clipBehavior: Clip.hardEdge,
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(5),
+                      color: Colors.grey.shade800,
+                    ),
+                    child: CachedNetworkImage(
+                      imageUrl: article.image!,
+                      fit: BoxFit.cover,
+                      errorWidget: (context, url, error) =>
+                          const Icon(Icons.error),
                     ),
                   ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        article.title,
-                        style: Theme.of(context).textTheme.titleMedium,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8.0),
-                      Opacity(
-                        opacity: 0.75,
-                        child: RichText(
-                          text: TextSpan(
-                            children: [
-                              WidgetSpan(
-                                child: SizedBox(
-                                  height: 16,
-                                  width: 16,
-                                  child: CachedNetworkImage(
-                                    imageUrl: iconUrl ?? "",
-                                    errorWidget: (context, url, error) =>
-                                        const Icon(Icons.error),
-                                  ),
+                ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      article.title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8.0),
+                    Opacity(
+                      opacity: 0.75,
+                      child: RichText(
+                        text: TextSpan(
+                          children: [
+                            WidgetSpan(
+                              child: SizedBox(
+                                height: 16,
+                                width: 16,
+                                child: CachedNetworkImage(
+                                  imageUrl: iconUrl ?? "",
+                                  errorWidget: (context, url, error) =>
+                                      const Icon(Icons.error),
                                 ),
                               ),
-                              TextSpan(
-                                text:
-                                    "  ${Api.of(context).subs[article.subID]?.title}${"  -  ${getRelativeDate(article.published)} ${article.read ? "✔️" : ""} ${article.starred ? "★" : ""}"}",
-                              ),
-                            ],
-                          ),
+                            ),
+                            TextSpan(
+                              text:
+                                  "  ${Api.of(context).subs[article.subID]?.title}\n${"${getRelativeDate(article.published)} ${article.read ? "✔️" : ""} ${article.starred ? "★" : ""}"}",
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
-    // return ListTile(
-    //   textColor:
-    //       (article?.read ?? false) ? Theme.of(context).disabledColor : null,
-    //   visualDensity: VisualDensity.compact,
-    //   title: Text(
-    //     article?.title ?? "",
-    //     maxLines: 2,
-    //     overflow: TextOverflow.ellipsis,
-    //   ),
-    //   onTap: () => onSelect,
-    //   subtitle: Column(
-    //     children: [
-    //       if (iconUrl != null)
-    //         SizedBox(
-    //           height: 16,
-    //           width: 16,
-    //           child: CachedNetworkImage(
-    //             imageUrl: iconUrl,
-    //             errorWidget: (context, url, error) => const Icon(Icons.error),
-    //           ),
-    //         ),
-    //       Text(
-    //         Api.of(context).subs[article?.subID]?.title ?? "",
-    //         maxLines: 1,
-    //         overflow: TextOverflow.ellipsis,
-    //       ),
-    //       Text(
-    //         article != null
-    //             ? "${getRelativeDate(article!.published)} ${article!.read ? "" : "⚪️"} ${article!.starred ? "⭐️" : ""}"
-    //             : "",
-    //         maxLines: 1,
-    //         overflow: TextOverflow.ellipsis,
-    //       ),
-    //     ],
-    //   ),
-    //   leading: imgLink == null
-    //       ? null
-    //       : Container(
-    //           clipBehavior: Clip.hardEdge,
-    //           decoration: BoxDecoration(borderRadius: BorderRadius.circular(5)),
-    //           child: CachedNetworkImage(
-    //             imageUrl: imgLink,
-    //             fit: BoxFit.cover,
-    //             width: 80,
-    //             height: 80,
-    //             placeholder: (context, url) {
-    //               return Container(
-    //                 color: Colors.grey.shade800,
-    //                 height: 64,
-    //                 width: 64,
-    //               );
-    //             },
-    //             errorWidget: (context, url, error) => const Icon(Icons.error),
-    //           ),
-    //         ),
-    // );
   }
 }
