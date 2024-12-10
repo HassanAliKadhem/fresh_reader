@@ -94,14 +94,10 @@ class _HomeWidgetState extends State<HomeWidget> {
           key: _navigatorKey,
           onDidRemovePage: (page) {
             if (page.name == "/article") {
-              setState(() {
-                Api.of(context).filteredIndex = null;
-              });
+              Api.of(context).filteredIndex = null;
             } else if (page.name == "/list") {
-              setState(() {
-                Api.of(context).filteredIndex = null;
-                Api.of(context).filteredArticleIDs = null;
-              });
+              Api.of(context).filteredIndex = null;
+              Api.of(context).filteredArticleIDs = null;
             }
           },
           pages: [
@@ -115,17 +111,9 @@ class _HomeWidgetState extends State<HomeWidget> {
                           flex: 2,
                           child: FeedList(onSelect: _onChooseFeed),
                         ),
-                        const SizedBox(
-                          width: 5,
-                        ),
-                        Expanded(
+                        const Expanded(
                           flex: 2,
-                          child: ArticleList(
-                            onSelect: _onChooseArticle,
-                          ),
-                        ),
-                        const SizedBox(
-                          width: 5,
+                          child: ArticleList(),
                         ),
                         if (screenSizeOf(context) == ScreenSize.big)
                           Expanded(
@@ -146,9 +134,9 @@ class _HomeWidgetState extends State<HomeWidget> {
               ),
             if (screenSizeOf(context) == ScreenSize.small &&
                 Api.of(context).filteredArticleIDs != null)
-              MaterialPage(
+              const MaterialPage(
                 name: "/list",
-                child: ArticleList(onSelect: _onChooseArticle),
+                child: ArticleList(),
               ),
             if (screenSizeOf(context) != ScreenSize.big &&
                 Api.of(context).filteredIndex != null)
@@ -166,15 +154,10 @@ class _HomeWidgetState extends State<HomeWidget> {
   }
 
   void _onChooseFeed(String? column, String? value) {
-    currentArticleNotifier.value = null;
     Api.of(context)
         .getFilteredArticles(Api.of(context).getShowAll(), column, value)
         .then((_) {
       setState(() {});
     });
-  }
-
-  void _onChooseArticle(int index, String articleID) {
-    setState(() {});
   }
 }

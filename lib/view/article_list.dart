@@ -9,9 +9,7 @@ import 'article_view.dart';
 class ArticleList extends StatefulWidget {
   const ArticleList({
     super.key,
-    required this.onSelect,
   });
-  final Function(int, String) onSelect;
 
   @override
   State<ArticleList> createState() => _ArticleListState();
@@ -20,27 +18,16 @@ class ArticleList extends StatefulWidget {
 class _ArticleListState extends State<ArticleList> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  int currentIndex = -1;
 
   @override
-  void initState() {
-    super.initState();
-    currentArticleNotifier.addListener(scrollToCurrent);
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    currentArticleNotifier.removeListener(scrollToCurrent);
-  }
-
-  void scrollToCurrent() {
-    if (Api.of(context).filteredArticleIDs != null &&
-        _scrollController.hasClients) {
-      double scrollTarget = (Api.of(context)
-              .filteredArticleIDs!
-              .toList()
-              .indexOf(currentArticleNotifier.value?.id ?? "") *
-          128);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (Api.of(context).filteredIndex != null &&
+        _scrollController.hasClients &&
+        Api.of(context).filteredIndex != currentIndex) {
+      currentIndex = Api.of(context).filteredIndex!;
+      double scrollTarget = (Api.of(context).filteredIndex! * 128);
       _scrollController.animateTo(
         curve: Curves.linear,
         duration: const Duration(milliseconds: 300),
@@ -112,8 +99,7 @@ class _ArticleListState extends State<ArticleList> {
                         ),
                       );
                     }
-                    return ArticleTile(
-                        currentArticles[index - 1], index - 1, widget.onSelect);
+                    return ArticleTile(currentArticles[index - 1], index - 1);
                   },
                 );
               }));
@@ -121,10 +107,9 @@ class _ArticleListState extends State<ArticleList> {
 }
 
 class ArticleTile extends StatefulWidget {
-  const ArticleTile(this.article, this.index, this.onSelect, {super.key});
+  const ArticleTile(this.article, this.index, {super.key});
   final int index;
   final Article article;
-  final Function(int, String) onSelect;
 
   @override
   State<ArticleTile> createState() => _ArticleTileState();
@@ -184,16 +169,13 @@ class _ArticleTileState extends State<ArticleTile> {
         child: ArticleWidget(
           article: widget.article,
           onSelect: () {
-            widget.onSelect(widget.index, widget.article.id);
             Api.of(context).filteredIndex = widget.index;
             if (Api.of(context).filteredArticles != null &&
                 Api.of(context).filteredArticles![widget.article.id] != null) {
-              Api.of(context).setRead(
+              currentArticleNotifier.value = Api.of(context).setRead(
                   widget.article.id,
                   Api.of(context).filteredArticles![widget.article.id]!.subID,
                   true);
-              currentArticleNotifier.value =
-                  Api.of(context).filteredArticles![widget.article.id]!;
             }
           },
         ));
@@ -209,20 +191,20 @@ class ArticleWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     String? iconUrl = Api.of(context).getIconUrl(article.subID);
-    return SizedBox(
-      height: 128,
-      child: Opacity(
-        opacity: (article.read) ? 0.5 : 1,
-        child: InkWell(
-          onTap: onSelect,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (article.image != null)
-                Padding(
-                  padding: const EdgeInsets.only(left: 8.0),
-                  child: Container(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0),
+      child: SizedBox(
+        height: 128,
+        child: Opacity(
+          opacity: (article.read) ? 0.5 : 1,
+          child: InkWell(
+            onTap: onSelect,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (article.image != null)
+                  Container(
                     clipBehavior: Clip.hardEdge,
                     width: 100,
                     height: 100,
@@ -237,48 +219,57 @@ class ArticleWidget extends StatelessWidget {
                           const Icon(Icons.error),
                     ),
                   ),
-                ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      article.title,
-                      style: Theme.of(context).textTheme.titleMedium,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8.0),
-                    Opacity(
-                      opacity: 0.75,
-                      child: RichText(
-                        text: TextSpan(
-                          children: [
-                            WidgetSpan(
-                              child: SizedBox(
-                                height: 16,
-                                width: 16,
-                                child: CachedNetworkImage(
-                                  imageUrl: iconUrl ?? "",
-                                  errorWidget: (context, url, error) =>
-                                      const Icon(Icons.error),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Opacity(
+                        opacity: 0.75,
+                        child: RichText(
+                          maxLines: 1,
+                          text: TextSpan(
+                            children: [
+                              WidgetSpan(
+                                child: SizedBox(
+                                  height: 16,
+                                  width: 16,
+                                  child: CachedNetworkImage(
+                                    imageUrl: iconUrl ?? "",
+                                    fit: BoxFit.contain,
+                                    errorWidget: (context, url, error) =>
+                                        const Icon(Icons.error, size: 16),
+                                  ),
                                 ),
                               ),
-                            ),
-                            TextSpan(
-                              text:
-                                  "  ${Api.of(context).subs[article.subID]?.title}\n${"${getRelativeDate(article.published)} ${article.read ? "✔️" : ""} ${article.starred ? "★" : ""}"}",
-                            ),
-                          ],
+                              TextSpan(
+                                text:
+                                    "  ${Api.of(context).subs[article.subID]?.title}",
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                      Text(
+                        article.title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8.0),
+                      Opacity(
+                        opacity: 0.75,
+                        child: Text(
+                          "${getRelativeDate(article.published)} ${article.read ? "✔️" : ""} ${article.starred ? "★" : ""}",
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

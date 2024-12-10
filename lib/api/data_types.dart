@@ -1,4 +1,8 @@
+import 'dart:convert';
+
 import 'package:fresh_reader/api/api.dart';
+
+const Utf8Decoder decoder = Utf8Decoder();
 
 class Subscription {
   String id;
@@ -17,9 +21,11 @@ class Subscription {
     required this.categories,
   });
 
-  Subscription.fromJson(Map<String, dynamic> json)
+  Subscription.fromJson(Map<String, dynamic> json, bool useDecoder)
       : id = json['id'] ?? "",
-        title = json['title'] ?? "",
+        title = useDecoder
+            ? decoder.convert((json['title'] ?? "").toString().codeUnits)
+            : json['title'] ?? "",
         url = json["url"] ?? "",
         htmlUrl = json["htmlUrl"] ?? "",
         iconUrl = json["iconUrl"] ?? "",
@@ -83,28 +89,19 @@ class Article {
     // required this.altUrls,
   });
 
-  Article.fromCloudJson(Map<String, dynamic> json)
+  Article.fromCloudJson(Map<String, dynamic> json, bool useDecoder)
       : id = json["id"],
         subID = json["origin"]["streamId"],
-        title = json["title"],
+        title = useDecoder
+            ? decoder.convert(json["title"].toString().codeUnits)
+            : json["title"].toString(),
         read = json["read"] ?? false,
         starred = false,
         published = json["published"],
-        content = json["summary"]["content"],
+        content = useDecoder
+            ? decoder.convert(json["summary"]["content"].toString().codeUnits)
+            : json["summary"]["content"].toString(),
         url = (json["canonical"])[0]["href"] as String;
-  // url = json["origin"]["htmlUrl"];
-  // urls = (json["canonical"] ??
-  //         [
-  //           {"href": ""}
-  //         ])
-  //     .map<String>((element) => element["href"] as String)
-  //     .toList(),
-  // altUrls = (json["alternate"] ??
-  //         [
-  //           {"href": ""}
-  //         ])
-  //     .map<String>((element) => element["href"] as String)
-  //     .toList();
 
   Article.fromDB(Map<String, Object?> element, bool loadContent)
       : id = element["articleID"] as String,
@@ -131,6 +128,6 @@ class Article {
       };
 }
 
-enum DelayedAction { unread, read, star, unstar }
+enum DelayedAction { unread, read, star, unStar }
 
 enum ScreenSize { big, medium, small }

@@ -160,6 +160,8 @@ class _SettingsViewState extends State<SettingsView> {
                               Api.of(context).articleIDs = {};
                               Api.of(context).filteredIndex = null;
                               Api.of(context).filteredArticleIDs = null;
+                              Api.of(context).filteredArticles = null;
+                              Api.of(context).filteredTitle = null;
                               Api.of(context).delayedActions = {};
                               Api.of(context).save();
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -197,7 +199,7 @@ class _SettingsViewState extends State<SettingsView> {
             endIndent: 8.0,
           ),
           AboutListTile(
-            applicationVersion: "0.9.17",
+            applicationVersion: "1.0.0",
             aboutBoxChildren: [
               const ListTile(
                 title: Text("Made By"),

@@ -1,10 +1,11 @@
+import 'package:easy_image_viewer/easy_image_viewer.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
-import 'package:fresh_reader/widget/image_viewer.dart';
+import 'package:fresh_reader/widget/article_buttons.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -12,7 +13,6 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../api/api.dart';
 import '../api/data_types.dart';
 import '../util/formatting_setting.dart';
-import '../widget/blur_bar.dart';
 
 class ArticleView extends StatefulWidget {
   const ArticleView({
@@ -48,95 +48,12 @@ class _ArticleViewState extends State<ArticleView> {
 
   void _onPageChanged(int page) {
     Api.of(context).filteredIndex = page;
-    currentArticleNotifier.value =
-        Api.of(context).filteredArticles![widget.articleIDs?.elementAt(page)];
-    Api.of(context).setRead(currentArticleNotifier.value!.id,
-        currentArticleNotifier.value!.subID, true);
-    currentArticleNotifier.value!.read = true;
-  }
-
-  void _onShare(BuildContext context) {
-    if (currentArticleNotifier.value != null) {
-      try {
-        Share.shareUri(Uri.parse(currentArticleNotifier.value!.url));
-      } catch (e) {
-        final box = context.findRenderObject() as RenderBox?;
-        Share.share(
-          currentArticleNotifier.value!.url,
-          subject: currentArticleNotifier.value!.title,
-          sharePositionOrigin: box!.localToGlobal(Offset.zero) & box.size,
-        );
-        debugPrint(e.toString());
-      }
-    }
-  }
-
-  List<Widget> bottomButtons() {
-    return [
-      SetUnreadButton(
-        articleNotifier: currentArticleNotifier,
-      ),
-      SetStarButton(
-        articleNotifier: currentArticleNotifier,
-      ),
-      Builder(builder: (context) {
-        return IconButton(
-          onPressed: () {
-            _onShare(context);
-          },
-          tooltip: "Share",
-          icon: const Icon(
-            Icons.share,
-          ),
-        );
-      }),
-      IconButton(
-        onPressed: () {
-          if (currentArticleNotifier.value != null) {
-            launchUrl(
-              Uri.parse(currentArticleNotifier.value!.url),
-              mode: LaunchMode.inAppBrowserView,
-            );
-          }
-        },
-        tooltip: "Open In Browser",
-        icon: const Icon(
-          Icons.open_in_browser,
-        ),
-      ),
-      IconButton(
-        onPressed: () {
-          setState(() {
-            showWebView = !showWebView;
-          });
-        },
-        tooltip: showWebView ? "Article View" : "Web View",
-        icon: Icon(
-          showWebView ? Icons.article : Icons.public,
-        ),
-      ),
-      Builder(
-        builder: (context) {
-          return IconButton(
-            icon: const Icon(Icons.text_format),
-            tooltip: "Text Formatting",
-            onPressed: showWebView
-                ? null
-                : () {
-                    showModalBottomSheet(
-                      context: context,
-                      showDragHandle: true,
-                      builder: (context) {
-                        return FormattingSheet(
-                            formattingSetting: formattingSetting);
-                      },
-                      elevation: 1,
-                    );
-                  },
-          );
-        },
-      ),
-    ];
+    currentArticleNotifier.value = Api.of(context).setRead(
+        Api.of(context)
+            .filteredArticles![widget.articleIDs?.elementAt(page)]!
+            .id,
+        currentArticleNotifier.value!.subID,
+        true);
   }
 
   @override
@@ -147,67 +64,86 @@ class _ArticleViewState extends State<ArticleView> {
           currentArticleNotifier: currentArticleNotifier,
           articleIDS: widget.articleIDs ?? {},
         ),
-        actions:
-            screenSizeOf(context) == ScreenSize.small ? null : bottomButtons(),
-        flexibleSpace: const BlurBar(hasBorder: false),
+        // flexibleSpace: const BlurBar(),
       ),
       extendBodyBehindAppBar: !showWebView,
       extendBody: !showWebView,
-      bottomNavigationBar: screenSizeOf(context) == ScreenSize.small
-          ? BlurBar(
-              child: SafeArea(
-                child: IconButtonTheme(
-                  data: const IconButtonThemeData(
-                    style: ButtonStyle(
-                      padding: WidgetStatePropertyAll(
-                        EdgeInsets.all(12.0),
-                      ),
-                    ),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: bottomButtons(),
-                  ),
-                ),
-              ),
-            )
-          : null,
+      bottomNavigationBar: ArticleBottomButtons(
+        articleNotifier: currentArticleNotifier,
+        formattingSetting: formattingSetting,
+        showWebView: showWebView,
+        changeShowWebView: () {
+          setState(() {
+            showWebView = !showWebView;
+          });
+        },
+      ),
       body: widget.index != null && widget.articleIDs != null
-          ? PageView.builder(
-              allowImplicitScrolling: true,
+          ? ArticleViewPages(
               controller: _pageController,
               onPageChanged: (value) => _onPageChanged(value),
-              itemCount: widget.articleIDs!.length,
-              itemBuilder: (context, index) {
-                return FutureBuilder(
-                  future: Api.of(context)
-                      .db!
-                      .loadArticle(widget.articleIDs!.elementAt(index), true),
-                  builder: (context, snapshot) {
-                    if (snapshot.data != null) {
-                      return ArticlePage(
-                        key: ValueKey("${snapshot.data}$showWebView"),
-                        article: snapshot.data!,
-                        showWebView: showWebView,
-                        formattingSetting: formattingSetting,
-                      );
-                    } else {
-                      return const Center(
-                        child: SizedBox(
-                          height: 48,
-                          width: 48,
-                          child: FittedBox(
-                            child: CircularProgressIndicator.adaptive(),
-                          ),
-                        ),
-                      );
-                    }
-                  },
-                );
-              },
+              articleIDs: widget.articleIDs!,
+              showWebView: showWebView,
+              formattingSetting: formattingSetting,
             )
           : const SizedBox(),
+    );
+  }
+}
+
+class ArticleViewPages extends StatefulWidget {
+  const ArticleViewPages(
+      {super.key,
+      required this.articleIDs,
+      required this.controller,
+      required this.onPageChanged,
+      required this.showWebView,
+      required this.formattingSetting});
+  final Set<String> articleIDs;
+  final PageController controller;
+  final void Function(int) onPageChanged;
+  final bool showWebView;
+  final FormattingSetting formattingSetting;
+
+  @override
+  State<ArticleViewPages> createState() => _ArticleViewPagesState();
+}
+
+class _ArticleViewPagesState extends State<ArticleViewPages> {
+  @override
+  Widget build(BuildContext context) {
+    return PageView.builder(
+      allowImplicitScrolling: true,
+      controller: widget.controller,
+      onPageChanged: (value) => widget.onPageChanged(value),
+      itemCount: widget.articleIDs.length,
+      itemBuilder: (context, index) {
+        return FutureBuilder(
+          future: Api.of(context)
+              .db!
+              .loadArticle(widget.articleIDs.elementAt(index), true),
+          builder: (context, snapshot) {
+            if (snapshot.data != null) {
+              return ArticlePage(
+                key: ValueKey("${snapshot.data}${widget.showWebView}"),
+                article: snapshot.data!,
+                showWebView: widget.showWebView,
+                formattingSetting: widget.formattingSetting,
+              );
+            } else {
+              return const Center(
+                child: SizedBox(
+                  height: 48,
+                  width: 48,
+                  child: FittedBox(
+                    child: CircularProgressIndicator.adaptive(),
+                  ),
+                ),
+              );
+            }
+          },
+        );
+      },
     );
   }
 }
@@ -229,94 +165,14 @@ class ArticleCount extends StatelessWidget {
       builder: (context, value, child) {
         if (value != null) {
           return Text(
-              "${articleIDS.toList().indexOf(value.id) + 1} / ${articleIDS.length}");
+            "${articleIDS.toList().indexOf(value.id) + 1} / ${articleIDS.length}",
+            style: TextStyle(fontWeight: FontWeight.bold),
+          );
         } else {
-          return Text("1 / ${articleIDS.length}");
+          return const Text("");
         }
       },
     );
-  }
-}
-
-class FormattingSheet extends StatelessWidget {
-  const FormattingSheet({
-    super.key,
-    required this.formattingSetting,
-  });
-
-  final FormattingSetting formattingSetting;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListenableBuilder(
-        listenable: formattingSetting,
-        builder: (context, child) {
-          return DraggableScrollableSheet(
-            expand: false,
-            builder: (context, scrollController) => ListView(
-              controller: scrollController,
-              children: [
-                const ListTile(
-                  title: Text(
-                    "Text Formatting",
-                    textScaler: TextScaler.linear(1.25),
-                  ),
-                ),
-                ListTile(
-                  title: const Text("Font Size"),
-                  subtitle: Slider.adaptive(
-                    value: formattingSetting.fontSize,
-                    min: 10,
-                    max: 30,
-                    divisions: 20,
-                    label: formattingSetting.fontSize.toString(),
-                    onChanged: (value) {
-                      formattingSetting.setSize(value);
-                    },
-                  ),
-                ),
-                ListTile(
-                  title: const Text("Line Height"),
-                  subtitle: Slider.adaptive(
-                    value: formattingSetting.lineHeight,
-                    min: 1.0,
-                    max: 2.0,
-                    divisions: 10,
-                    label: formattingSetting.lineHeight.toString(),
-                    onChanged: (value) {
-                      formattingSetting.setLineHeight(value);
-                    },
-                  ),
-                ),
-                ListTile(
-                  title: const Text("Word Spacing"),
-                  subtitle: Slider.adaptive(
-                    value: formattingSetting.wordSpacing,
-                    min: 0,
-                    max: 10,
-                    divisions: 10,
-                    label: formattingSetting.wordSpacing.toString(),
-                    onChanged: (value) {
-                      formattingSetting.setSpacing(value);
-                    },
-                  ),
-                ),
-                const ListTile(
-                  title: Text("Font"),
-                ),
-                ...formattingSetting.fonts.map((font) => RadioListTile.adaptive(
-                      groupValue: formattingSetting.font,
-                      value: font,
-                      dense: true,
-                      title: Text(font),
-                      onChanged: (value) {
-                        formattingSetting.setFontFamily(font);
-                      },
-                    ))
-              ],
-            ),
-          );
-        });
   }
 }
 
@@ -357,70 +213,6 @@ class _ArticlePageState extends State<ArticlePage> {
         formattingSetting: widget.formattingSetting,
       );
     }
-  }
-}
-
-class SetUnreadButton extends StatefulWidget {
-  const SetUnreadButton({super.key, required this.articleNotifier});
-  final ValueNotifier<Article?> articleNotifier;
-
-  @override
-  State<SetUnreadButton> createState() => _SetUnreadButtonState();
-}
-
-class _SetUnreadButtonState extends State<SetUnreadButton> {
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder(
-      valueListenable: widget.articleNotifier,
-      builder: (context, value, child) {
-        bool isRead = value?.read ?? true;
-        return IconButton(
-          onPressed: () {
-            if (value != null) {
-              value.read = !isRead;
-              setState(() {
-                Api.of(context).setRead(value.id, value.subID, !isRead);
-              });
-            }
-          },
-          tooltip: isRead ? "Set Unread" : "Set Read",
-          icon: Icon(
-            isRead ? Icons.circle_outlined : Icons.circle_rounded,
-          ),
-        );
-      },
-    );
-  }
-}
-
-class SetStarButton extends StatefulWidget {
-  const SetStarButton({super.key, required this.articleNotifier});
-  final ValueNotifier<Article?> articleNotifier;
-
-  @override
-  State<SetStarButton> createState() => _SetStarButtonState();
-}
-
-class _SetStarButtonState extends State<SetStarButton> {
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder(
-      valueListenable: widget.articleNotifier,
-      builder: (context, value, child) {
-        bool isStarred = value?.starred ?? false;
-        return IconButton(
-          onPressed: () {
-            value!.starred = !isStarred;
-            setState(() {
-              Api.of(context).setStarred(value.id, value.subID, !isStarred);
-            });
-          },
-          tooltip: isStarred ? "UnFavorite" : "Favorite",
-          icon: Icon(isStarred ? Icons.star : Icons.star_border),
-        );
-      },
-    );
   }
 }
 
@@ -538,18 +330,14 @@ class ArticleTextWidget extends StatelessWidget {
     );
   }
 
-  void showImage(BuildContext context, String title, String url) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return ImageViewer(
-          image: CachedNetworkImage(
-            imageUrl: url,
-          ),
-          text: title,
-          url: url,
-        );
-      },
+  void showImage(BuildContext context, String url) {
+    showImageViewer(
+      context,
+      CachedNetworkImageProvider(url),
+      swipeDismissible: true,
+      doubleTapZoomable: true,
+      immersive: false,
+      backgroundColor: Colors.black54,
     );
   }
 
@@ -579,24 +367,31 @@ class ArticleTextWidget extends StatelessWidget {
               alignment: AlignmentDirectional.bottomStart,
               children: [
                 if (getFirstImage(content) != null)
-                  Container(
-                    foregroundDecoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          Colors.black54,
-                          Colors.black,
-                        ],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        stops: [0.7, 0.85, 1],
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                        maxHeight: MediaQuery.sizeOf(context).height / 2),
+                    child: Container(
+                      width: double.infinity,
+                      foregroundDecoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.black38,
+                            Colors.black54,
+                            Colors.black,
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          stops: [0.7, 0.85, 1],
+                        ),
+                      ),
+                      child: GestureDetector(
+                        onTap: () =>
+                            showImage(context, getFirstImage(content)!),
+                        child: CachedNetworkImage(
+                            fit: BoxFit.fitWidth,
+                            imageUrl: getFirstImage(content)!),
                       ),
                     ),
-                    child: GestureDetector(
-                        onTap: () =>
-                            showImage(context, "", getFirstImage(content)!),
-                        child: CachedNetworkImage(
-                            imageUrl: getFirstImage(content)!)),
                   ),
                 Padding(
                   padding: const EdgeInsets.only(top: kToolbarHeight + 24),
@@ -609,19 +404,19 @@ class ArticleTextWidget extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              title,
-                              maxLines: 2,
-                              textScaler: const TextScaler.linear(1.5),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                shadows: <Shadow>[
-                                  Shadow(
-                                    offset: Offset.zero,
-                                    blurRadius: 5.0,
-                                    color: Colors.black87,
-                                  ),
-                                ],
+                            GestureDetector(
+                              onLongPress: () {
+                                showLinkMenu(context, url);
+                              },
+                              onTap: () {
+                                launchUrl(Uri.parse(url));
+                              },
+                              child: Text(
+                                title,
+                                textScaler: const TextScaler.linear(1.3),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                             Text(
@@ -670,14 +465,6 @@ class ArticleTextWidget extends StatelessWidget {
                 articleContent,
                 buildAsync: true,
                 enableCaching: true,
-                // renderMode: ListViewMode(
-                //   padding: EdgeInsets.only(
-                //     left: 16.0,
-                //     right: 16.0,
-                //     top: MediaQuery.of(context).padding.top + 16.0,
-                //     bottom: MediaQuery.of(context).padding.bottom + 16.0,
-                //   ),
-                // ),
                 onErrorBuilder: (context, element, error) {
                   return Placeholder(
                     child: Text(error.toString()),
@@ -685,10 +472,7 @@ class ArticleTextWidget extends StatelessWidget {
                 },
                 onTapImage: (p0) {
                   if (p0.sources.isNotEmpty) {
-                    showImage(
-                        context,
-                        "${p0.alt != null ? "${p0.alt}, " : ""}${p0.title}",
-                        p0.sources.first.url);
+                    showImage(context, p0.sources.first.url);
                   }
                 },
                 customWidgetBuilder: (element) {
@@ -717,24 +501,10 @@ class ArticleTextWidget extends StatelessWidget {
                     return InlineCustomWidget(
                       child: GestureDetector(
                         onLongPress: () {
-                          // if (isImg) {
-                          //   showImage(
-                          //       context,
-                          //       "${element.attributes["alt"] != null ? "${element.attributes["alt"]}, " : ""}${element.text}",
-                          //       element.attributes["href"]!);
-                          // } else {
                           showLinkMenu(context, element.attributes["href"]!);
-                          // }
                         },
                         onTap: () {
-                          // if (isImg) {
-                          //   showImage(
-                          //       context,
-                          //       "${element.attributes["alt"] != null ? "${element.attributes["alt"]}, " : ""}${element.text}",
-                          //       element.attributes["href"]!);
-                          // } else {
                           launchUrl(Uri.parse(element.attributes["href"]!));
-                          // }
                         },
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,

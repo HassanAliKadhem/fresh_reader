@@ -20,9 +20,9 @@ An opinionated client for FreshRss (not affiliated) made just for me. but you ca
     - [x] font size
     - [x] word spacing
     - [x] line height
+- [x] search articles
 
 ## Todo
-- [ ] search articles
 - [ ] add date separator in article list
 - [ ] edit tags
 - [ ] delete tags
@@ -30,6 +30,6 @@ An opinionated client for FreshRss (not affiliated) made just for me. but you ca
     - [ ] bionic reading
 
 ## Screenshots
-![Alt text](SimulatorHome.png)
-![Alt text](SimulatorList.png)
-![Alt text](SimulatorArticle.png)
+![Home screen with list of feeds](SimulatorHome.png)
+![Article list](SimulatorList.png)
+![Article view](SimulatorArticle.png)

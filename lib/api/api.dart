@@ -439,7 +439,7 @@ class ApiData extends ChangeNotifier {
             unReadIds[element.key] = articleSub[element.key]!;
           } else if (element.value == DelayedAction.star) {
             starIds[element.key] = articleSub[element.key]!;
-          } else if (element.value == DelayedAction.unstar) {
+          } else if (element.value == DelayedAction.unStar) {
             unstarIds[element.key] = articleSub[element.key]!;
           }
         }
@@ -514,8 +514,13 @@ class ApiData extends ChangeNotifier {
         element["categories"].forEach((cat) {
           categories.add(cat["id"]);
         });
-        subs[element["id"]] = Subscription.fromJson(element);
-        subs[element["id"]]!.categories = categories;
+        try {
+          subs[element["id"]] = Subscription.fromJson(element, true);
+        } catch (e) {
+          subs[element["id"]] = Subscription.fromJson(element, false);
+        } finally {
+          subs[element["id"]]!.categories = categories;
+        }
       });
       db!.saveSubs(subs.values.toList());
     }).catchError((onError) {
@@ -558,7 +563,7 @@ class ApiData extends ChangeNotifier {
       await http.get(
         Uri.parse("$url${con == "" ? "" : "&c=$con"}"),
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json',
           'Authorization': 'GoogleLogin auth=$auth',
         },
@@ -566,9 +571,17 @@ class ApiData extends ChangeNotifier {
         res = jsonDecode(String.fromCharCodes(value.bodyBytes));
         List<Article> articles = [];
         res["items"].forEach((json) {
-          Article article = Article.fromCloudJson(json);
-          articleIDs.add(article.id);
-          articles.add(article);
+          Article? article;
+          try {
+            article = Article.fromCloudJson(json, true);
+          } catch (e) {
+            article = Article.fromCloudJson(json, false);
+          } finally {
+            if (article != null) {
+              articleIDs.add(article.id);
+              articles.add(article);
+            }
+          }
         });
         db!.saveArticles(articles, delayedActions);
         con = res["continuation"]?.toString() ?? "";
@@ -671,11 +684,19 @@ class ApiData extends ChangeNotifier {
         dynamic res = jsonDecode(String.fromCharCodes(response.bodyBytes));
         List<Article> articles = [];
         res["items"].forEach((json) {
-          Article article = Article.fromCloudJson(json);
-          article.read = true;
-          article.starred = true;
-          articleIDs.add(article.id);
-          articles.add(article);
+          Article? article;
+          try {
+            article = Article.fromCloudJson(json, true);
+          } catch (e) {
+            article = Article.fromCloudJson(json, false);
+          } finally {
+            if (article != null) {
+              article.read = true;
+              article.starred = true;
+              articleIDs.add(article.id);
+              articles.add(article);
+            }
+          }
         });
         db!.saveReadArticles(articles);
         con = res["continuation"]?.toString() ?? "";
@@ -734,7 +755,7 @@ class ApiData extends ChangeNotifier {
     String idString = "?";
     for (int i = 0; i < ids.length; i++) {
       delayedActions[ids[i]] =
-          isStar ? DelayedAction.star : DelayedAction.unstar;
+          isStar ? DelayedAction.star : DelayedAction.unStar;
       idString += "s=${subIDs[i]}&i=${ids[i]}&";
     }
     idString = "$idString${isStar ? "a" : "r"}=user/-/state/com.google/starred";
@@ -756,11 +777,12 @@ class ApiData extends ChangeNotifier {
     return true;
   }
 
-  void setRead(String id, String subID, bool isRead) {
+  Article? setRead(String id, String subID, bool isRead) {
     filteredArticles?[id]?.read = isRead;
     _setServerRead([id], [subID], isRead);
     db!.updateArticleRead(id, isRead);
     notifyListeners();
+    return filteredArticles?[id];
   }
 
   void setStarred(String id, String subID, bool isStarred) {
