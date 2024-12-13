@@ -41,26 +41,28 @@ class _MyAppState extends State<MyApp> {
         title: 'FreshReader',
         themeMode: ThemeMode.dark,
         darkTheme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.deepPurple,
-            brightness: Brightness.dark,
-          ),
-          appBarTheme: const AppBarTheme(
-            // backgroundColor: Colors.deepPurple,
-            backgroundColor: Colors.transparent,
-            scrolledUnderElevation: 0,
-            systemOverlayStyle: SystemUiOverlayStyle(
-              statusBarColor: Colors.transparent,
-              systemStatusBarContrastEnforced: false,
-              statusBarIconBrightness: Brightness.light,
-              systemNavigationBarColor: Colors.transparent,
-              systemNavigationBarDividerColor: Colors.transparent,
-              systemNavigationBarContrastEnforced: false,
-              systemNavigationBarIconBrightness: Brightness.light,
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.deepPurple,
+              brightness: Brightness.dark,
             ),
-          ),
-          useMaterial3: true,
-        ),
+            appBarTheme: const AppBarTheme(
+              // backgroundColor: Colors.deepPurple,
+              backgroundColor: Colors.transparent,
+              scrolledUnderElevation: 0,
+              systemOverlayStyle: SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                systemStatusBarContrastEnforced: false,
+                statusBarIconBrightness: Brightness.light,
+                systemNavigationBarColor: Colors.transparent,
+                systemNavigationBarDividerColor: Colors.transparent,
+                systemNavigationBarContrastEnforced: false,
+                systemNavigationBarIconBrightness: Brightness.light,
+              ),
+            ),
+            listTileTheme: ListTileThemeData(
+              selectedTileColor: Colors.white10,
+            )),
         home: const HomeWidget(),
       ),
     );

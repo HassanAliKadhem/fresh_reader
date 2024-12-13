@@ -39,9 +39,11 @@ class _ArticleViewState extends State<ArticleView> {
     super.didChangeDependencies();
     if (Api.of(context).filteredIndex != null &&
         _pageController.hasClients &&
-        Api.of(context).filteredIndex != _pageController.page!.toInt()) {
+        Api.of(context).filteredIndex != _pageController.page!.toInt() &&
+        _pageController.page!.toInt() == _pageController.page) {
+      final int index = Api.of(context).filteredIndex!;
       Future.microtask(() {
-        _pageController.jumpToPage(Api.of(context).filteredIndex!);
+        _pageController.jumpToPage(index);
       });
     }
   }
@@ -68,16 +70,18 @@ class _ArticleViewState extends State<ArticleView> {
       ),
       extendBodyBehindAppBar: !showWebView,
       extendBody: !showWebView,
-      bottomNavigationBar: ArticleBottomButtons(
-        articleNotifier: currentArticleNotifier,
-        formattingSetting: formattingSetting,
-        showWebView: showWebView,
-        changeShowWebView: () {
-          setState(() {
-            showWebView = !showWebView;
-          });
-        },
-      ),
+      bottomNavigationBar: widget.index != null && widget.articleIDs != null
+          ? ArticleBottomButtons(
+              articleNotifier: currentArticleNotifier,
+              formattingSetting: formattingSetting,
+              showWebView: showWebView,
+              changeShowWebView: () {
+                setState(() {
+                  showWebView = !showWebView;
+                });
+              },
+            )
+          : null,
       body: widget.index != null && widget.articleIDs != null
           ? ArticleViewPages(
               controller: _pageController,
@@ -86,7 +90,9 @@ class _ArticleViewState extends State<ArticleView> {
               showWebView: showWebView,
               formattingSetting: formattingSetting,
             )
-          : const SizedBox(),
+          : const Center(
+              child: Text("Please select an article"),
+            ),
     );
   }
 }
@@ -216,12 +222,18 @@ class _ArticlePageState extends State<ArticlePage> {
   }
 }
 
-class ArticleWebWidget extends StatelessWidget {
-  ArticleWebWidget({super.key, required this.url});
+class ArticleWebWidget extends StatefulWidget {
+  const ArticleWebWidget({super.key, required this.url});
   final String url;
+
+  @override
+  State<ArticleWebWidget> createState() => _ArticleWebWidgetState();
+}
+
+class _ArticleWebWidgetState extends State<ArticleWebWidget> {
   late final WebViewController webViewController = WebViewController()
     ..setJavaScriptMode(JavaScriptMode.unrestricted)
-    ..loadRequest(Uri.parse(url));
+    ..loadRequest(Uri.parse(widget.url));
 
   @override
   Widget build(BuildContext context) {
@@ -289,6 +301,7 @@ class ArticleTextWidget extends StatelessWidget {
           title: Text(
             link,
             textScaler: const TextScaler.linear(0.75),
+            style: TextStyle(color: Colors.white60),
           ),
           contentPadding: EdgeInsets.zero,
           clipBehavior: Clip.hardEdge,
@@ -343,7 +356,7 @@ class ArticleTextWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String articleContent = content.replaceAll("<a", "<a class=\"link\"");
+    String? imageUrl = getFirstImage(content);
     return ListenableBuilder(
       listenable: formattingSetting,
       builder: (context, child) {
@@ -366,7 +379,7 @@ class ArticleTextWidget extends StatelessWidget {
             Stack(
               alignment: AlignmentDirectional.bottomStart,
               children: [
-                if (getFirstImage(content) != null)
+                if (imageUrl != null)
                   ConstrainedBox(
                     constraints: BoxConstraints(
                         maxHeight: MediaQuery.sizeOf(context).height / 2),
@@ -384,85 +397,80 @@ class ArticleTextWidget extends StatelessWidget {
                           stops: [0.7, 0.85, 1],
                         ),
                       ),
-                      child: GestureDetector(
-                        onTap: () =>
-                            showImage(context, getFirstImage(content)!),
-                        child: CachedNetworkImage(
-                            fit: BoxFit.fitWidth,
-                            imageUrl: getFirstImage(content)!),
-                      ),
+                      child: CachedNetworkImage(
+                          fit: BoxFit.fitWidth, imageUrl: imageUrl),
                     ),
                   ),
                 Padding(
                   padding: const EdgeInsets.only(top: kToolbarHeight + 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            GestureDetector(
-                              onLongPress: () {
-                                showLinkMenu(context, url);
-                              },
-                              onTap: () {
-                                launchUrl(Uri.parse(url));
-                              },
-                              child: Text(
+                  child: InkWell(
+                    onLongPress: () {
+                      showLinkMenu(context, url);
+                    },
+                    onTap: () {
+                      launchUrl(Uri.parse(url));
+                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
                                 title,
-                                textScaler: const TextScaler.linear(1.3),
+                                textScaler: const TextScaler.linear(1.25),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            ),
-                            Text(
-                              "${getRelativeDate(timePublished)}, ${DateTime.fromMillisecondsSinceEpoch(timePublished * 1000).toString().split(".").first}",
-                              maxLines: 1,
-                            ),
-                          ],
+                              Text(
+                                "${getRelativeDate(timePublished)}, ${DateTime.fromMillisecondsSinceEpoch(timePublished * 1000).toString().split(".").first}",
+                                maxLines: 1,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      Container(
-                        height: 20,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).cardColor,
-                          borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(20)),
+                        Container(
+                          height: 20,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).cardColor,
+                            borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(20)),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                alignment: WrapAlignment.start,
+            Text.rich(
+              textScaler: TextScaler.linear(1.15),
+              TextSpan(
                 children: [
-                  CachedNetworkImage(
-                    height: 48,
-                    width: 48,
-                    imageUrl: iconUrl ?? "",
-                    errorWidget: (context, url, error) =>
-                        const Icon(Icons.error),
+                  TextSpan(text: "    "),
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.bottom,
+                    child: CachedNetworkImage(
+                      alignment: Alignment.bottomCenter,
+                      height: 16,
+                      width: 16,
+                      imageUrl: iconUrl ?? "",
+                      errorWidget: (context, url, error) =>
+                          const Icon(Icons.error),
+                    ),
                   ),
-                  Text(
-                    "  $subName",
-                    textScaler: const TextScaler.linear(1.3),
-                  ),
+                  TextSpan(text: "  $subName"),
                 ],
               ),
             ),
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: HtmlWidget(
-                articleContent,
+                content.replaceAll("<a", "<a class=\"link\""),
                 buildAsync: true,
                 enableCaching: true,
                 onErrorBuilder: (context, element, error) {

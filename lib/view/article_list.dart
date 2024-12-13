@@ -193,7 +193,15 @@ class ArticleWidget extends StatelessWidget {
     String? iconUrl = Api.of(context).getIconUrl(article.subID);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12.0),
-      child: SizedBox(
+      child: Container(
+        color: Api.of(context).filteredArticleIDs != null &&
+                Api.of(context).filteredIndex != null &&
+                Api.of(context)
+                        .filteredArticleIDs!
+                        .elementAt(Api.of(context).filteredIndex!) ==
+                    article.id
+            ? Theme.of(context).listTileTheme.selectedTileColor
+            : null,
         height: 128,
         child: Opacity(
           opacity: (article.read) ? 0.5 : 1,

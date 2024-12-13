@@ -59,10 +59,9 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
                       children: [
                         Icon(
                           isRead
-                              ? Icons.check_circle_outline_outlined
-                              : Icons.circle_outlined,
+                              ? Icons.check_circle_outline_rounded
+                              : Icons.circle,
                         ),
-                        //Text(isRead ? "Unread" : "Read"),
                         Text("Read"),
                       ],
                     ),
@@ -270,7 +269,7 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(Icons.text_format_outlined),
-                            Text("Formatting"),
+                            Text("Format"),
                           ],
                         ),
                       ),

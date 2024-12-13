@@ -100,19 +100,13 @@ class CategoryList extends StatefulWidget {
 }
 
 class _CategoryListState extends State<CategoryList> {
-  Map<String, bool> isOpen = <String, bool>{};
+  late Map<String, bool> isOpen = {};
+  // Map.fromEntries(Api.of(context).tags.map((tag) => MapEntry(tag, true)));
 
   @override
   void initState() {
     super.initState();
     networkError = mainLoadError;
-    Future.microtask(
-      () {
-        Api.of(context).tags.forEach((tag) {
-          isOpen[tag] = true;
-        });
-      },
-    );
   }
 
   void openArticleList(BuildContext context, String? column, String? value) {
@@ -142,7 +136,7 @@ class _CategoryListState extends State<CategoryList> {
               clipBehavior: Clip.none,
               children: [
                 Padding(
-                  padding: const EdgeInsets.all(8.0),
+                  padding: const EdgeInsets.all(16.0),
                   child: Text(networkError.toString()),
                 ),
               ],
@@ -167,20 +161,25 @@ class _CategoryListState extends State<CategoryList> {
                   }
                 }
                 return ListView(
-                  cacheExtent: Api.of(context).tags.length + 1,
                   children: [
                     ListTile(
+                      selected: Api.of(context).filteredTitle == "All Articles",
                       title: const Text("All Articles"),
                       trailing: UnreadCount(allCount),
                       onTap: () => openArticleList(context, null, null),
                     ),
                     ListTile(
+                      selected: Api.of(context).filteredTitle == "Starred",
                       title: const Text("Starred"),
                       trailing: UnreadCount(snapshot.data!["Starred"] ?? 0),
                       onTap: () =>
                           openArticleList(context, "isStarred", "true"),
                     ),
-                    ...Api.of(context).tags.map(
+                    ...Api.of(context)
+                        .tags
+                        .where(
+                            (tag) => tag != "user/-/state/com.google/starred")
+                        .map(
                       (tag) {
                         Map<String, Subscription> currentSubscriptions = {};
                         Api.of(context).subs.forEach((key, value) {
@@ -188,13 +187,19 @@ class _CategoryListState extends State<CategoryList> {
                             currentSubscriptions[key] = value;
                           }
                         });
+                        bool isExpanded = true;
+                        if (isOpen.containsKey(tag)) {
+                          isExpanded = isOpen[tag]!;
+                        } else {
+                          isOpen[tag] = true;
+                        }
                         return Card(
                           clipBehavior: Clip.hardEdge,
                           margin: const EdgeInsets.all(8.0),
                           child: ExpansionTile(
                             title: Text(tag.split("/").last),
                             shape: const Border(),
-                            initiallyExpanded: isOpen[tag] ?? true,
+                            initiallyExpanded: isExpanded,
                             onExpansionChanged: (value) {
                               setState(() {
                                 isOpen[tag] = value;
@@ -204,6 +209,7 @@ class _CategoryListState extends State<CategoryList> {
                             childrenPadding: const EdgeInsets.only(left: 40.0),
                             children: [
                               ListTile(
+                                selected: Api.of(context).filteredTitle == tag,
                                 title: Text("All ${tag.split("/").last}"),
                                 trailing: UnreadCount(snapshot.data![tag] ?? 0),
                                 onTap: () =>
@@ -215,6 +221,8 @@ class _CategoryListState extends State<CategoryList> {
                                   .map<Widget>(
                                 (key) {
                                   return ListTile(
+                                    selected: Api.of(context).filteredTitle ==
+                                        currentSubscriptions[key]!.title,
                                     title:
                                         Text(currentSubscriptions[key]!.title),
                                     trailing:
