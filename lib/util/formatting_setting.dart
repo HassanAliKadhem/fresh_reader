@@ -1,7 +1,10 @@
 import 'dart:io';
 
+import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import '../api/database.dart';
+import '../main.dart';
 
 class FormattingSetting extends ChangeNotifier {
   double fontSize = 14.0;
@@ -17,35 +20,32 @@ class FormattingSetting extends ChangeNotifier {
   bool isBionic = false;
 
   FormattingSetting() {
-    load();
-  }
-
-  void load() async {
-    final SharedPreferences preferences = await SharedPreferences.getInstance();
-    fontSize = preferences.getDouble("format_fontSize") ?? fontSize;
-    wordSpacing = preferences.getDouble("format_wordSpacing") ?? wordSpacing;
-    lineHeight = preferences.getDouble("format_lineHeight") ?? lineHeight;
-    String? newFont = preferences.getString("format_font");
-    if (newFont != null) {
-      font = newFont;
-    }
-    isBionic = preferences.getBool("format_bionic") ?? isBionic;
-    notifyListeners();
-  }
-
-  void save() async {
-    final SharedPreferences preferences = await SharedPreferences.getInstance();
-    preferences.setDouble("format_fontSize", fontSize);
-    preferences.setDouble("format_wordSpacing", wordSpacing);
-    preferences.setDouble("format_lineHeight", lineHeight);
-    preferences.setString("format_font", font);
-    preferences.setBool("format_bionic", isBionic);
+    database.select(database.settings).getSingle().then(
+      (settings) {
+        fontSize = settings.fontSize;
+        wordSpacing = settings.wordSpacing;
+        lineHeight = settings.lineHeight;
+        isBionic = settings.isBionic;
+        font = settings.font;
+      },
+    );
+    // notifyListeners();
   }
 
   @override
   void notifyListeners() {
     super.notifyListeners();
-    save();
+    (database.update(database.settings)
+          ..where(
+            (tbl) => tbl.id.equals(1),
+          ))
+        .write(SettingsCompanion.insert(
+      fontSize: Value(fontSize),
+      wordSpacing: Value(wordSpacing),
+      lineHeight: Value(lineHeight),
+      font: Value(font),
+      isBionic: Value(isBionic),
+    ));
   }
 
   void setSize(double newSize) {

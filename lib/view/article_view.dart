@@ -5,43 +5,55 @@ import 'package:flutter/material.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:fresh_reader/main.dart';
+import 'package:fresh_reader/view/article_list.dart';
 import 'package:fresh_reader/widget/article_buttons.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-import '../api/api.dart';
-import '../api/data_types.dart';
+import '../api/database.dart';
+import '../api/filter.dart';
+import '../util/date_helper.dart';
 import '../util/formatting_setting.dart';
 
 class ArticleView extends StatefulWidget {
-  const ArticleView({
-    super.key,
-    required this.index,
-    required this.articleIDs,
-  });
-  final int? index;
-  final Set<String>? articleIDs;
+  const ArticleView({super.key});
   @override
   State<ArticleView> createState() => _ArticleViewState();
 }
-
-ValueNotifier<Article?> currentArticleNotifier = ValueNotifier<Article?>(null);
 
 class _ArticleViewState extends State<ArticleView> {
   bool showWebView = false;
   final FormattingSetting formattingSetting = FormattingSetting();
   late final PageController _pageController =
-      PageController(initialPage: widget.index ?? 0);
+      PageController(initialPage: articleIndex.value ?? 0);
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (Api.of(context).filteredIndex != null &&
+  void initState() {
+    super.initState();
+    print(articleIndex.value);
+    print("init state");
+    if (articleIndex.value != null) {
+      Future.microtask(
+        () => _onPageChanged(articleIndex.value!),
+      );
+    }
+    articleIndex.addListener(() => changeToCurrent());
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    articleIndex.removeListener(() => changeToCurrent());
+  }
+
+  void changeToCurrent() {
+    if (articleIndex.value != null &&
         _pageController.hasClients &&
-        Api.of(context).filteredIndex != _pageController.page!.toInt() &&
+        articleIndex.value != _pageController.page!.toInt() &&
         _pageController.page!.toInt() == _pageController.page) {
-      final int index = Api.of(context).filteredIndex!;
+      final int index = articleIndex.value!;
       Future.microtask(() {
         _pageController.jumpToPage(index);
       });
@@ -49,63 +61,58 @@ class _ArticleViewState extends State<ArticleView> {
   }
 
   void _onPageChanged(int page) {
-    Api.of(context).filteredIndex = page;
-    currentArticleNotifier.value = Api.of(context).setRead(
-        Api.of(context)
-            .filteredArticles![widget.articleIDs?.elementAt(page)]!
-            .id,
-        currentArticleNotifier.value!.subID,
-        true);
+    articleIndex.value = page;
+    Filter.of(context).api?.setRead(currentArticles[articleIndex.value!].$1,
+        currentArticles[articleIndex.value!].$2.serverID, true);
   }
 
   @override
   Widget build(BuildContext context) {
+    if (articleIndex.value == null ||
+        currentArticles.isEmpty ||
+        articleIndex.value! >= currentArticles.length) {
+      return Container();
+    }
     return Scaffold(
       appBar: AppBar(
-        title: ArticleCount(
-          currentArticleNotifier: currentArticleNotifier,
-          articleIDS: widget.articleIDs ?? {},
-        ),
+        title: ArticleCount(),
         // flexibleSpace: const BlurBar(),
+        actions: [
+          FormatButton(
+            formattingSetting: formattingSetting,
+            showWebView: showWebView,
+          ),
+        ],
       ),
       extendBodyBehindAppBar: !showWebView,
       extendBody: !showWebView,
-      bottomNavigationBar: widget.index != null && widget.articleIDs != null
-          ? ArticleBottomButtons(
-              articleNotifier: currentArticleNotifier,
-              formattingSetting: formattingSetting,
-              showWebView: showWebView,
-              changeShowWebView: () {
-                setState(() {
-                  showWebView = !showWebView;
-                });
-              },
-            )
-          : null,
-      body: widget.index != null && widget.articleIDs != null
-          ? ArticleViewPages(
-              controller: _pageController,
-              onPageChanged: (value) => _onPageChanged(value),
-              articleIDs: widget.articleIDs!,
-              showWebView: showWebView,
-              formattingSetting: formattingSetting,
-            )
-          : const Center(
-              child: Text("Please select an article"),
-            ),
+      bottomNavigationBar: ArticleBottomButtons(
+        formattingSetting: formattingSetting,
+        showWebView: showWebView,
+        changeShowWebView: () {
+          setState(() {
+            showWebView = !showWebView;
+          });
+        },
+      ),
+      body: ArticleViewPages(
+        controller: _pageController,
+        onPageChanged: (value) => _onPageChanged(value),
+        showWebView: showWebView,
+        formattingSetting: formattingSetting,
+      ),
     );
   }
 }
 
 class ArticleViewPages extends StatefulWidget {
-  const ArticleViewPages(
-      {super.key,
-      required this.articleIDs,
-      required this.controller,
-      required this.onPageChanged,
-      required this.showWebView,
-      required this.formattingSetting});
-  final Set<String> articleIDs;
+  const ArticleViewPages({
+    super.key,
+    required this.controller,
+    required this.onPageChanged,
+    required this.showWebView,
+    required this.formattingSetting,
+  });
   final PageController controller;
   final void Function(int) onPageChanged;
   final bool showWebView;
@@ -122,32 +129,14 @@ class _ArticleViewPagesState extends State<ArticleViewPages> {
       allowImplicitScrolling: true,
       controller: widget.controller,
       onPageChanged: (value) => widget.onPageChanged(value),
-      itemCount: widget.articleIDs.length,
+      itemCount: currentArticles.length,
       itemBuilder: (context, index) {
-        return FutureBuilder(
-          future: Api.of(context)
-              .db!
-              .loadArticle(widget.articleIDs.elementAt(index), true),
-          builder: (context, snapshot) {
-            if (snapshot.data != null) {
-              return ArticlePage(
-                key: ValueKey("${snapshot.data}${widget.showWebView}"),
-                article: snapshot.data!,
-                showWebView: widget.showWebView,
-                formattingSetting: widget.formattingSetting,
-              );
-            } else {
-              return const Center(
-                child: SizedBox(
-                  height: 48,
-                  width: 48,
-                  child: FittedBox(
-                    child: CircularProgressIndicator.adaptive(),
-                  ),
-                ),
-              );
-            }
-          },
+        return ArticlePage(
+          key: ValueKey("${currentArticles[index].$1.id}${widget.showWebView}"),
+          article: currentArticles[index].$1,
+          subscription: currentArticles[index].$2,
+          showWebView: widget.showWebView,
+          formattingSetting: widget.formattingSetting,
         );
       },
     );
@@ -155,29 +144,15 @@ class _ArticleViewPagesState extends State<ArticleViewPages> {
 }
 
 class ArticleCount extends StatelessWidget {
-  const ArticleCount({
-    super.key,
-    required this.currentArticleNotifier,
-    required this.articleIDS,
-  });
-
-  final ValueNotifier<Article?> currentArticleNotifier;
-  final Set<String> articleIDS;
+  const ArticleCount({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder(
-      valueListenable: currentArticleNotifier,
-      builder: (context, value, child) {
-        if (value != null) {
-          return Text(
-            "${articleIDS.toList().indexOf(value.id) + 1} / ${articleIDS.length}",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          );
-        } else {
-          return const Text("");
-        }
-      },
+    return Text(
+      articleIndex.value == null
+          ? ""
+          : "${articleIndex.value! + 1} / ${currentArticles.length}",
+      style: TextStyle(fontWeight: FontWeight.bold),
     );
   }
 }
@@ -186,11 +161,13 @@ class ArticlePage extends StatefulWidget {
   const ArticlePage({
     super.key,
     required this.article,
+    required this.subscription,
     required this.showWebView,
     required this.formattingSetting,
   });
 
-  final Article article;
+  final ArticleData article;
+  final SubscriptionData subscription;
   final bool showWebView;
   final FormattingSetting formattingSetting;
 
@@ -209,13 +186,7 @@ class _ArticlePageState extends State<ArticlePage> {
     } else {
       return ArticleTextWidget(
         key: ValueKey("text_${widget.article.url}"),
-        url: widget.article.url,
-        title: widget.article.title,
-        content: widget.article.content,
-        feedTitle: Api.of(context).subs[widget.article.subID]?.title,
-        timePublished: widget.article.published,
-        subName: Api.of(context).subs[widget.article.subID]?.title ?? "",
-        iconUrl: Api.of(context).getIconUrl(widget.article.subID),
+        article: widget.article,
         formattingSetting: widget.formattingSetting,
       );
     }
@@ -266,22 +237,10 @@ List<String> imgExtensions = [
 class ArticleTextWidget extends StatelessWidget {
   const ArticleTextWidget({
     super.key,
-    required this.url,
-    required this.title,
-    required this.content,
-    this.iconUrl,
-    required this.subName,
-    this.feedTitle,
-    required this.timePublished,
+    required this.article,
     required this.formattingSetting,
   });
-  final String url;
-  final String title;
-  final String content;
-  final String? iconUrl;
-  final String subName;
-  final String? feedTitle;
-  final int timePublished;
+  final ArticleData article;
   final FormattingSetting formattingSetting;
 
   void showLinkMenu(BuildContext context, String link) {
@@ -356,7 +315,6 @@ class ArticleTextWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String? imageUrl = getFirstImage(content);
     return ListenableBuilder(
       listenable: formattingSetting,
       builder: (context, child) {
@@ -379,7 +337,7 @@ class ArticleTextWidget extends StatelessWidget {
             Stack(
               alignment: AlignmentDirectional.bottomStart,
               children: [
-                if (imageUrl != null)
+                if (article.image != null)
                   ConstrainedBox(
                     constraints: BoxConstraints(
                         maxHeight: MediaQuery.sizeOf(context).height / 2),
@@ -388,27 +346,33 @@ class ArticleTextWidget extends StatelessWidget {
                       foregroundDecoration: const BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            Colors.black38,
                             Colors.black54,
                             Colors.black,
                           ],
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          stops: [0.7, 0.85, 1],
+                          stops: [0.7, 1],
                         ),
                       ),
                       child: CachedNetworkImage(
-                          fit: BoxFit.fitWidth, imageUrl: imageUrl),
+                        fit: BoxFit.fitWidth,
+                        imageUrl: article.image!,
+                        errorWidget: (context, url, error) => kDebugMode
+                            ? Center(
+                                child: Text(error.toString()),
+                              )
+                            : Center(child: Icon(Icons.error)),
+                      ),
                     ),
                   ),
                 Padding(
                   padding: const EdgeInsets.only(top: kToolbarHeight + 24),
                   child: InkWell(
                     onLongPress: () {
-                      showLinkMenu(context, url);
+                      showLinkMenu(context, article.url);
                     },
                     onTap: () {
-                      launchUrl(Uri.parse(url));
+                      launchUrl(Uri.parse(article.url));
                     },
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -420,14 +384,14 @@ class ArticleTextWidget extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                title,
+                                article.title,
                                 textScaler: const TextScaler.linear(1.25),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                               Text(
-                                "${getRelativeDate(timePublished)}, ${DateTime.fromMillisecondsSinceEpoch(timePublished * 1000).toString().split(".").first}",
+                                "${getRelativeDate(article.published)}, ${DateTime.fromMillisecondsSinceEpoch(article.published * 1000).toString().split(".").first}",
                                 maxLines: 1,
                               ),
                             ],
@@ -454,23 +418,33 @@ class ArticleTextWidget extends StatelessWidget {
                   TextSpan(text: "    "),
                   WidgetSpan(
                     alignment: PlaceholderAlignment.bottom,
-                    child: CachedNetworkImage(
-                      alignment: Alignment.bottomCenter,
-                      height: 16,
-                      width: 16,
-                      imageUrl: iconUrl ?? "",
-                      errorWidget: (context, url, error) =>
-                          const Icon(Icons.error),
-                    ),
+                    child: FutureBuilder<SubscriptionData>(
+                        future: (database.select(database.subscription)
+                              ..where((tbl) => tbl.account
+                                  .equals(Filter.of(context).api!.account.id))
+                              ..where(
+                                  (tbl) => tbl.id.equals(article.subscription)))
+                            .getSingle(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) return const Icon(Icons.error);
+                          return CachedNetworkImage(
+                            alignment: Alignment.bottomCenter,
+                            height: 16,
+                            width: 16,
+                            imageUrl: snapshot.data!.iconUrl,
+                            errorWidget: (context, url, error) =>
+                                const Icon(Icons.error),
+                          );
+                        }),
                   ),
-                  TextSpan(text: "  $subName"),
+                  TextSpan(text: "  ${"article.subscriptionId.title"}"),
                 ],
               ),
             ),
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: HtmlWidget(
-                content.replaceAll("<a", "<a class=\"link\""),
+                article.content.replaceAll("<a", "<a class=\"link\""),
                 buildAsync: true,
                 enableCaching: true,
                 onErrorBuilder: (context, element, error) {

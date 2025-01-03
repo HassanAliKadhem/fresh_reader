@@ -33,3 +33,9 @@ An opinionated client for FreshRss (not affiliated) made just for me. but you ca
 ![Home screen with list of feeds](SimulatorHome.png)
 ![Article list](SimulatorList.png)
 ![Article view](SimulatorArticle.png)
+
+## to update models
+run the following to update the db bindings
+```dart
+dart run build_runner build
+```
