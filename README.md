@@ -3,6 +3,7 @@
 An opinionated client for FreshRss (not affiliated) made just for me. but you can use it if you want
 
 ## Features
+- [x] multi account feature
 - [x] get unread articles from FreshRss Server
 - [x] sync read articles to server
 - [x] sync starred articles from server

@@ -1,0 +1,2 @@
+/Users/hassan/Documents/Flutter/fresh_reader/android/app/.cxx/RelWithDebInfo/3xr4i5pm/armeabi-v7a/CMakeFiles/edit_cache.dir
+/Users/hassan/Documents/Flutter/fresh_reader/android/app/.cxx/RelWithDebInfo/3xr4i5pm/armeabi-v7a/CMakeFiles/rebuild_cache.dir

@@ -65,12 +65,13 @@ class _HtmlViewState extends State<HtmlView> {
             TextSpan(
               children: [
                 getSpans(
-                    context,
-                    parse(
-                      widget.html
-                          .replaceAll("<br>", "\n")
-                          .replaceAll("<br />", "\n"),
-                    )),
+                  context,
+                  parse(
+                    widget.html
+                        .replaceAll("<br>", "\n")
+                        .replaceAll("<br />", "\n"),
+                  ),
+                ),
               ],
             ),
           );
@@ -106,93 +107,101 @@ InlineSpan getSpans(BuildContext context, dom.Node node) {
 InlineSpan generateSpan(BuildContext context, dom.Node element) {
   if (element.attributes.containsKey("href")) {
     return WidgetSpan(
-        child: GestureDetector(
-      onTap: () {
-        if (HtmlFunctions.of(context).onLinkTap != null &&
-            element.attributes.containsKey("href")) {
-          HtmlFunctions.of(context).onLinkTap!(element.attributes["href"]!);
-        }
-      },
-      onLongPress: () {
-        if (HtmlFunctions.of(context).onLinkLongPress != null &&
-            element.attributes.containsKey("href")) {
-          HtmlFunctions.of(context)
-              .onLinkLongPress!(element.attributes["href"]!);
-        }
-      },
-      child: Text(
-        element.text ?? "",
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.primary,
-          decoration: TextDecoration.underline,
+      child: GestureDetector(
+        onTap: () {
+          if (HtmlFunctions.of(context).onLinkTap != null &&
+              element.attributes.containsKey("href")) {
+            HtmlFunctions.of(context).onLinkTap!(element.attributes["href"]!);
+          }
+        },
+        onLongPress: () {
+          if (HtmlFunctions.of(context).onLinkLongPress != null &&
+              element.attributes.containsKey("href")) {
+            HtmlFunctions.of(context).onLinkLongPress!(
+              element.attributes["href"]!,
+            );
+          }
+        },
+        child: Text(
+          element.text ?? "",
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.primary,
+            decoration: TextDecoration.underline,
+          ),
         ),
       ),
-    ));
+    );
   } else if (element.attributes.containsKey("src")) {
     if (element.parent?.localName == "video") {
       final VideoPlayerController videoPlayerController =
           VideoPlayerController.networkUrl(
-              Uri.parse(element.attributes["src"]!));
+            Uri.parse(element.attributes["src"]!),
+          );
       ChewieController controller = ChewieController(
         videoPlayerController: videoPlayerController,
         autoPlay: true,
         looping: true,
         errorBuilder: (context, errorMessage) {
           return Placeholder(
-              child: Text("${element.attributes["src"]} $errorMessage"));
+            child: Text("${element.attributes["src"]} $errorMessage"),
+          );
         },
       );
       return WidgetSpan(
-        child: LayoutBuilder(builder: (context, constraints) {
-          return AspectRatio(
-            aspectRatio: videoPlayerController.value.aspectRatio,
-            child: SizedBox(
-              width: constraints.maxWidth,
-              child: Chewie(controller: controller),
-            ),
-          );
-        }),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return AspectRatio(
+              aspectRatio: videoPlayerController.value.aspectRatio,
+              child: SizedBox(
+                width: constraints.maxWidth,
+                child: Chewie(controller: controller),
+              ),
+            );
+          },
+        ),
       );
     } else {
       return WidgetSpan(
-          child: Padding(
-        padding: const EdgeInsets.only(right: 8.0),
-        child: GestureDetector(
-          onTap: () {
-            if (HtmlFunctions.of(context).onImgTap != null &&
-                element.attributes.containsKey("src")) {
-              HtmlFunctions.of(context).onImgTap!(element.attributes["src"]!);
-            }
-          },
-          onLongPress: () {
-            if (HtmlFunctions.of(context).onImgLongPress != null &&
-                element.attributes.containsKey("src")) {
-              HtmlFunctions.of(context)
-                  .onImgLongPress!(element.attributes["src"]!);
-            }
-          },
-          child: CachedNetworkImage(
-            fit: BoxFit.fitWidth,
-            width: double.infinity,
-            imageUrl: element.attributes["src"]!,
-            progressIndicatorBuilder: (context, url, progress) {
-              return SizedBox(
-                height: 48,
-                width: 48,
-                child: FittedBox(
-                  child: CircularProgressIndicator.adaptive(
-                    value: progress.progress,
+        child: Padding(
+          padding: const EdgeInsets.only(right: 8.0),
+          child: GestureDetector(
+            onTap: () {
+              if (HtmlFunctions.of(context).onImgTap != null &&
+                  element.attributes.containsKey("src")) {
+                HtmlFunctions.of(context).onImgTap!(element.attributes["src"]!);
+              }
+            },
+            onLongPress: () {
+              if (HtmlFunctions.of(context).onImgLongPress != null &&
+                  element.attributes.containsKey("src")) {
+                HtmlFunctions.of(context).onImgLongPress!(
+                  element.attributes["src"]!,
+                );
+              }
+            },
+            child: CachedNetworkImage(
+              fit: BoxFit.fitWidth,
+              width: double.infinity,
+              imageUrl: element.attributes["src"]!,
+              progressIndicatorBuilder: (context, url, progress) {
+                return SizedBox(
+                  height: 48,
+                  width: 48,
+                  child: FittedBox(
+                    child: CircularProgressIndicator.adaptive(
+                      value: progress.progress,
+                    ),
                   ),
-                ),
-              );
-            },
-            errorWidget: (context, url, error) {
-              debugPrint("$url: $error");
-              return Placeholder(child: Text(error.toString()));
-            },
+                );
+              },
+              errorWidget: (context, url, error) {
+                debugPrint("$url: $error");
+                return Placeholder(child: Text(error.toString()));
+              },
+            ),
           ),
         ),
-      ));
+      );
     }
   } else if (element.nodeType == 1) {
     return TextSpan(text: "\n${element.text}\n");

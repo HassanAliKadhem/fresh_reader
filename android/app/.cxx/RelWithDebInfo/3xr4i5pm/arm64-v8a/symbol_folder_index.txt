@@ -1,0 +1,1 @@
+/Users/hassan/Documents/Flutter/fresh_reader/build/app/intermediates/cxx/RelWithDebInfo/3xr4i5pm/obj/arm64-v8a
