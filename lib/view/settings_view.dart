@@ -361,7 +361,7 @@ class _SettingsViewState extends State<SettingsView> {
             ),
             const Divider(indent: 8.0, endIndent: 8.0),
             AboutListTile(
-              applicationVersion: "1.2.0",
+              applicationVersion: "1.2.1",
               aboutBoxChildren: [
                 const ListTile(
                   title: Text("Made By"),
