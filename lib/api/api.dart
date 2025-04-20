@@ -110,7 +110,7 @@ class ApiData extends ChangeNotifier {
       Map<String, String> readIds = {};
       Map<String, String> unReadIds = {};
       Map<String, String> starIds = {};
-      Map<String, String> unstarIds = {};
+      Map<String, String> unStarIds = {};
 
       for (var element in delayedActions.entries) {
         if (articleSub[element.key] != null) {
@@ -121,7 +121,7 @@ class ApiData extends ChangeNotifier {
           } else if (element.value == DelayedAction.star) {
             starIds[element.key] = articleSub[element.key]!;
           } else if (element.value == DelayedAction.unStar) {
-            unstarIds[element.key] = articleSub[element.key]!;
+            unStarIds[element.key] = articleSub[element.key]!;
           }
         }
       }
@@ -143,8 +143,8 @@ class ApiData extends ChangeNotifier {
         true,
       );
       await _setServerStar(
-        unstarIds.keys.toList(),
-        unstarIds.values.toList(),
+        unStarIds.keys.toList(),
+        unStarIds.values.toList(),
         false,
       );
       debugPrint("synced delayed actions: ${delayedActions.length}");

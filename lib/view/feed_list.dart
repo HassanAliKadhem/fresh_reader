@@ -150,7 +150,7 @@ class UnreadCount extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       decoration: BoxDecoration(
         borderRadius: const BorderRadius.all(Radius.circular(5)),
-        color: Theme.of(context).dialogBackgroundColor,
+        color: Theme.of(context).scaffoldBackgroundColor,
       ),
       child: Text(unread.toString()),
     );

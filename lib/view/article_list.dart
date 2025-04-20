@@ -300,7 +300,7 @@ class ArticleWidget extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              TextSpan(text: "  ${subTitle}"),
+                              TextSpan(text: "  $subTitle"),
                             ],
                           ),
                         ),

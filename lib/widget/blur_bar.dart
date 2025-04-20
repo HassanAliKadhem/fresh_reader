@@ -16,16 +16,16 @@ class BlurBar extends StatelessWidget {
           decoration: BoxDecoration(
             color: Theme.of(
               context,
-            ).canvasColor.withOpacity(hasBorder ? 0.5 : 0.3),
+            ).canvasColor.withAlpha(hasBorder ? 128 : 80),
             border:
                 !hasBorder
                     ? null
                     : Border(
                       bottom: BorderSide(
-                        color: Theme.of(context).dividerColor.withOpacity(0.15),
+                        color: Theme.of(context).dividerColor.withAlpha(32),
                       ),
                       top: BorderSide(
-                        color: Theme.of(context).dividerColor.withOpacity(0.15),
+                        color: Theme.of(context).dividerColor.withAlpha(32),
                       ),
                     ),
           ),
