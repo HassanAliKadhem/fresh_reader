@@ -1,9 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:fresh_reader/widget/blur_bar.dart';
 
 import '../api/api.dart';
 import '../api/data_types.dart';
+import '../widget/blur_bar.dart';
 import 'article_view.dart';
 
 class ArticleList extends StatefulWidget {

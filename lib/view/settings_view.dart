@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:fresh_reader/main.dart';
-import 'package:fresh_reader/widget/adaptive_text_field.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api.dart';
 import '../api/data_types.dart';
 import '../api/database.dart';
+import '../widget/adaptive_text_field.dart';
 
 class SettingsView extends StatefulWidget {
   const SettingsView({super.key});
@@ -16,67 +16,84 @@ class SettingsView extends StatefulWidget {
 class _SettingsViewState extends State<SettingsView> {
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      insetPadding:
-          screenSizeOf(context) != ScreenSize.big
-              ? EdgeInsets.all(32.0)
-              : EdgeInsets.symmetric(
-                horizontal: MediaQuery.sizeOf(context).width / 4,
-                vertical: MediaQuery.sizeOf(context).height / 10,
-              ),
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('Accounts'),
-          leading: IconButton(
+    return AlertDialog(
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
             onPressed: () {
               Navigator.pop(context);
             },
             icon: Icon(Icons.close),
           ),
-        ),
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.account_circle),
-              title: Text("Add new account"),
-              onTap: () {
-                showAdaptiveDialog(
+          Text("Settings"),
+          IconButton(
+            onPressed:
+                () => showAboutDialog(
                   context: context,
-                  builder: (context) {
-                    return AddAccountDialog();
-                  },
-                ).then((onValue) {
-                  if (onValue != null && onValue is Account) {
-                    Api.of(context).changeAccount(onValue);
-                  }
-                  setState(() {});
-                });
-              },
-              trailing: Icon(Icons.add),
-            ),
-            FutureBuilder(
-              future: database.query("Account"),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState != ConnectionState.done) {
-                  return CircularProgressIndicator.adaptive();
+                  applicationVersion: "1.2.2",
+                  children: [
+                    const ListTile(
+                      title: Text("Made By"),
+                      subtitle: Text("Hasan Kadhem"),
+                    ),
+                    ListTile(
+                      title: const Text("Source Code"),
+                      subtitle: const Text(
+                        "https://github.com/HassanAliKadhem/fresh_reader",
+                      ),
+                      trailing: const Icon(Icons.open_in_browser),
+                      onTap:
+                          () => launchUrl(
+                            Uri.parse(
+                              "https://github.com/HassanAliKadhem/fresh_reader",
+                            ),
+                          ),
+                    ),
+                  ],
+                ),
+            icon: Icon(Icons.info),
+          ),
+        ],
+      ),
+      scrollable: true,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: Icon(Icons.account_circle),
+            title: Text("Add new account"),
+            onTap: () {
+              showAdaptiveDialog(
+                context: context,
+                builder: (context) {
+                  return AddAccountDialog();
+                },
+              ).then((onValue) {
+                if (onValue != null && onValue is Account) {
+                  Api.of(context).changeAccount(onValue);
                 }
-                return Expanded(
-                  child: ListView.builder(
-                    padding: EdgeInsets.all(16.0),
-                    itemCount: snapshot.data!.length,
-                    itemBuilder: (context, index) {
+                setState(() {});
+              });
+            },
+            trailing: Icon(Icons.add),
+          ),
+          FutureBuilder(
+            future: database.query("Account"),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return CircularProgressIndicator.adaptive();
+              }
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children:
+                    snapshot.data!.map((acc) {
                       return Card(
                         clipBehavior: Clip.antiAlias,
                         child: ExpansionTile(
                           shape: const Border(),
-                          title: Text(
-                            "${snapshot.data![index]["provider"]}: ${snapshot.data![index]["username"]}",
-                          ),
-                          subtitle: Text(
-                            snapshot.data![index]["serverUrl"].toString(),
-                          ),
+                          title: Text("${acc["provider"]}: ${acc["username"]}"),
+                          subtitle: Text(acc["serverUrl"].toString()),
                           children: [
                             ListTile(
                               title: Text("Edit account"),
@@ -86,9 +103,7 @@ class _SettingsViewState extends State<SettingsView> {
                                   context: context,
                                   builder: (context) {
                                     return AddAccountDialog(
-                                      oldAccount: Account.fromMap(
-                                        snapshot.data![index],
-                                      ),
+                                      oldAccount: Account.fromMap(acc),
                                     );
                                   },
                                 ).then((onValue) {
@@ -100,10 +115,7 @@ class _SettingsViewState extends State<SettingsView> {
                               },
                             ),
                             FutureBuilder(
-                              future: countAllArticles(
-                                true,
-                                snapshot.data![index]["id"] as int,
-                              ),
+                              future: countAllArticles(true, acc["id"] as int),
                               builder: (context, snapshot) {
                                 if (snapshot.connectionState !=
                                     ConnectionState.done) {
@@ -122,9 +134,7 @@ class _SettingsViewState extends State<SettingsView> {
                               title: const Text("Last sync articles time"),
                               subtitle: Text(
                                 DateTime.fromMillisecondsSinceEpoch(
-                                  (snapshot.data![index]["updatedArticleTime"]
-                                          as int) *
-                                      1000,
+                                  (acc["updatedArticleTime"] as int) * 1000,
                                 ).toString(),
                               ),
                               onTap: () {
@@ -132,11 +142,11 @@ class _SettingsViewState extends State<SettingsView> {
                                   context: context,
                                   firstDate: DateTime(0),
                                   lastDate: DateTime.now(),
-                                  initialDate: DateTime.fromMillisecondsSinceEpoch(
-                                    (snapshot.data![index]["updatedArticleTime"]
-                                            as int) *
-                                        1000,
-                                  ),
+                                  initialDate:
+                                      DateTime.fromMillisecondsSinceEpoch(
+                                        (acc["updatedArticleTime"] as int) *
+                                            1000,
+                                      ),
                                 ).then((value) {
                                   if (value != null) {
                                     database.update(
@@ -148,7 +158,7 @@ class _SettingsViewState extends State<SettingsView> {
                                                 .floor(),
                                       },
                                       where: "id = ?",
-                                      whereArgs: [snapshot.data![index]["id"]],
+                                      whereArgs: [acc["id"]],
                                     );
                                     setState(() {});
                                   }
@@ -159,9 +169,7 @@ class _SettingsViewState extends State<SettingsView> {
                               title: const Text("Last sync starred time"),
                               subtitle: Text(
                                 DateTime.fromMillisecondsSinceEpoch(
-                                  (snapshot.data![index]["updatedStarredTime"]
-                                          as int) *
-                                      1000,
+                                  (acc["updatedStarredTime"] as int) * 1000,
                                 ).toString(),
                               ),
                               onTap: () {
@@ -169,11 +177,11 @@ class _SettingsViewState extends State<SettingsView> {
                                   context: context,
                                   firstDate: DateTime(0),
                                   lastDate: DateTime.now(),
-                                  initialDate: DateTime.fromMillisecondsSinceEpoch(
-                                    (snapshot.data![index]["updatedStarredTime"]
-                                            as int) *
-                                        1000,
-                                  ),
+                                  initialDate:
+                                      DateTime.fromMillisecondsSinceEpoch(
+                                        (acc["updatedStarredTime"] as int) *
+                                            1000,
+                                      ),
                                 ).then((value) {
                                   if (value != null) {
                                     database.update(
@@ -185,7 +193,7 @@ class _SettingsViewState extends State<SettingsView> {
                                                 .floor(),
                                       },
                                       where: "id = ?",
-                                      whereArgs: [snapshot.data![index]["id"]],
+                                      whereArgs: [acc["id"]],
                                     );
                                     setState(() {});
                                   }
@@ -203,9 +211,7 @@ class _SettingsViewState extends State<SettingsView> {
                                       actions: [
                                         TextButton(
                                           onPressed: () {
-                                            int accountID =
-                                                snapshot.data![index]["id"]
-                                                    as int;
+                                            int accountID = acc["id"] as int;
                                             // Filter.of(context).api.account.id;
                                             database.delete(
                                               "Article",
@@ -271,9 +277,7 @@ class _SettingsViewState extends State<SettingsView> {
                                         ),
                                         TextButton(
                                           onPressed: () {
-                                            int accountID =
-                                                snapshot.data![index]["id"]
-                                                    as int;
+                                            int accountID = acc["id"] as int;
                                             // Filter.of(context).api.account.id;
                                             database.delete(
                                               "Articles",
@@ -354,38 +358,398 @@ class _SettingsViewState extends State<SettingsView> {
                           ],
                         ),
                       );
-                    },
-                  ),
-                );
-              },
-            ),
-            const Divider(indent: 8.0, endIndent: 8.0),
-            AboutListTile(
-              applicationVersion: "1.2.1",
-              aboutBoxChildren: [
-                const ListTile(
-                  title: Text("Made By"),
-                  subtitle: Text("Hasan Kadhem"),
-                ),
-                ListTile(
-                  title: const Text("Source Code"),
-                  subtitle: const Text(
-                    "https://github.com/HassanAliKadhem/fresh_reader",
-                  ),
-                  trailing: const Icon(Icons.open_in_browser),
-                  onTap:
-                      () => launchUrl(
-                        Uri.parse(
-                          "https://github.com/HassanAliKadhem/fresh_reader",
-                        ),
-                      ),
-                ),
-              ],
-            ),
-          ],
-        ),
+                    }).toList(),
+              );
+            },
+          ),
+        ],
       ),
     );
+    // return Dialog(
+    //   child: Container(
+    //     constraints: BoxConstraints.loose(
+    //       Size(
+    //         MediaQuery.sizeOf(context).width - 100,
+    //         MediaQuery.sizeOf(context).height - 200,
+    //       ),
+    //     ),
+    //     padding: EdgeInsets.all(8.0),
+    //     child: Column(
+    //       mainAxisSize: MainAxisSize.min,
+    //       children: [
+    //         AppBar(
+    //           title: Text('Settings'),
+    //           leading: IconButton(
+    //             onPressed: () {
+    //               Navigator.pop(context);
+    //             },
+    //             icon: Icon(Icons.close),
+    //           ),
+    //           actions: [
+    //             IconButton(
+    //               onPressed:
+    //                   () => showAboutDialog(
+    //                     context: context,
+    //                     applicationVersion: "1.2.2",
+    //                     children: [
+    //                       const ListTile(
+    //                         title: Text("Made By"),
+    //                         subtitle: Text("Hasan Kadhem"),
+    //                       ),
+    //                       ListTile(
+    //                         title: const Text("Source Code"),
+    //                         subtitle: const Text(
+    //                           "https://github.com/HassanAliKadhem/fresh_reader",
+    //                         ),
+    //                         trailing: const Icon(Icons.open_in_browser),
+    //                         onTap:
+    //                             () => launchUrl(
+    //                               Uri.parse(
+    //                                 "https://github.com/HassanAliKadhem/fresh_reader",
+    //                               ),
+    //                             ),
+    //                       ),
+    //                     ],
+    //                   ),
+    //               icon: Icon(Icons.info),
+    //             ),
+    //           ],
+    //         ),
+    //         Divider(height: 2.0),
+    //         ListView(
+    //           shrinkWrap: true,
+    //           children: [
+    //             ListTile(
+    //               leading: Icon(Icons.account_circle),
+    //               title: Text("Add new account"),
+    //               onTap: () {
+    //                 showAdaptiveDialog(
+    //                   context: context,
+    //                   builder: (context) {
+    //                     return AddAccountDialog();
+    //                   },
+    //                 ).then((onValue) {
+    //                   if (onValue != null && onValue is Account) {
+    //                     Api.of(context).changeAccount(onValue);
+    //                   }
+    //                   setState(() {});
+    //                 });
+    //               },
+    //               trailing: Icon(Icons.add),
+    //             ),
+    //             FutureBuilder(
+    //               future: database.query("Account"),
+    //               builder: (context, snapshot) {
+    //                 if (snapshot.connectionState != ConnectionState.done) {
+    //                   return CircularProgressIndicator.adaptive();
+    //                 }
+    //                 return Column(
+    //                   mainAxisSize: MainAxisSize.min,
+    //                   children:
+    //                       snapshot.data!.map((acc) {
+    //                         return Card(
+    //                           clipBehavior: Clip.antiAlias,
+    //                           child: ExpansionTile(
+    //                             shape: const Border(),
+    //                             title: Text(
+    //                               "${acc["provider"]}: ${acc["username"]}",
+    //                             ),
+    //                             subtitle: Text(acc["serverUrl"].toString()),
+    //                             children: [
+    //                               ListTile(
+    //                                 title: Text("Edit account"),
+    //                                 trailing: Icon(Icons.edit),
+    //                                 onTap: () {
+    //                                   showAdaptiveDialog(
+    //                                     context: context,
+    //                                     builder: (context) {
+    //                                       return AddAccountDialog(
+    //                                         oldAccount: Account.fromMap(acc),
+    //                                       );
+    //                                     },
+    //                                   ).then((onValue) {
+    //                                     // if (onValue != null &&
+    //                                     //     onValue is AccountData) {
+    //                                     //   widget.chooseAccount(onValue);
+    //                                     // }
+    //                                   });
+    //                                 },
+    //                               ),
+    //                               FutureBuilder(
+    //                                 future: countAllArticles(
+    //                                   true,
+    //                                   acc["id"] as int,
+    //                                 ),
+    //                                 builder: (context, snapshot) {
+    //                                   if (snapshot.connectionState !=
+    //                                       ConnectionState.done) {
+    //                                     return CircularProgressIndicator.adaptive();
+    //                                   }
+    //                                   return ListTile(
+    //                                     title: Text(
+    //                                       "Total articles: ${snapshot.data!.values.reduce((count, value) => count + value)}",
+    //                                     ),
+    //                                     // subtitle: Text(
+    //                                     //     "categories: ${snapshot.data!.entries.map((entry) => entry.key.startsWith("feed/") ? 0 : 1).reduce((count, value) => count + value)}, subscriptions: ${snapshot.data!.entries.map((entry) => entry.key.startsWith("feed/") ? 1 : 0).reduce((count, value) => count + value)}"),
+    //                                   );
+    //                                 },
+    //                               ),
+    //                               ListTile(
+    //                                 title: const Text(
+    //                                   "Last sync articles time",
+    //                                 ),
+    //                                 subtitle: Text(
+    //                                   DateTime.fromMillisecondsSinceEpoch(
+    //                                     (acc["updatedArticleTime"] as int) *
+    //                                         1000,
+    //                                   ).toString(),
+    //                                 ),
+    //                                 onTap: () {
+    //                                   showDatePicker(
+    //                                     context: context,
+    //                                     firstDate: DateTime(0),
+    //                                     lastDate: DateTime.now(),
+    //                                     initialDate:
+    //                                         DateTime.fromMillisecondsSinceEpoch(
+    //                                           (acc["updatedArticleTime"]
+    //                                                   as int) *
+    //                                               1000,
+    //                                         ),
+    //                                   ).then((value) {
+    //                                     if (value != null) {
+    //                                       database.update(
+    //                                         "Account",
+    //                                         {
+    //                                           "updatedArticleTime":
+    //                                               (value.millisecondsSinceEpoch /
+    //                                                       1000)
+    //                                                   .floor(),
+    //                                         },
+    //                                         where: "id = ?",
+    //                                         whereArgs: [acc["id"]],
+    //                                       );
+    //                                       setState(() {});
+    //                                     }
+    //                                   });
+    //                                 },
+    //                               ),
+    //                               ListTile(
+    //                                 title: const Text("Last sync starred time"),
+    //                                 subtitle: Text(
+    //                                   DateTime.fromMillisecondsSinceEpoch(
+    //                                     (acc["updatedStarredTime"] as int) *
+    //                                         1000,
+    //                                   ).toString(),
+    //                                 ),
+    //                                 onTap: () {
+    //                                   showDatePicker(
+    //                                     context: context,
+    //                                     firstDate: DateTime(0),
+    //                                     lastDate: DateTime.now(),
+    //                                     initialDate:
+    //                                         DateTime.fromMillisecondsSinceEpoch(
+    //                                           (acc["updatedStarredTime"]
+    //                                                   as int) *
+    //                                               1000,
+    //                                         ),
+    //                                   ).then((value) {
+    //                                     if (value != null) {
+    //                                       database.update(
+    //                                         "Account",
+    //                                         {
+    //                                           "updatedStarredTime":
+    //                                               (value.millisecondsSinceEpoch /
+    //                                                       1000)
+    //                                                   .floor(),
+    //                                         },
+    //                                         where: "id = ?",
+    //                                         whereArgs: [acc["id"]],
+    //                                       );
+    //                                       setState(() {});
+    //                                     }
+    //                                   });
+    //                                 },
+    //                               ),
+    //                               ListTile(
+    //                                 title: const Text("Delete Data or Account"),
+    //                                 onTap: () async {
+    //                                   showAdaptiveDialog(
+    //                                     context: context,
+    //                                     builder: (context) {
+    //                                       return AlertDialog.adaptive(
+    //                                         title: const Text("Are you sure?"),
+    //                                         actions: [
+    //                                           TextButton(
+    //                                             onPressed: () {
+    //                                               int accountID =
+    //                                                   acc["id"] as int;
+    //                                               // Filter.of(context).api.account.id;
+    //                                               database.delete(
+    //                                                 "Article",
+    //                                                 where: "accountID = ?",
+    //                                                 whereArgs: [accountID],
+    //                                               );
+    //                                               database.delete(
+    //                                                 "Categories",
+    //                                                 where: "accountID = ?",
+    //                                                 whereArgs: [accountID],
+    //                                               );
+    //                                               database.delete(
+    //                                                 "Subscriptions",
+    //                                                 where: "accountID = ?",
+    //                                                 whereArgs: [accountID],
+    //                                               );
+    //                                               database.delete(
+    //                                                 "DelayedActions",
+    //                                                 where: "accountID = ?",
+    //                                                 whereArgs: [accountID],
+    //                                               );
+    //                                               database.delete(
+    //                                                 "Account",
+    //                                                 where: "id = ?",
+    //                                                 whereArgs: [accountID],
+    //                                               );
+    //                                               ScaffoldMessenger.of(
+    //                                                 context,
+    //                                               ).showSnackBar(
+    //                                                 const SnackBar(
+    //                                                   content: Text(
+    //                                                     "Account Deleted",
+    //                                                   ),
+    //                                                 ),
+    //                                               );
+    //                                               Navigator.pop(context);
+    //                                               if (Api.of(
+    //                                                     context,
+    //                                                   ).account?.id ==
+    //                                                   accountID) {
+    //                                                 database
+    //                                                     .query(
+    //                                                       "Account",
+    //                                                       where: "id = ?",
+    //                                                       whereArgs: [
+    //                                                         accountID,
+    //                                                       ],
+    //                                                     )
+    //                                                     .then((onValue) {
+    //                                                       Api.of(
+    //                                                         context,
+    //                                                       ).changeAccount(
+    //                                                         Account.fromMap(
+    //                                                           onValue.first,
+    //                                                         ),
+    //                                                       );
+    //                                                     });
+    //                                               }
+    //                                               setState(() {});
+    //                                             },
+    //                                             child: Text(
+    //                                               "Delete Account",
+    //                                               style: TextStyle(
+    //                                                 color: Colors.red[300],
+    //                                               ),
+    //                                             ),
+    //                                           ),
+    //                                           TextButton(
+    //                                             onPressed: () {
+    //                                               int accountID =
+    //                                                   acc["id"] as int;
+    //                                               // Filter.of(context).api.account.id;
+    //                                               database.delete(
+    //                                                 "Articles",
+    //                                                 where: "accountID = ?",
+    //                                                 whereArgs: [accountID],
+    //                                               );
+    //                                               database.delete(
+    //                                                 "Categories",
+    //                                                 where: "accountID = ?",
+    //                                                 whereArgs: [accountID],
+    //                                               );
+    //                                               database.delete(
+    //                                                 "Subscriptions",
+    //                                                 where: "accountID = ?",
+    //                                                 whereArgs: [accountID],
+    //                                               );
+    //                                               database.delete(
+    //                                                 "DelayedActions",
+    //                                                 where: "accountID = ?",
+    //                                                 whereArgs: [accountID],
+    //                                               );
+    //                                               database.update(
+    //                                                 "Account",
+    //                                                 {
+    //                                                   "updatedStarredTime": 0,
+    //                                                   "updatedArticleTime": 0,
+    //                                                 },
+    //                                                 where: "id = ?",
+    //                                                 whereArgs: [accountID],
+    //                                               );
+    //                                               ScaffoldMessenger.of(
+    //                                                 context,
+    //                                               ).showSnackBar(
+    //                                                 const SnackBar(
+    //                                                   content: Text(
+    //                                                     "Data Cleared",
+    //                                                   ),
+    //                                                 ),
+    //                                               );
+    //                                               Navigator.pop(context);
+    //                                               if (Api.of(
+    //                                                     context,
+    //                                                   ).account?.id ==
+    //                                                   accountID) {
+    //                                                 database
+    //                                                     .query(
+    //                                                       "Account",
+    //                                                       where: "id = ?",
+    //                                                       whereArgs: [
+    //                                                         accountID,
+    //                                                       ],
+    //                                                     )
+    //                                                     .then((onValue) {
+    //                                                       Api.of(
+    //                                                         context,
+    //                                                       ).changeAccount(
+    //                                                         Account.fromMap(
+    //                                                           onValue.first,
+    //                                                         ),
+    //                                                       );
+    //                                                     });
+    //                                               }
+    //                                               setState(() {});
+    //                                             },
+    //                                             child: Text(
+    //                                               "Delete only data",
+    //                                               style: TextStyle(
+    //                                                 color: Colors.red[300],
+    //                                               ),
+    //                                             ),
+    //                                           ),
+    //                                           TextButton(
+    //                                             onPressed: () {
+    //                                               Navigator.pop(context);
+    //                                             },
+    //                                             child: const Text("Cancel"),
+    //                                           ),
+    //                                         ],
+    //                                       );
+    //                                     },
+    //                                   );
+    //                                 },
+    //                               ),
+    //                             ],
+    //                           ),
+    //                         );
+    //                       }).toList(),
+    //                 );
+    //               },
+    //             ),
+    //           ],
+    //         ),
+    //       ],
+    //     ),
+    //   ),
+    // );
   }
 }
 

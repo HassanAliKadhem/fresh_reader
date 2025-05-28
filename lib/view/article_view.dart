@@ -1,11 +1,13 @@
+import 'dart:io';
+
 import 'package:easy_image_viewer/easy_image_viewer.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
-import 'package:fresh_reader/widget/article_buttons.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -14,6 +16,8 @@ import '../api/api.dart';
 import '../api/data_types.dart';
 import '../api/database.dart';
 import '../util/formatting_setting.dart';
+import '../widget/article_buttons.dart';
+import '../widget/blur_bar.dart';
 
 class ArticleView extends StatefulWidget {
   const ArticleView({super.key, required this.index, required this.articleIDs});
@@ -69,13 +73,36 @@ class _ArticleViewState extends State<ArticleView> {
         actions:
             widget.index != null && widget.articleIDs != null
                 ? [
-                  FormattingButton(
-                    formattingSetting: formattingSetting,
-                    showWebView: showWebView,
+                  // FormattingButton(
+                  //   formattingSetting: formattingSetting,
+                  //   showWebView: showWebView,
+                  // ),
+                  IconButton(
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        enableDrag: true,
+                        isDismissible: true,
+                        showDragHandle: true,
+                        // isScrollControlled: true,
+                        scrollControlDisabledMaxHeightRatio: 0.75,
+                        // useSafeArea: true,
+                        builder: (context) {
+                          return FormattingBottomSheet(
+                            formattingSetting: formattingSetting,
+                          );
+                        },
+                      );
+                    },
+                    icon: Icon(
+                      (Platform.isIOS || Platform.isMacOS)
+                          ? CupertinoIcons.textformat
+                          : Icons.text_format_rounded,
+                    ),
                   ),
                 ]
                 : null,
-        // flexibleSpace: const BlurBar(),
+        flexibleSpace: const BlurBar(),
       ),
       extendBodyBehindAppBar: !showWebView,
       extendBody: !showWebView,
@@ -214,6 +241,7 @@ class ArticlePage extends StatefulWidget {
 class _ArticlePageState extends State<ArticlePage> {
   @override
   Widget build(BuildContext context) {
+    print(widget.article.title.replaceAll("＆#x27;", "'"));
     if (widget.showWebView) {
       return ArticleWebWidget(
         key: ValueKey(widget.article.url),
@@ -323,6 +351,7 @@ class ArticleTextWidget extends StatelessWidget {
                   trailing: const Icon(Icons.open_in_browser),
                   onTap: () {
                     launchUrl(Uri.parse(link));
+                    Navigator.pop(context);
                   },
                 ),
                 ListTile(
@@ -330,17 +359,21 @@ class ArticleTextWidget extends StatelessWidget {
                   trailing: const Icon(Icons.share),
                   onTap: () {
                     try {
-                      Share.shareUri(Uri.parse(link));
-                    } catch (e) {
                       final box = context.findRenderObject() as RenderBox?;
-                      Share.share(
-                        link,
-                        subject: "",
-                        sharePositionOrigin:
-                            box!.localToGlobal(Offset.zero) & box.size,
+                      SharePlus.instance.share(
+                        ShareParams(
+                          uri: Uri.parse(link),
+                          sharePositionOrigin:
+                              box!.localToGlobal(Offset.zero) & box.size,
+                        ),
                       );
+                    } catch (e) {
                       debugPrint(e.toString());
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(e.toString(), maxLines: 3)),
+                      );
                     }
+                    // Navigator.pop(context);
                   },
                 ),
               ],
@@ -355,10 +388,11 @@ class ArticleTextWidget extends StatelessWidget {
     showImageViewer(
       context,
       CachedNetworkImageProvider(url),
+      backgroundColor: Colors.black54,
       swipeDismissible: true,
       doubleTapZoomable: true,
       immersive: false,
-      backgroundColor: Colors.black54,
+      useSafeArea: true,
     );
   }
 
@@ -381,109 +415,124 @@ class ArticleTextWidget extends StatelessWidget {
       },
       child: SelectionArea(
         child: ListView(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.paddingOf(context).bottom,
-          ),
+          // padding: EdgeInsets.only(
+          //   bottom: MediaQuery.paddingOf(context).bottom,
+          //   top: MediaQuery.viewPaddingOf(context).top + (kToolbarHeight * 2.5),
+          // ),
           children: [
-            Stack(
-              alignment: AlignmentDirectional.bottomStart,
-              children: [
-                if (imageUrl != null)
-                  ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxHeight: MediaQuery.sizeOf(context).height / 2,
+            // Stack(
+            //   alignment: AlignmentDirectional.bottomStart,
+            //   children: [
+            //     if (imageUrl != null)
+            //       ConstrainedBox(
+            //         constraints: BoxConstraints(
+            //           maxHeight: MediaQuery.sizeOf(context).height / 2,
+            //         ),
+            //         child: Container(
+            //           width: double.infinity,
+            //           foregroundDecoration: const BoxDecoration(
+            //             gradient: LinearGradient(
+            //               colors: [
+            //                 Colors.black38,
+            //                 Colors.black54,
+            //                 Colors.black,
+            //               ],
+            //               begin: Alignment.topCenter,
+            //               end: Alignment.bottomCenter,
+            //               stops: [0.7, 0.85, 1],
+            //             ),
+            //           ),
+            //           child: CachedNetworkImage(
+            //             fit: BoxFit.fitWidth,
+            //             imageUrl: imageUrl,
+            //           ),
+            //         ),
+            //       ),
+            //     Padding(
+            //       padding: const EdgeInsets.only(top: kToolbarHeight + 24),
+            //       child: InkWell(
+            //         onLongPress: () {
+            //           showLinkMenu(context, url);
+            //         },
+            //         onTap: () {
+            //           launchUrl(Uri.parse(url));
+            //         },
+            //         child: Column(
+            //           crossAxisAlignment: CrossAxisAlignment.start,
+            //           mainAxisAlignment: MainAxisAlignment.end,
+            //           children: [
+            //             Padding(
+            //               padding: const EdgeInsets.all(24.0),
+            //               child: Column(
+            //                 crossAxisAlignment: CrossAxisAlignment.start,
+            //                 children: [
+            //                   Text(
+            //                     title,
+            //                     textScaler: const TextScaler.linear(1.25),
+            //                     style: const TextStyle(
+            //                       fontWeight: FontWeight.bold,
+            //                     ),
+            //                   ),
+            //                   Text(
+            //                     "${getRelativeDate(timePublished)}, ${DateTime.fromMillisecondsSinceEpoch(timePublished * 1000).toString().split(".").first}",
+            //                     maxLines: 1,
+            //                   ),
+            //                 ],
+            //               ),
+            //             ),
+            //             Container(
+            //               height: 20,
+            //               decoration: BoxDecoration(
+            //                 color: Theme.of(context).cardColor,
+            //                 borderRadius: const BorderRadius.vertical(
+            //                   top: Radius.circular(20),
+            //                 ),
+            //               ),
+            //             ),
+            //           ],
+            //         ),
+            //       ),
+            //     ),
+            //   ],
+            // ),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 4.0,
+              ),
+              child: Text.rich(
+                textScaler: TextScaler.linear(1.25),
+                TextSpan(
+                  children: [
+                    TextSpan(text: title),
+                    TextSpan(
+                      text:
+                          "\n${getRelativeDate(timePublished)}, ${DateTime.fromMillisecondsSinceEpoch(timePublished * 1000).toString().split(".").first}\n",
+                      style: TextStyle(color: Colors.grey),
                     ),
-                    child: Container(
-                      width: double.infinity,
-                      foregroundDecoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.black38,
-                            Colors.black54,
-                            Colors.black,
-                          ],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          stops: [0.7, 0.85, 1],
-                        ),
-                      ),
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.bottom,
                       child: CachedNetworkImage(
-                        fit: BoxFit.fitWidth,
-                        imageUrl: imageUrl,
+                        alignment: Alignment.bottomCenter,
+                        height: 14,
+                        width: 14,
+                        imageUrl: iconUrl ?? "",
+                        errorWidget:
+                            (context, url, error) => const Icon(Icons.error),
                       ),
                     ),
-                  ),
-                Padding(
-                  padding: const EdgeInsets.only(top: kToolbarHeight + 24),
-                  child: InkWell(
-                    onLongPress: () {
-                      showLinkMenu(context, url);
-                    },
-                    onTap: () {
-                      launchUrl(Uri.parse(url));
-                    },
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                title,
-                                textScaler: const TextScaler.linear(1.25),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                "${getRelativeDate(timePublished)}, ${DateTime.fromMillisecondsSinceEpoch(timePublished * 1000).toString().split(".").first}",
-                                maxLines: 1,
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          height: 20,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).cardColor,
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(20),
-                            ),
-                          ),
-                        ),
-                      ],
+                    TextSpan(
+                      text: "  $subName",
+                      style: TextStyle(color: Colors.grey),
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
-            Text.rich(
-              textScaler: TextScaler.linear(1.15),
-              TextSpan(
-                children: [
-                  TextSpan(text: "    "),
-                  WidgetSpan(
-                    alignment: PlaceholderAlignment.bottom,
-                    child: CachedNetworkImage(
-                      alignment: Alignment.bottomCenter,
-                      height: 16,
-                      width: 16,
-                      imageUrl: iconUrl ?? "",
-                      errorWidget:
-                          (context, url, error) => const Icon(Icons.error),
-                    ),
-                  ),
-                  TextSpan(text: "  $subName"),
-                ],
               ),
             ),
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: HtmlWidget(
-                content.replaceAll("<a", "<a class=\"link\""),
+                content,
                 buildAsync: true,
                 enableCaching: true,
                 onErrorBuilder: (context, element, error) {
@@ -495,7 +544,7 @@ class ArticleTextWidget extends StatelessWidget {
                   }
                 },
                 customWidgetBuilder: (element) {
-                  if (element.classes.contains("link")) {
+                  if (element.localName == "a") {
                     Widget? imgWidget;
                     if (element.children.any(
                       (child) => child.localName == "img",

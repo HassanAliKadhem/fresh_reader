@@ -1,11 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:fresh_reader/main.dart';
-import 'package:fresh_reader/widget/blur_bar.dart';
-import 'package:fresh_reader/api/data_types.dart';
 
+import '../main.dart';
 import '../api/api.dart';
+import '../api/data_types.dart';
 import '../api/database.dart';
+import '../widget/blur_bar.dart';
 import 'settings_view.dart';
 
 class FeedList extends StatefulWidget {
@@ -118,7 +118,7 @@ class _FeedListState extends State<FeedList> {
             icon: const Icon(Icons.settings),
             tooltip: "Settings",
             onPressed: () {
-              showAdaptiveDialog(
+              showDialog(
                 context: context,
                 builder: (context) {
                   return const SettingsView();
@@ -190,7 +190,7 @@ class _CategoryListState extends State<CategoryList> {
   Widget build(BuildContext context) {
     bool showAll = Api.of(context).showAll;
     return RefreshIndicator.adaptive(
-      displacement: kToolbarHeight * 2,
+      displacement: kToolbarHeight * 2.5,
       onRefresh: () async {
         await Api.of(context)
             .serverSync()
@@ -203,233 +203,212 @@ class _CategoryListState extends State<CategoryList> {
               setState(() {
                 networkError = onError;
               });
+              debugPrint(onError.toString());
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(onError.toString(), maxLines: 3)),
+              );
             });
       },
       child:
-          networkError != null
-              ? ListView(
-                clipBehavior: Clip.none,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(networkError.toString()),
-                  ),
-                ],
-              )
-              : FutureBuilder(
-                future: database.query(
-                  "Subscriptions",
-                  where: "accountID = ?",
-                  whereArgs: [Api.of(context).account?.id ?? -1],
+      // networkError != null
+      //     ? ListView(
+      //       clipBehavior: Clip.none,
+      //       children: [
+      //         Padding(
+      //           padding: const EdgeInsets.all(16.0),
+      //           child: Text(networkError.toString()),
+      //         ),
+      //       ],
+      //     )
+      //     :
+      FutureBuilder(
+        future: database.query(
+          "Subscriptions",
+          where: "accountID = ?",
+          whereArgs: [Api.of(context).account?.id ?? -1],
+        ),
+        builder: (context, subSnapshot) {
+          return FutureBuilder(
+            future: database.query(
+              "Categories",
+              where: "accountID = ?",
+              whereArgs: [Api.of(context).account?.id ?? -1],
+            ),
+            builder: (context, catSnapshot) {
+              return FutureBuilder(
+                future: countAllArticles(
+                  showAll,
+                  Api.of(context).account?.id ?? -1,
                 ),
-                builder: (context, subSnapshot) {
-                  return FutureBuilder(
-                    future: database.query(
-                      "Categories",
-                      where: "accountID = ?",
-                      whereArgs: [Api.of(context).account?.id ?? -1],
-                    ),
-                    builder: (context, catSnapshot) {
-                      return FutureBuilder(
-                        future: countAllArticles(
-                          showAll,
-                          Api.of(context).account?.id ?? -1,
+                builder: (context, countSnapshot) {
+                  if (countSnapshot.data == null) {
+                    return const Center(
+                      child: SizedBox(
+                        height: 48,
+                        width: 48,
+                        child: CircularProgressIndicator.adaptive(),
+                      ),
+                    );
+                  }
+                  int allCount = 0;
+                  for (var element in countSnapshot.data!.entries) {
+                    if (element.key.startsWith("feed/")) {
+                      allCount += element.value;
+                    }
+                  }
+                  return ListView(
+                    children: [
+                      ListTile(
+                        selected:
+                            Api.of(context).filteredTitle == "All Articles",
+                        title: const Text("All Articles"),
+                        trailing: UnreadCount(allCount),
+                        onTap:
+                            () => openArticleList(
+                              context,
+                              null,
+                              null,
+                              "All Articles",
+                            ),
+                      ),
+                      ListTile(
+                        selected: Api.of(context).filteredTitle == "Starred",
+                        title: const Text("Starred"),
+                        trailing: UnreadCount(
+                          countSnapshot.data!["Starred"] ?? 0,
                         ),
-                        builder: (context, countSnapshot) {
-                          if (countSnapshot.data == null) {
-                            return const Center(
-                              child: SizedBox(
-                                height: 48,
-                                width: 48,
-                                child: CircularProgressIndicator.adaptive(),
-                              ),
-                            );
-                          }
-                          int allCount = 0;
-                          for (var element in countSnapshot.data!.entries) {
-                            if (element.key.startsWith("feed/")) {
-                              allCount += element.value;
-                            }
-                          }
-                          return ListView(
-                            children: [
-                              ListTile(
-                                selected:
-                                    Api.of(context).filteredTitle ==
-                                    "All Articles",
-                                title: const Text("All Articles"),
-                                trailing: UnreadCount(allCount),
-                                onTap:
-                                    () => openArticleList(
-                                      context,
-                                      null,
-                                      null,
-                                      "All Articles",
-                                    ),
-                              ),
-                              ListTile(
-                                selected:
-                                    Api.of(context).filteredTitle == "Starred",
-                                title: const Text("Starred"),
-                                trailing: UnreadCount(
-                                  countSnapshot.data!["Starred"] ?? 0,
-                                ),
-                                onTap:
-                                    () => openArticleList(
-                                      context,
-                                      "isStarred",
-                                      "true",
-                                      "Starred",
-                                    ),
-                              ),
-                              if (catSnapshot.hasData &&
-                                  catSnapshot.data != null)
-                                ...catSnapshot.data!
-                                    .where(
-                                      (cat) =>
-                                          !cat["catID"].toString().endsWith(
-                                            "/starred",
-                                          ),
-                                    )
-                                    .map((cat) {
-                                      Map<String, Subscription>
-                                      currentSubscriptions = {};
-                                      subSnapshot.data?.forEach((value) {
-                                        if (value["catID"].toString() ==
-                                            cat["catID"].toString()) {
-                                          currentSubscriptions[value["subID"]
-                                                  .toString()] =
-                                              Subscription.fromDB(value);
-                                        }
-                                      });
-                                      bool isExpanded = true;
-                                      if (isOpen.containsKey(cat["catID"])) {
-                                        isExpanded = isOpen[cat["catID"]]!;
-                                      } else {
-                                        isOpen[cat["catID"].toString()] = true;
-                                      }
-                                      return Card(
-                                        clipBehavior: Clip.hardEdge,
-                                        margin: const EdgeInsets.all(8.0),
-                                        child: ExpansionTile(
-                                          title: Text(
+                        onTap:
+                            () => openArticleList(
+                              context,
+                              "isStarred",
+                              "true",
+                              "Starred",
+                            ),
+                      ),
+                      if (catSnapshot.hasData && catSnapshot.data != null)
+                        ...catSnapshot.data!
+                            .where(
+                              (cat) =>
+                                  !cat["catID"].toString().endsWith("/starred"),
+                            )
+                            .map((cat) {
+                              Map<String, Subscription> currentSubscriptions =
+                                  {};
+                              subSnapshot.data?.forEach((value) {
+                                if (value["catID"].toString() ==
+                                    cat["catID"].toString()) {
+                                  currentSubscriptions[value["subID"]
+                                      .toString()] = Subscription.fromDB(value);
+                                }
+                              });
+                              bool isExpanded = true;
+                              if (isOpen.containsKey(cat["catID"])) {
+                                isExpanded = isOpen[cat["catID"]]!;
+                              } else {
+                                isOpen[cat["catID"].toString()] = true;
+                              }
+                              return Card(
+                                clipBehavior: Clip.hardEdge,
+                                margin: const EdgeInsets.all(8.0),
+                                child: ExpansionTile(
+                                  title: Text(
+                                    cat["catID"].toString().split("/").last,
+                                  ),
+                                  shape: const Border(),
+                                  initiallyExpanded: isExpanded,
+                                  onExpansionChanged: (value) {
+                                    setState(() {
+                                      isOpen[cat["catID"].toString()] = value;
+                                    });
+                                  },
+                                  controlAffinity:
+                                      ListTileControlAffinity.leading,
+                                  childrenPadding: const EdgeInsets.only(
+                                    left: 40.0,
+                                  ),
+                                  children: [
+                                    ListTile(
+                                      selected:
+                                          Api.of(context).filteredTitle ==
+                                          cat["catID"]
+                                              .toString()
+                                              .split("/")
+                                              .last,
+                                      title: Text(
+                                        "All ${cat["catID"].toString().split("/").last}",
+                                      ),
+                                      trailing: UnreadCount(
+                                        countSnapshot.data![cat["catID"]] ?? 0,
+                                      ),
+                                      onTap:
+                                          () => openArticleList(
+                                            context,
+                                            "tag",
+                                            cat["catID"].toString(),
                                             cat["catID"]
                                                 .toString()
                                                 .split("/")
                                                 .last,
                                           ),
-                                          shape: const Border(),
-                                          initiallyExpanded: isExpanded,
-                                          onExpansionChanged: (value) {
-                                            setState(() {
-                                              isOpen[cat["catID"].toString()] =
-                                                  value;
-                                            });
-                                          },
-                                          controlAffinity:
-                                              ListTileControlAffinity.leading,
-                                          childrenPadding:
-                                              const EdgeInsets.only(left: 40.0),
-                                          children: [
-                                            ListTile(
-                                              selected:
-                                                  Api.of(
-                                                    context,
-                                                  ).filteredTitle ==
-                                                  cat["catID"]
-                                                      .toString()
-                                                      .split("/")
-                                                      .last,
-                                              title: Text(
-                                                "All ${cat["catID"].toString().split("/").last}",
-                                              ),
-                                              trailing: UnreadCount(
-                                                countSnapshot
-                                                        .data![cat["catID"]] ??
-                                                    0,
-                                              ),
-                                              onTap:
-                                                  () => openArticleList(
-                                                    context,
-                                                    "tag",
-                                                    cat["catID"].toString(),
-                                                    cat["catID"]
-                                                        .toString()
-                                                        .split("/")
-                                                        .last,
-                                                  ),
+                                    ),
+                                    ...currentSubscriptions.keys
+                                        .where(
+                                          (sub) =>
+                                              showAll ||
+                                              (countSnapshot.data![sub] ?? 0) >
+                                                  0,
+                                        )
+                                        .map<Widget>((key) {
+                                          return ListTile(
+                                            selected:
+                                                Api.of(context).filteredTitle ==
+                                                currentSubscriptions[key]!
+                                                    .title,
+                                            title: Text(
+                                              currentSubscriptions[key]!.title,
                                             ),
-                                            ...currentSubscriptions.keys
-                                                .where(
-                                                  (sub) =>
-                                                      showAll ||
-                                                      (countSnapshot
-                                                                  .data![sub] ??
-                                                              0) >
-                                                          0,
-                                                )
-                                                .map<Widget>((key) {
-                                                  return ListTile(
-                                                    selected:
-                                                        Api.of(
-                                                          context,
-                                                        ).filteredTitle ==
-                                                        currentSubscriptions[key]!
-                                                            .title,
-                                                    title: Text(
-                                                      currentSubscriptions[key]!
-                                                          .title,
-                                                    ),
-                                                    trailing: UnreadCount(
-                                                      countSnapshot
-                                                              .data![key] ??
-                                                          0,
-                                                    ),
-                                                    leading: SizedBox(
-                                                      height: 28,
-                                                      width: 28,
-                                                      child: CachedNetworkImage(
-                                                        imageUrl: Api.of(
-                                                          context,
-                                                        ).getIconUrl(
-                                                          currentSubscriptions[key]!
-                                                              .iconUrl,
-                                                        ),
-                                                        errorWidget:
-                                                            (
-                                                              context,
-                                                              url,
-                                                              error,
-                                                            ) => const Icon(
-                                                              Icons.error,
-                                                            ),
-                                                      ),
-                                                    ),
-                                                    onTap: () {
-                                                      openArticleList(
-                                                        context,
-                                                        "subID",
-                                                        currentSubscriptions[key]!
-                                                            .subID
-                                                            .toString(),
-                                                        currentSubscriptions[key]!
-                                                            .title,
-                                                      );
-                                                    },
-                                                  );
-                                                }),
-                                          ],
-                                        ),
-                                      );
-                                    }),
-                            ],
-                          );
-                        },
-                      );
-                    },
+                                            trailing: UnreadCount(
+                                              countSnapshot.data![key] ?? 0,
+                                            ),
+                                            leading: SizedBox(
+                                              height: 28,
+                                              width: 28,
+                                              child: CachedNetworkImage(
+                                                imageUrl: Api.of(
+                                                  context,
+                                                ).getIconUrl(
+                                                  currentSubscriptions[key]!
+                                                      .iconUrl,
+                                                ),
+                                                errorWidget:
+                                                    (context, url, error) =>
+                                                        const Icon(Icons.error),
+                                              ),
+                                            ),
+                                            onTap: () {
+                                              openArticleList(
+                                                context,
+                                                "subID",
+                                                currentSubscriptions[key]!.subID
+                                                    .toString(),
+                                                currentSubscriptions[key]!
+                                                    .title,
+                                              );
+                                            },
+                                          );
+                                        }),
+                                  ],
+                                ),
+                              );
+                            }),
+                    ],
                   );
                 },
-              ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }

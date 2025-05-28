@@ -20,35 +20,21 @@ class AdaptiveTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final border = OutlineInputBorder(
-      borderSide: BorderSide(color: CupertinoColors.darkBackgroundGray),
-    );
-    return SizedBox(
-      height: Platform.isIOS ? 36.0 : null,
-      child: TextField(
-        decoration:
-            Platform.isIOS
-                ? InputDecoration(
-                  border: border,
-                  enabledBorder: border,
-                  focusedBorder: border,
-                  filled: true,
-                  prefixIcon: Text(
-                    "  $label ",
-                    style: TextStyle(
-                      color: CupertinoColors.inactiveGray,
-                      height: 2.7,
-                    ),
-                  ),
-                  // fillColor: CupertinoColors.black,
-                  // hoverColor: CupertinoColors.black,
-                  contentPadding: EdgeInsets.fromLTRB(10, 0, 0, 0),
-                )
-                : InputDecoration(label: Text(label)),
+    if (Platform.isIOS || Platform.isMacOS) {
+      return CupertinoTextField(
+        placeholder: label,
+        style: TextStyle(color: Colors.white),
         obscureText: obscureText ?? false,
         controller: TextEditingController(text: initialValue),
         onChanged: onChanged,
-      ),
-    );
+      );
+    } else {
+      return TextField(
+        decoration: InputDecoration(label: Text(label)),
+        obscureText: obscureText ?? false,
+        controller: TextEditingController(text: initialValue),
+        onChanged: onChanged,
+      );
+    }
   }
 }

@@ -21,7 +21,7 @@ An opinionated client for FreshRss (not affiliated) made just for me. but you ca
     - [x] font size
     - [x] word spacing
     - [x] line height
-- [x] search articles
+- [ ] search articles
 
 ## Todo
 - [ ] add date separator in article list

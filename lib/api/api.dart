@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart' as foundation;
 import 'package:flutter/material.dart';
-import 'package:fresh_reader/main.dart';
 
 import 'package:http/http.dart' as http;
 import 'package:sqflite/sqflite.dart';
 
 import 'data_types.dart';
 import 'database.dart';
+import '../main.dart';
 
 ScreenSize screenSizeOf(BuildContext context) {
   if (MediaQuery.sizeOf(context).width > 840) {
@@ -98,6 +98,8 @@ class ApiData extends ChangeNotifier {
     }
 
     final delayedActions = await loadDelayedActions(account!.id);
+    debugPrint("delayed actions: ${delayedActions.length}");
+    debugPrint(delayedActions.toString());
     if (delayedActions.isNotEmpty) {
       Map<String, String> articleSub = {};
       for (var element in delayedActions.keys) {

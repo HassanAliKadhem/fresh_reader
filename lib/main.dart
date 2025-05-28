@@ -64,6 +64,7 @@ class _MyAppState extends State<MyApp> {
             ),
           ),
           listTileTheme: ListTileThemeData(selectedTileColor: Colors.white10),
+          sliderTheme: SliderThemeData(year2023: false),
         ),
         home: const HomeWidget(),
       ),

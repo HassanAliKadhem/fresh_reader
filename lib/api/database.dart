@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:fresh_reader/api/api.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
-import '../main.dart';
+import 'api.dart';
 import 'data_types.dart';
+import '../main.dart';
 
 Future<Database> getDatabase() async {
   const subTable =
@@ -315,7 +315,7 @@ Future<void> syncArticlesStar(Set<String> articleIDs, int accountID) async {
     "Update Articles set isStarred = 'true' where articleID in ('${articleIDs.join("','")}')  and accountID = $accountID",
   );
   await database.rawUpdate(
-    "Update Articles set isStarred = 'false' where articleID not in ('${articleIDs.join("','")}') and isRead = 'true'  and accountID = $accountID",
+    "Update Articles set isStarred = 'false' where articleID not in ('${articleIDs.join("','")}') and isRead = 'true' and accountID = $accountID",
   );
 }
 

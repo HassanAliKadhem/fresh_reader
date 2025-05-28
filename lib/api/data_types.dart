@@ -1,7 +1,7 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:convert';
 
-import 'package:fresh_reader/api/api.dart';
+import 'api.dart';
 
 const Utf8Decoder decoder = Utf8Decoder();
 
@@ -119,7 +119,7 @@ class Subscription {
   Subscription.fromJson(Map<String, dynamic> json, this.accountID)
     : subID = json['id'] ?? "",
       catID = json["categories"][0]["id"],
-      title = tryDecode((json['title'] ?? "").toString()) ?? json['title'],
+      title = tryDecode((json['title'] ?? "").toString()),
       url = json["url"] ?? "",
       htmlUrl = json["htmlUrl"] ?? "",
       iconUrl = json["iconUrl"] ?? "";
@@ -245,13 +245,11 @@ class Article {
   Article.fromCloudJson(Map<String, dynamic> json, this.accountID)
     : articleID = json["id"],
       subID = json["origin"]["streamId"],
-      title = tryDecode(json["title"].toString()) ?? json["title"].toString(),
+      title = tryDecode(json["title"].toString()),
       read = json["read"] ?? false,
       starred = false,
       published = json["published"],
-      content =
-          tryDecode(json["summary"]["content"].toString()) ??
-          json["summary"]["content"].toString(),
+      content = tryDecode(json["summary"]["content"].toString()),
       url = (json["canonical"])[0]["href"] as String,
       image = getFirstImage(json["summary"]["content"].toString());
 
@@ -286,10 +284,10 @@ enum DelayedAction { unread, read, star, unStar }
 
 enum ScreenSize { big, medium, small }
 
-String? tryDecode(content) {
+String tryDecode(content) {
   try {
-    return decoder.convert(content.codeUnits);
+    return decoder.convert(content.codeUnits).replaceAll("＆#x27;", "'");
   } catch (e) {
-    return null;
+    return content.replaceAll("＆#x27;", "'");
   }
 }
