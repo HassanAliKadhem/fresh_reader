@@ -9,8 +9,8 @@ class FormattingSetting extends ChangeNotifier {
   double lineHeight = 1.5;
   String font = "Arial";
   List<String> fonts = [
-    Platform.isAndroid ? "Roboto" : "SF UI",
-    "Arial",
+    Platform.isIOS || Platform.isMacOS ? "SF UI Text" : "Roboto",
+    if (Platform.isIOS || Platform.isMacOS) "Arial",
     "Courier",
     "Times New Roman",
   ];

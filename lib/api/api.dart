@@ -45,8 +45,9 @@ class ApiData extends ChangeNotifier {
   Map<String, Subscription> subscriptions = <String, Subscription>{};
   Set<String>? filteredArticleIDs;
   Map<String, Article>? filteredArticles;
+  List<String>? searchResults;
   String? filteredTitle;
-  int? filteredIndex;
+  int? selectedIndex;
 
   ApiData(this.account) {
     if (account != null) {
@@ -531,7 +532,7 @@ class ApiData extends ChangeNotifier {
     }
     filteredArticleIDs = null;
     filteredArticles = null;
-    filteredIndex = null;
+    selectedIndex = null;
     filteredTitle = null;
     await loadArticleIDs(
       showAll: showAll,
@@ -546,10 +547,12 @@ class ApiData extends ChangeNotifier {
       List<Article> arts,
     ) {
       filteredArticles = {};
-      final Set<String> subIDs = <String>{};
+      searchResults = [];
+      // final Set<String> subIDs = <String>{};
       for (var article in arts) {
         filteredArticles![article.articleID] = article;
-        subIDs.add(article.subID);
+        // subIDs.add(article.subID);
+        searchResults!.add(article.articleID);
       }
       notifyListeners();
     });

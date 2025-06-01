@@ -21,14 +21,13 @@ An opinionated client for FreshRss (not affiliated) made just for me. but you ca
     - [x] font size
     - [x] word spacing
     - [x] line height
-- [ ] search articles
+- [x] search articles
 
 ## Todo
-- [ ] add date separator in article list
 - [ ] edit tags
 - [ ] delete tags
-- text formatting:
-    - [ ] bionic reading
+- [ ] bionic reading
+- [ ] add date separator in article list
 
 ## Screenshots
 ![Home screen with list of feeds](SimulatorHome.png)

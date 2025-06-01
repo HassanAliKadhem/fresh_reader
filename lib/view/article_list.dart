@@ -21,11 +21,11 @@ class _ArticleListState extends State<ArticleList> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (Api.of(context).filteredIndex != null &&
+    if (Api.of(context).selectedIndex != null &&
         _scrollController.hasClients &&
-        Api.of(context).filteredIndex != currentIndex) {
-      currentIndex = Api.of(context).filteredIndex!;
-      double scrollTarget = (Api.of(context).filteredIndex! * 128);
+        Api.of(context).selectedIndex != currentIndex) {
+      currentIndex = Api.of(context).selectedIndex!;
+      double scrollTarget = (Api.of(context).selectedIndex! * 128);
       _scrollController.animateTo(
         curve: Curves.linear,
         duration: const Duration(milliseconds: 300),
@@ -55,17 +55,18 @@ class _ArticleListState extends State<ArticleList> {
               ? const SizedBox()
               : Builder(
                 builder: (context) {
-                  List<Article> currentArticles =
-                      Api.of(context).filteredArticles!.values
+                  Api.of(context).searchResults =
+                      Api.of(context).filteredArticles?.entries
                           .where(
-                            (article) => article.title.toLowerCase().contains(
+                            (entry) => entry.value.title.toLowerCase().contains(
                               _searchController.value.text.toLowerCase(),
                             ),
                           )
+                          .map((toElement) => toElement.key)
                           .toList();
                   return ListView.builder(
                     key: const PageStorageKey(0),
-                    itemCount: currentArticles.length + 1,
+                    itemCount: (Api.of(context).searchResults?.length ?? 0) + 1,
                     controller: _scrollController,
                     itemBuilder: (context, index) {
                       if (index == 0) {
@@ -101,16 +102,16 @@ class _ArticleListState extends State<ArticleList> {
                           ),
                         );
                       }
+                      Article article =
+                          Api.of(context).filteredArticles![Api.of(
+                            context,
+                          ).searchResults![index - 1]]!;
                       return ArticleTile(
-                        currentArticles[index - 1],
+                        article,
                         index - 1,
-                        Api.of(context)
-                                .subscriptions[currentArticles[index - 1].subID]
-                                ?.iconUrl ??
+                        Api.of(context).subscriptions[article.subID]?.iconUrl ??
                             "",
-                        Api.of(context)
-                                .subscriptions[currentArticles[index - 1].subID]
-                                ?.title ??
+                        Api.of(context).subscriptions[article.subID]?.title ??
                             "",
                       );
                     },
@@ -198,7 +199,7 @@ class _ArticleTileState extends State<ArticleTile> {
         subIcon: widget.subIcon,
         subTitle: widget.subTitle,
         onSelect: () {
-          Api.of(context).filteredIndex = widget.index;
+          Api.of(context).selectedIndex = widget.index;
           if (Api.of(context).filteredArticles != null &&
               Api.of(context).filteredArticles![widget.article.articleID] !=
                   null) {
@@ -238,9 +239,9 @@ class ArticleWidget extends StatelessWidget {
         decoration: BoxDecoration(
           color:
               Api.of(context).filteredArticleIDs != null &&
-                      Api.of(context).filteredIndex != null &&
+                      Api.of(context).selectedIndex != null &&
                       Api.of(context).filteredArticleIDs!.elementAt(
-                            Api.of(context).filteredIndex!,
+                            Api.of(context).selectedIndex!,
                           ) ==
                           article.articleID
                   ? Theme.of(context).listTileTheme.selectedTileColor

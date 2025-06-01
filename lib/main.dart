@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fresh_reader/view/settings_view.dart';
@@ -12,8 +13,6 @@ import 'view/feed_list.dart';
 
 late ApiData _apiData;
 late Database database;
-
-dynamic mainLoadError;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,6 +43,10 @@ class _MyAppState extends State<MyApp> {
         title: 'FreshReader',
         themeMode: ThemeMode.dark,
         darkTheme: ThemeData(
+          cupertinoOverrideTheme: CupertinoThemeData(
+            primaryColor: Colors.deepPurple,
+            brightness: Brightness.dark,
+          ),
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(
             seedColor: Colors.deepPurple,
@@ -97,9 +100,9 @@ class _HomeWidgetState extends State<HomeWidget> {
           key: _navigatorKey,
           onDidRemovePage: (page) {
             if (page.name == "/article") {
-              Api.of(context).filteredIndex = null;
+              Api.of(context).selectedIndex = null;
             } else if (page.name == "/list") {
-              Api.of(context).filteredIndex = null;
+              Api.of(context).selectedIndex = null;
               Api.of(context).filteredArticleIDs = null;
             }
           },
@@ -121,8 +124,9 @@ class _HomeWidgetState extends State<HomeWidget> {
                               flex: 3,
                               child: ArticleView(
                                 key: ValueKey(Api.of(context).filteredTitle),
-                                index: Api.of(context).filteredIndex,
-                                articleIDs: Api.of(context).filteredArticleIDs,
+                                index: Api.of(context).selectedIndex,
+                                articleIDs:
+                                    Api.of(context).searchResults?.toSet(),
                               ),
                             ),
                         ],
@@ -134,12 +138,12 @@ class _HomeWidgetState extends State<HomeWidget> {
                 Api.of(context).filteredArticleIDs != null)
               const MaterialPage(name: "/list", child: ArticleList()),
             if (screenSizeOf(context) != ScreenSize.big &&
-                Api.of(context).filteredIndex != null)
+                Api.of(context).selectedIndex != null)
               MaterialPage(
                 name: "/article",
                 child: ArticleView(
-                  index: Api.of(context).filteredIndex ?? 0,
-                  articleIDs: Api.of(context).filteredArticleIDs ?? {},
+                  index: Api.of(context).selectedIndex ?? 0,
+                  articleIDs: Api.of(context).searchResults?.toSet(),
                 ),
               ),
           ],

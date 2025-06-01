@@ -1,4 +1,3 @@
-// ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:convert';
 
 import 'api.dart';
@@ -179,18 +178,6 @@ class Category {
     );
   }
 
-  // Article.fromDB(Map<String, Object?> element)
-  //     : articleID = element["articleID"] as String,
-  //       subID = element["subID"] as String,
-  //       title = element["title"] as String,
-  //       read = element["isRead"] == "true",
-  //       starred = element["isStarred"] == "true",
-  //       published = element["timeStampPublished"] as int,
-  //       content =
-  //           element.containsKey("content") ? element["content"] as String : "",
-  //       url = element["url"] as String,
-  //       image = (element["img"] ?? "") as String;
-
   Category.fromJson(Map<String, Object?> element, this.accountID)
     : catID = element["id"] as String,
       name = (element["id"] as String).split("/").last;
@@ -238,8 +225,6 @@ class Article {
     required this.content,
     required this.url,
     this.image,
-    // required this.urls,
-    // required this.altUrls,
   });
 
   Article.fromCloudJson(Map<String, dynamic> json, this.accountID)

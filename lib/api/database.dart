@@ -6,17 +6,18 @@ import 'api.dart';
 import 'data_types.dart';
 import '../main.dart';
 
+const subTable =
+    "CREATE TABLE Subscriptions (id INTEGER PRIMARY KEY, accountID INTEGER, subID TEXT, catID TEXT, title TEXT, url TEXT, htmlUrl TEXT, iconUrl TEXT, UNIQUE(subID, accountID))";
+const catTable =
+    'CREATE TABLE Categories (id INTEGER PRIMARY KEY, accountID INTEGER, catID TEXT, name TEXT, UNIQUE(catID, accountID))';
+const artTable =
+    'CREATE TABLE Articles (id INTEGER PRIMARY KEY, accountID INTEGER, articleID TEXT, subID TEXT, title TEXT, isRead TEXT, isStarred TEXT, img TEXT, timeStampPublished INTEGER, content TEXT, url TEXT, UNIQUE(articleID, subID, accountID))';
+const delTable =
+    'CREATE TABLE DelayedActions (id INTEGER PRIMARY KEY, accountID INTEGER, articleID TEXT, action INTEGER, UNIQUE(articleID, accountID, action))';
+const accTable =
+    "CREATE TABLE Account (id INTEGER PRIMARY KEY, serverUrl TEXT, provider TEXT, username TEXT, password TEXT, updatedArticleTime INTEGER, updatedStarredTime INTEGER)";
+
 Future<Database> getDatabase() async {
-  const subTable =
-      "CREATE TABLE Subscriptions (id INTEGER PRIMARY KEY, accountID INTEGER, subID TEXT, catID TEXT, title TEXT, url TEXT, htmlUrl TEXT, iconUrl TEXT, UNIQUE(subID, accountID))";
-  const catTable =
-      'CREATE TABLE Categories (id INTEGER PRIMARY KEY, accountID INTEGER, catID TEXT, name TEXT, UNIQUE(catID, accountID))';
-  const artTable =
-      'CREATE TABLE Articles (id INTEGER PRIMARY KEY, accountID INTEGER, articleID TEXT, subID TEXT, title TEXT, isRead TEXT, isStarred TEXT, img TEXT, timeStampPublished INTEGER, content TEXT, url TEXT, UNIQUE(articleID, subID, accountID))';
-  const delTable =
-      'CREATE TABLE DelayedActions (id INTEGER PRIMARY KEY, accountID INTEGER, articleID TEXT, action INTEGER, UNIQUE(articleID, accountID, action))';
-  const accTable =
-      "CREATE TABLE Account (id INTEGER PRIMARY KEY, serverUrl TEXT, provider TEXT, username TEXT, password TEXT, updatedArticleTime INTEGER, updatedStarredTime INTEGER)";
   return await openDatabase(
     'my_db.db',
     version: 5,
@@ -168,28 +169,6 @@ Future<String?> loadArticleSubID(String articleID, int accountID) async {
   );
   return result.isNotEmpty ? result.first.values.first as String : null;
 }
-
-// Future<int> countArticles({
-//   bool? showAll,
-//   String? filterColumn,
-//   String? filterValue,
-//   required int accountID,
-// }) async {
-//   late String queryText;
-//   if (filterColumn == "tag") {
-//     queryText =
-//         "select COUNT(id) from Articles where accountID = $accountID and subID in (select subID from Subscriptions where catID = '$filterValue')";
-//   } else {
-//     queryText =
-//         "select COUNT(id) from Articles where accountID = $accountID${(filterColumn != null && filterValue != null) ? " and $filterColumn = '$filterValue'" : ""}";
-//   }
-//   if (showAll == false) {
-//     queryText += " and isRead = 'false'";
-//   }
-
-//   List<Map<String, Object?>> result = await database.rawQuery(queryText);
-//   return result.first.values.first as int;
-// }
 
 Future<Map<String, int>> countAllArticles(bool showAll, int accountID) async {
   List<Map<String, Object?>> results = await database.query(

@@ -808,12 +808,12 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
           // RadioListTile(
           //   title: const Text('InoReader'),
           //   value: "InoReader",
-          //   groupValue: newAcount.serverUrl.value,
+          //   groupValue: newAccount.serverUrl.value,
           //   onChanged: (String? value) {
           //     if (value != null) {
           //       setState(() {
-          //         newAcount =
-          //             newAcount.copyWith(serverUrl: drift.Value<String>(value));
+          //         newAccount =
+          //             newAccount.copyWith(serverUrl: drift.Value<String>(value));
           //       });
           //     }
           //   },

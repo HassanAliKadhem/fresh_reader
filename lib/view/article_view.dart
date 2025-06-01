@@ -5,7 +5,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:share_plus/share_plus.dart';
@@ -16,7 +15,9 @@ import '../api/api.dart';
 import '../api/data_types.dart';
 import '../api/database.dart';
 import '../util/formatting_setting.dart';
+import '../widget/adaptive_list_tile.dart';
 import '../widget/article_buttons.dart';
+import '../widget/article_image.dart';
 import '../widget/blur_bar.dart';
 
 class ArticleView extends StatefulWidget {
@@ -40,11 +41,11 @@ class _ArticleViewState extends State<ArticleView> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (Api.of(context).filteredIndex != null &&
+    if (Api.of(context).selectedIndex != null &&
         _pageController.hasClients &&
-        Api.of(context).filteredIndex != _pageController.page!.toInt() &&
+        Api.of(context).selectedIndex != _pageController.page!.toInt() &&
         _pageController.page!.toInt() == _pageController.page) {
-      final int index = Api.of(context).filteredIndex!;
+      final int index = Api.of(context).selectedIndex!;
       Future.microtask(() {
         _pageController.jumpToPage(index);
       });
@@ -52,11 +53,11 @@ class _ArticleViewState extends State<ArticleView> {
   }
 
   void _onPageChanged(int page) {
-    Api.of(context).filteredIndex = page;
+    Api.of(context).selectedIndex = page;
     currentArticleNotifier.value = Api.of(context).setRead(
       Api.of(
         context,
-      ).filteredArticles![widget.articleIDs?.elementAt(page)]!.articleID,
+      ).filteredArticles![Api.of(context).searchResults![page]]!.articleID,
       currentArticleNotifier.value!.subID,
       true,
     );
@@ -73,10 +74,6 @@ class _ArticleViewState extends State<ArticleView> {
         actions:
             widget.index != null && widget.articleIDs != null
                 ? [
-                  // FormattingButton(
-                  //   formattingSetting: formattingSetting,
-                  //   showWebView: showWebView,
-                  // ),
                   IconButton(
                     onPressed: () {
                       showModalBottomSheet(
@@ -92,7 +89,9 @@ class _ArticleViewState extends State<ArticleView> {
                             formattingSetting: formattingSetting,
                           );
                         },
-                      );
+                      ).then((_) {
+                        setState(() {});
+                      });
                     },
                     icon: Icon(
                       (Platform.isIOS || Platform.isMacOS)
@@ -241,7 +240,6 @@ class ArticlePage extends StatefulWidget {
 class _ArticlePageState extends State<ArticlePage> {
   @override
   Widget build(BuildContext context) {
-    print(widget.article.title.replaceAll("＆#x27;", "'"));
     if (widget.showWebView) {
       return ArticleWebWidget(
         key: ValueKey(widget.article.url),
@@ -324,39 +322,48 @@ class ArticleTextWidget extends StatelessWidget {
   final int timePublished;
   final FormattingSetting formattingSetting;
 
-  void showLinkMenu(BuildContext context, String link) {
+  void showLinkMenu(BuildContext context, String link, String? imgUrl) {
     showDialog(
       context: context,
       builder: (context) {
         Widget? image;
         if (imgExtensions.any((ext) => link.toLowerCase().endsWith(ext))) {
-          image = CachedNetworkImage(imageUrl: link, width: 128, height: 128);
+          image = CachedNetworkImage(imageUrl: link, width: 164, height: 164);
         }
-        return AlertDialog(
+        return AlertDialog.adaptive(
           icon: image,
           title: Text(
             link,
             textScaler: const TextScaler.linear(0.75),
-            style: TextStyle(color: Colors.white60),
+            // style: TextStyle(color: Colors.white60),
           ),
           contentPadding: EdgeInsets.zero,
           clipBehavior: Clip.hardEdge,
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Divider(),
-                ListTile(
-                  title: const Text("Open in browser"),
-                  trailing: const Icon(Icons.open_in_browser),
+                AdaptiveListTile(
+                  title: "Open in browser",
+                  trailing: Icon(
+                    (Platform.isIOS || Platform.isMacOS)
+                        ? CupertinoIcons.globe
+                        : Icons.public_rounded,
+                  ),
                   onTap: () {
                     launchUrl(Uri.parse(link));
                     Navigator.pop(context);
                   },
                 ),
-                ListTile(
-                  title: const Text("Share Link"),
-                  trailing: const Icon(Icons.share),
+                AdaptiveListTile(
+                  title: "Share Link",
+                  trailing: Icon(
+                    (Platform.isIOS || Platform.isMacOS)
+                        ? CupertinoIcons.share
+                        : Icons.share_rounded,
+                  ),
                   onTap: () {
                     try {
                       final box = context.findRenderObject() as RenderBox?;
@@ -376,6 +383,16 @@ class ArticleTextWidget extends StatelessWidget {
                     // Navigator.pop(context);
                   },
                 ),
+                if (imgUrl != null) const Divider(),
+                if (imgUrl != null)
+                  AdaptiveListTile(
+                    title: "Open image in browser",
+                    trailing: const Icon(Icons.image_search_rounded),
+                    onTap: () {
+                      launchUrl(Uri.parse(imgUrl));
+                      Navigator.pop(context);
+                    },
+                  ),
               ],
             ),
           ),
@@ -398,13 +415,17 @@ class ArticleTextWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String? imageUrl = getFirstImage(content);
+    final TextStyle urlStyle = TextStyle(
+      color: Theme.of(context).colorScheme.primary,
+      decoration: TextDecoration.underline,
+    );
     return ListenableBuilder(
       listenable: formattingSetting,
       builder: (context, child) {
         return AnimatedDefaultTextStyle(
           style: TextStyle(
             fontFamily: formattingSetting.font,
+            fontFamilyFallback: ["Arial"],
             fontSize: formattingSetting.fontSize,
             wordSpacing: formattingSetting.wordSpacing,
             height: formattingSetting.lineHeight,
@@ -415,114 +436,53 @@ class ArticleTextWidget extends StatelessWidget {
       },
       child: SelectionArea(
         child: ListView(
-          // padding: EdgeInsets.only(
-          //   bottom: MediaQuery.paddingOf(context).bottom,
-          //   top: MediaQuery.viewPaddingOf(context).top + (kToolbarHeight * 2.5),
-          // ),
           children: [
-            // Stack(
-            //   alignment: AlignmentDirectional.bottomStart,
-            //   children: [
-            //     if (imageUrl != null)
-            //       ConstrainedBox(
-            //         constraints: BoxConstraints(
-            //           maxHeight: MediaQuery.sizeOf(context).height / 2,
-            //         ),
-            //         child: Container(
-            //           width: double.infinity,
-            //           foregroundDecoration: const BoxDecoration(
-            //             gradient: LinearGradient(
-            //               colors: [
-            //                 Colors.black38,
-            //                 Colors.black54,
-            //                 Colors.black,
-            //               ],
-            //               begin: Alignment.topCenter,
-            //               end: Alignment.bottomCenter,
-            //               stops: [0.7, 0.85, 1],
-            //             ),
-            //           ),
-            //           child: CachedNetworkImage(
-            //             fit: BoxFit.fitWidth,
-            //             imageUrl: imageUrl,
-            //           ),
-            //         ),
-            //       ),
-            //     Padding(
-            //       padding: const EdgeInsets.only(top: kToolbarHeight + 24),
-            //       child: InkWell(
-            //         onLongPress: () {
-            //           showLinkMenu(context, url);
-            //         },
-            //         onTap: () {
-            //           launchUrl(Uri.parse(url));
-            //         },
-            //         child: Column(
-            //           crossAxisAlignment: CrossAxisAlignment.start,
-            //           mainAxisAlignment: MainAxisAlignment.end,
-            //           children: [
-            //             Padding(
-            //               padding: const EdgeInsets.all(24.0),
-            //               child: Column(
-            //                 crossAxisAlignment: CrossAxisAlignment.start,
-            //                 children: [
-            //                   Text(
-            //                     title,
-            //                     textScaler: const TextScaler.linear(1.25),
-            //                     style: const TextStyle(
-            //                       fontWeight: FontWeight.bold,
-            //                     ),
-            //                   ),
-            //                   Text(
-            //                     "${getRelativeDate(timePublished)}, ${DateTime.fromMillisecondsSinceEpoch(timePublished * 1000).toString().split(".").first}",
-            //                     maxLines: 1,
-            //                   ),
-            //                 ],
-            //               ),
-            //             ),
-            //             Container(
-            //               height: 20,
-            //               decoration: BoxDecoration(
-            //                 color: Theme.of(context).cardColor,
-            //                 borderRadius: const BorderRadius.vertical(
-            //                   top: Radius.circular(20),
-            //                 ),
-            //               ),
-            //             ),
-            //           ],
-            //         ),
-            //       ),
-            //     ),
-            //   ],
-            // ),
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: 16.0,
                 vertical: 4.0,
               ),
               child: Text.rich(
-                textScaler: TextScaler.linear(1.25),
+                textScaler: TextScaler.linear(0.8),
                 TextSpan(
                   children: [
-                    TextSpan(text: title),
+                    WidgetSpan(
+                      child: Builder(
+                        builder: (context) {
+                          return GestureDetector(
+                            onLongPress: () {
+                              showLinkMenu(context, url, null);
+                            },
+                            onTap: () {
+                              launchUrl(Uri.parse(url));
+                            },
+                            child: Text(
+                              title,
+                              textScaler: TextScaler.linear(1.45),
+                              style: urlStyle,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                     TextSpan(
                       text:
                           "\n${getRelativeDate(timePublished)}, ${DateTime.fromMillisecondsSinceEpoch(timePublished * 1000).toString().split(".").first}\n",
                       style: TextStyle(color: Colors.grey),
                     ),
                     WidgetSpan(
-                      alignment: PlaceholderAlignment.bottom,
+                      alignment: PlaceholderAlignment.middle,
                       child: CachedNetworkImage(
                         alignment: Alignment.bottomCenter,
-                        height: 14,
-                        width: 14,
+                        height: formattingSetting.fontSize * 0.8,
+                        width: formattingSetting.fontSize * 0.8,
                         imageUrl: iconUrl ?? "",
                         errorWidget:
                             (context, url, error) => const Icon(Icons.error),
                       ),
                     ),
                     TextSpan(
-                      text: "  $subName",
+                      text: " $subName",
                       style: TextStyle(color: Colors.grey),
                     ),
                   ],
@@ -538,21 +498,17 @@ class ArticleTextWidget extends StatelessWidget {
                 onErrorBuilder: (context, element, error) {
                   return Placeholder(child: Text(error.toString()));
                 },
-                onTapImage: (p0) {
-                  if (p0.sources.isNotEmpty) {
-                    showImage(context, p0.sources.first.url);
-                  }
-                },
                 customWidgetBuilder: (element) {
                   if (element.localName == "a") {
                     Widget? imgWidget;
+                    String? imgUrl;
                     if (element.children.any(
                       (child) => child.localName == "img",
                     )) {
                       for (var child in element.children) {
                         if (child.localName == "img") {
-                          imgWidget = CachedNetworkImage(
-                            fit: BoxFit.fitWidth,
+                          imgUrl = child.attributes["src"];
+                          imgWidget = ArticleImage(
                             imageUrl: child.attributes["src"] ?? "",
                             width: double.tryParse(
                               child.attributes["width"] ?? "",
@@ -560,9 +516,6 @@ class ArticleTextWidget extends StatelessWidget {
                             height: double.tryParse(
                               child.attributes["height"] ?? "",
                             ),
-                            errorWidget: (context, url, error) {
-                              return Placeholder(child: Text(error.toString()));
-                            },
                           );
                         }
                       }
@@ -570,7 +523,11 @@ class ArticleTextWidget extends StatelessWidget {
                     return InlineCustomWidget(
                       child: GestureDetector(
                         onLongPress: () {
-                          showLinkMenu(context, element.attributes["href"]!);
+                          showLinkMenu(
+                            context,
+                            element.attributes["href"]!,
+                            imgUrl,
+                          );
                         },
                         onTap: () {
                           launchUrl(Uri.parse(element.attributes["href"]!));
@@ -579,14 +536,27 @@ class ArticleTextWidget extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             if (imgWidget != null) imgWidget,
-                            Text(
-                              element.text,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.primary,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
+                            Text(element.text, style: urlStyle),
                           ],
+                        ),
+                      ),
+                    );
+                  } else if (element.localName == "img" &&
+                      element.attributes["src"] != null) {
+                    return GestureDetector(
+                      onLongPress: () {
+                        showLinkMenu(context, element.attributes["src"]!, null);
+                      },
+                      onTap: () {
+                        showImage(context, element.attributes["src"]!);
+                      },
+                      child: ArticleImage(
+                        imageUrl: element.attributes["src"]!,
+                        width: double.tryParse(
+                          element.attributes["width"] ?? "",
+                        ),
+                        height: double.tryParse(
+                          element.attributes["height"] ?? "",
                         ),
                       ),
                     );
