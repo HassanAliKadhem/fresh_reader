@@ -32,11 +32,11 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
   Widget build(BuildContext context) {
     return BlurBar(
       child: SafeArea(
-        minimum: EdgeInsets.all(8.0),
+        minimum: EdgeInsets.symmetric(vertical: 8.0),
         child: ValueListenableBuilder(
           valueListenable: widget.articleNotifier,
           builder: (context, value, child) {
-            bool isRead = value?.read ?? true;
+            bool isRead = value?.read ?? false;
             bool isStarred = value?.starred ?? false;
             return Row(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -201,80 +201,220 @@ class _FormattingBottomSheetState extends State<FormattingBottomSheet>
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      minimum: EdgeInsets.symmetric(horizontal: 12.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(leading: Icon(Icons.font_download), title: Text("Font")),
-          SegmentedButton<String>(
-            segments:
-                widget.formattingSetting.fonts
-                    .map(
-                      (font) => ButtonSegment(value: font, label: Text(font)),
-                    )
-                    .toList(),
-            selected: {widget.formattingSetting.font},
-            onSelectionChanged: (Set<String> newSelection) {
-              setState(() {
-                widget.formattingSetting.setFontFamily(newSelection.first);
-              });
-            },
-            showSelectedIcon: false,
-            multiSelectionEnabled: false,
-          ),
-
-          ListTile(
-            leading: Icon(
-              (Platform.isIOS || Platform.isMacOS)
-                  ? CupertinoIcons.textformat_size
-                  : Icons.format_size,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ListTile(
+          leading: Icon(Icons.font_download),
+          title: Text("Font"),
+          dense: true,
+        ),
+        (Platform.isIOS || Platform.isMacOS)
+            ? CupertinoSlidingSegmentedControl(
+              groupValue: widget.formattingSetting.font,
+              thumbColor: Theme.of(context).colorScheme.onPrimary,
+              onValueChanged: (value) {
+                if (value != null) {
+                  setState(() {
+                    widget.formattingSetting.setFontFamily(value);
+                  });
+                }
+              },
+              children: widget.formattingSetting.fonts.asMap().map(
+                (i, font) => MapEntry(
+                  font,
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(font),
+                  ),
+                ),
+              ),
+            )
+            : SegmentedButton<String>(
+              segments:
+                  widget.formattingSetting.fonts
+                      .map(
+                        (font) => ButtonSegment(
+                          value: font,
+                          label: Text(font.replaceAll(".", "")),
+                        ),
+                      )
+                      .toList(),
+              selected: {widget.formattingSetting.font},
+              onSelectionChanged: (Set<String> newSelection) {
+                setState(() {
+                  widget.formattingSetting.setFontFamily(newSelection.first);
+                });
+              },
+              showSelectedIcon: false,
+              multiSelectionEnabled: false,
             ),
-            title: Text("Font size"),
-          ),
-          Slider.adaptive(
-            value: widget.formattingSetting.fontSize,
-            label: widget.formattingSetting.fontSize.toString(),
-            min: 10.0,
-            max: 30.0,
-            onChanged: (v) {
-              setState(() {
-                widget.formattingSetting.setSize(v);
-              });
-            },
-          ),
-
-          ListTile(
-            leading: Icon(Icons.format_line_spacing),
-            title: Text("Line spacing"),
-          ),
-          Slider.adaptive(
-            value: widget.formattingSetting.lineHeight,
-            label: widget.formattingSetting.lineHeight.toString(),
-            min: 1.0,
-            max: 2.0,
-            onChanged: (v) {
-              setState(() {
-                widget.formattingSetting.setLineHeight(v);
-              });
-            },
-          ),
-
-          ListTile(leading: Icon(Icons.space_bar), title: Text("Word spacing")),
-          Slider.adaptive(
-            value: widget.formattingSetting.wordSpacing,
-            label: widget.formattingSetting.wordSpacing.toString(),
-            min: 0.0,
-            max: 10.0,
-            onChanged: (v) {
-              setState(() {
-                widget.formattingSetting.setSpacing(v);
-              });
-            },
-          ),
-          SizedBox(height: 24.0),
-        ],
-      ),
+    
+        Table(
+          columnWidths: {0: FlexColumnWidth(1), 1: FlexColumnWidth(3)},
+          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          children:
+              [
+                    [
+                      Icon(
+                        (Platform.isIOS || Platform.isMacOS)
+                            ? CupertinoIcons.textformat_size
+                            : Icons.format_size,
+                      ),
+                      Text("Size"),
+                      Slider.adaptive(
+                        value: widget.formattingSetting.fontSize,
+                        label: widget.formattingSetting.fontSize.toString(),
+                        min: 10.0,
+                        max: 30.0,
+                        onChanged: (v) {
+                          setState(() {
+                            widget.formattingSetting.setSize(v);
+                          });
+                        },
+                      ),
+                    ],
+                    [
+                      Icon(
+                        (Platform.isIOS || Platform.isMacOS)
+                            ? CupertinoIcons.textformat_size
+                            : Icons.format_size,
+                      ),
+                      Text("Line"),
+                      Slider.adaptive(
+                        value: widget.formattingSetting.lineHeight,
+                        label: widget.formattingSetting.lineHeight.toString(),
+                        min: 1.0,
+                        max: 2.0,
+                        onChanged: (v) {
+                          setState(() {
+                            widget.formattingSetting.setLineHeight(v);
+                          });
+                        },
+                      ),
+                    ],
+                    [
+                      Icon(Icons.space_bar),
+                      Text("Word"),
+                      Slider.adaptive(
+                        value: widget.formattingSetting.wordSpacing,
+                        label:
+                            widget.formattingSetting.wordSpacing.toString(),
+                        min: 0.0,
+                        max: 10.0,
+                        onChanged: (v) {
+                          setState(() {
+                            widget.formattingSetting.setSpacing(v);
+                          });
+                        },
+                      ),
+                    ],
+                  ]
+                  .map(
+                    (entry) => TableRow(
+                      children: [
+                        TableCell(
+                          verticalAlignment:
+                              TableCellVerticalAlignment.bottom,
+                          child: Padding(
+                            padding: EdgeInsetsGeometry.only(top: 16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [entry[0], entry[1]],
+                            ),
+                          ),
+                        ),
+                        TableCell(
+                          verticalAlignment:
+                              TableCellVerticalAlignment.bottom,
+                          child: entry[2],
+                        ),
+                      ],
+                    ),
+                  )
+                  .toList(),
+        ),
+        // SizedBox(height: 8.0),
+        // Row(
+        //   children: [
+        //     Column(
+        //       children: [
+        //         Icon(
+        //           (Platform.isIOS || Platform.isMacOS)
+        //               ? CupertinoIcons.textformat_size
+        //               : Icons.format_size,
+        //         ),
+        //         Text("Font size"),
+        //       ],
+        //     ),
+        //     Expanded(
+        //       child: Slider.adaptive(
+        //         value: widget.formattingSetting.fontSize,
+        //         label: widget.formattingSetting.fontSize.toString(),
+        //         min: 10.0,
+        //         max: 30.0,
+        //         onChanged: (v) {
+        //           setState(() {
+        //             widget.formattingSetting.setSize(v);
+        //           });
+        //         },
+        //       ),
+        //     ),
+        //   ],
+        // ),
+        // SizedBox(height: 8.0),
+        // ListTile(
+        //   leading: Icon(
+        //     (Platform.isIOS || Platform.isMacOS)
+        //         ? CupertinoIcons.textformat_size
+        //         : Icons.format_size,
+        //   ),
+        //   title: Text("Font size"),
+        // ),
+        // Slider.adaptive(
+        //   value: widget.formattingSetting.fontSize,
+        //   label: widget.formattingSetting.fontSize.toString(),
+        //   min: 10.0,
+        //   max: 30.0,
+        //   onChanged: (v) {
+        //     setState(() {
+        //       widget.formattingSetting.setSize(v);
+        //     });
+        //   },
+        // ),
+    
+        // ListTile(
+        //   leading: Icon(Icons.format_line_spacing),
+        //   title: Text("Line spacing"),
+        // ),
+        // Slider.adaptive(
+        //   value: widget.formattingSetting.lineHeight,
+        //   label: widget.formattingSetting.lineHeight.toString(),
+        //   min: 1.0,
+        //   max: 2.0,
+        //   onChanged: (v) {
+        //     setState(() {
+        //       widget.formattingSetting.setLineHeight(v);
+        //     });
+        //   },
+        // ),
+        // ListTile(leading: Icon(Icons.space_bar), title: Text("Word Spacing")),
+        // Slider.adaptive(
+        //   value: widget.formattingSetting.wordSpacing,
+        //   label: widget.formattingSetting.wordSpacing.toString(),
+        //   min: 0.0,
+        //   max: 10.0,
+        //   onChanged: (v) {
+        //     setState(() {
+        //       widget.formattingSetting.setSpacing(v);
+        //     });
+        //   },
+        // ),
+        SizedBox(height: 16.0),
+      ],
     );
   }
 }

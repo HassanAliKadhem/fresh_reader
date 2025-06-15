@@ -4,4 +4,7 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <meta-data
+        android:name="io.flutter.embedding.android.DisableSurfaceControl"
+        android:value="true" />
 </manifest>

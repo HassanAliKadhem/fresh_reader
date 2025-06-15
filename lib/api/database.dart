@@ -16,17 +16,19 @@ const delTable =
     'CREATE TABLE DelayedActions (id INTEGER PRIMARY KEY, accountID INTEGER, articleID TEXT, action INTEGER, UNIQUE(articleID, accountID, action))';
 const accTable =
     "CREATE TABLE Account (id INTEGER PRIMARY KEY, serverUrl TEXT, provider TEXT, username TEXT, password TEXT, updatedArticleTime INTEGER, updatedStarredTime INTEGER)";
+const prefTable = "create table preferences (key TEXT primary key, value TEXT)";
 
 Future<Database> getDatabase() async {
   return await openDatabase(
     'my_db.db',
-    version: 5,
+    version: 7,
     onCreate: (db, version) async {
       await db.execute(accTable);
       await db.execute(subTable);
       await db.execute(catTable);
       await db.execute(artTable);
       await db.execute(delTable);
+      await db.execute(prefTable);
     },
     onUpgrade: (db, oldVersion, newVersion) async {
       if (oldVersion == 1 && newVersion == 2) {
@@ -101,14 +103,39 @@ Future<Database> getDatabase() async {
       } else if (oldVersion == 4 && newVersion == 5) {
         await db.execute("ALTER TABLE Subscriptions add column catID TEXT");
         debugPrint("Finished upgrading db to: version 5");
+      } else if (oldVersion == 6 && newVersion == 7) {
+        try {
+          await db.execute("drop table preferences");
+        } catch (_) {}
+        await db.execute(
+          "create table preferences (key TEXT primary key, value TEXT)",
+        );
+        debugPrint("Finished upgrading db to: version 7");
       }
     },
     // singleInstance: true,
   );
 }
 
+Future<String?> getPreference(String key) async {
+  var res = await database.query(
+    "preferences",
+    where: "key = ?",
+    whereArgs: [key],
+    limit: 1,
+  );
+  return res.isEmpty ? null : res.first["value"] as String;
+}
+
+void setPreference(String key, String value) async {
+  await database.insert("preferences", {
+    "key": key,
+    "value": value,
+  }, conflictAlgorithm: ConflictAlgorithm.replace);
+}
+
 Future<Map<String, Subscription>> loadAllSubs(int accountID) async {
-  List<Map<String, Object?>> subs = await database.query(
+  return (await database.query(
     "Subscriptions",
     columns: [
       "subID",
@@ -121,8 +148,7 @@ Future<Map<String, Subscription>> loadAllSubs(int accountID) async {
     ],
     where: "accountID = ?",
     whereArgs: [accountID],
-  );
-  return subs.asMap().map(
+  )).asMap().map(
     (key, element) =>
         MapEntry(element["subID"] as String, Subscription.fromDB(element)),
   );
@@ -141,22 +167,23 @@ void saveSubs(List<Subscription> subs) {
 }
 
 Future<Article> loadArticle(String articleID, int accountID) async {
-  List<Map<String, Object?>> articles = await database.query(
-    "Articles",
-    where: "articleID = ? and accountID = ?",
-    whereArgs: [articleID, accountID],
+  return Article.fromDB(
+    (await database.query(
+      "Articles",
+      where: "articleID = ? and accountID = ?",
+      whereArgs: [articleID, accountID],
+      limit: 1,
+    )).first,
   );
-  return Article.fromDB(articles.first);
 }
 
 Future<List<Article>> loadArticles(
   List<String> articleIDs,
   int accountID,
 ) async {
-  List<Map<String, Object?>> articles = await database.rawQuery(
+  return (await database.rawQuery(
     "select articleID ,subID, accountID, title, isRead, isStarred, timeStampPublished, url, img from Articles where accountID = $accountID and articleID in ('${articleIDs.join("','")}') order by timeStampPublished desc",
-  );
-  return articles.map((article) => Article.fromDB(article)).toList();
+  )).map((article) => Article.fromDB(article)).toList();
 }
 
 Future<String?> loadArticleSubID(String articleID, int accountID) async {
@@ -166,8 +193,24 @@ Future<String?> loadArticleSubID(String articleID, int accountID) async {
     where: "articleID = ? and accountID = ?",
     whereArgs: [articleID, accountID],
     orderBy: "timeStampPublished DESC",
+    limit: 1,
   );
   return result.isNotEmpty ? result.first.values.first as String : null;
+}
+
+Future<Map<String, String>> loadArticleSubIDs(
+  List<String> articleIDs,
+  int accountID,
+) async {
+  return (await database.query(
+    "Articles",
+    columns: ["articleID", "subID"],
+    where: "articleID in ? and accountID = ?",
+    whereArgs: [articleIDs, accountID],
+  )).asMap().map(
+    (i, entry) =>
+        MapEntry(entry["articleID"] as String, entry["subID"] as String),
+  );
 }
 
 Future<Map<String, int>> countAllArticles(bool showAll, int accountID) async {

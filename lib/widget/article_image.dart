@@ -19,8 +19,17 @@ class ArticleImage extends StatelessWidget {
       imageUrl: imageUrl,
       width: width,
       height: height,
+      progressIndicatorBuilder:
+          (context, url, progress) => SizedBox(
+            width: 16.0,
+            height: 16.0,
+            child: CircularProgressIndicator.adaptive(
+              year2023: false,
+              value: progress.progress,
+            ),
+          ),
       errorWidget: (context, url, error) {
-        return Placeholder(child: Text("$url\n$error"));
+        return Placeholder(child: Text(error.toString().split(",").first));
       },
     );
   }

@@ -23,7 +23,6 @@ class AdaptiveTextField extends StatelessWidget {
     if (Platform.isIOS || Platform.isMacOS) {
       return CupertinoTextField(
         placeholder: label,
-        style: TextStyle(color: Colors.white),
         obscureText: obscureText ?? false,
         controller: TextEditingController(text: initialValue),
         onChanged: onChanged,

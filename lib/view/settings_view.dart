@@ -20,18 +20,13 @@ class _SettingsViewState extends State<SettingsView> {
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            icon: Icon(Icons.close),
-          ),
+          CloseButton(),
           Text("Settings"),
           IconButton(
             onPressed:
                 () => showAboutDialog(
                   context: context,
-                  applicationVersion: "1.2.2",
+                  applicationVersion: "1.2.4",
                   children: [
                     const ListTile(
                       title: Text("Made By"),
@@ -362,394 +357,106 @@ class _SettingsViewState extends State<SettingsView> {
               );
             },
           ),
+          Divider(),
+          ListTile(title: Text("Other settings")),
+          const ReadDurationTile(
+            title: "Keep read articles",
+            dbKey: "read_duration",
+            values: durations,
+          ),
+          const ReadDurationTile(
+            title: "Keep starred articles",
+            dbKey: "star_duration",
+            values: amounts,
+          ),
         ],
       ),
     );
-    // return Dialog(
-    //   child: Container(
-    //     constraints: BoxConstraints.loose(
-    //       Size(
-    //         MediaQuery.sizeOf(context).width - 100,
-    //         MediaQuery.sizeOf(context).height - 200,
-    //       ),
-    //     ),
-    //     padding: EdgeInsets.all(8.0),
-    //     child: Column(
-    //       mainAxisSize: MainAxisSize.min,
-    //       children: [
-    //         AppBar(
-    //           title: Text('Settings'),
-    //           leading: IconButton(
-    //             onPressed: () {
-    //               Navigator.pop(context);
-    //             },
-    //             icon: Icon(Icons.close),
-    //           ),
-    //           actions: [
-    //             IconButton(
-    //               onPressed:
-    //                   () => showAboutDialog(
-    //                     context: context,
-    //                     applicationVersion: "1.2.2",
-    //                     children: [
-    //                       const ListTile(
-    //                         title: Text("Made By"),
-    //                         subtitle: Text("Hasan Kadhem"),
-    //                       ),
-    //                       ListTile(
-    //                         title: const Text("Source Code"),
-    //                         subtitle: const Text(
-    //                           "https://github.com/HassanAliKadhem/fresh_reader",
-    //                         ),
-    //                         trailing: const Icon(Icons.open_in_browser),
-    //                         onTap:
-    //                             () => launchUrl(
-    //                               Uri.parse(
-    //                                 "https://github.com/HassanAliKadhem/fresh_reader",
-    //                               ),
-    //                             ),
-    //                       ),
-    //                     ],
-    //                   ),
-    //               icon: Icon(Icons.info),
-    //             ),
-    //           ],
-    //         ),
-    //         Divider(height: 2.0),
-    //         ListView(
-    //           shrinkWrap: true,
-    //           children: [
-    //             ListTile(
-    //               leading: Icon(Icons.account_circle),
-    //               title: Text("Add new account"),
-    //               onTap: () {
-    //                 showAdaptiveDialog(
-    //                   context: context,
-    //                   builder: (context) {
-    //                     return AddAccountDialog();
-    //                   },
-    //                 ).then((onValue) {
-    //                   if (onValue != null && onValue is Account) {
-    //                     Api.of(context).changeAccount(onValue);
-    //                   }
-    //                   setState(() {});
-    //                 });
-    //               },
-    //               trailing: Icon(Icons.add),
-    //             ),
-    //             FutureBuilder(
-    //               future: database.query("Account"),
-    //               builder: (context, snapshot) {
-    //                 if (snapshot.connectionState != ConnectionState.done) {
-    //                   return CircularProgressIndicator.adaptive();
-    //                 }
-    //                 return Column(
-    //                   mainAxisSize: MainAxisSize.min,
-    //                   children:
-    //                       snapshot.data!.map((acc) {
-    //                         return Card(
-    //                           clipBehavior: Clip.antiAlias,
-    //                           child: ExpansionTile(
-    //                             shape: const Border(),
-    //                             title: Text(
-    //                               "${acc["provider"]}: ${acc["username"]}",
-    //                             ),
-    //                             subtitle: Text(acc["serverUrl"].toString()),
-    //                             children: [
-    //                               ListTile(
-    //                                 title: Text("Edit account"),
-    //                                 trailing: Icon(Icons.edit),
-    //                                 onTap: () {
-    //                                   showAdaptiveDialog(
-    //                                     context: context,
-    //                                     builder: (context) {
-    //                                       return AddAccountDialog(
-    //                                         oldAccount: Account.fromMap(acc),
-    //                                       );
-    //                                     },
-    //                                   ).then((onValue) {
-    //                                     // if (onValue != null &&
-    //                                     //     onValue is AccountData) {
-    //                                     //   widget.chooseAccount(onValue);
-    //                                     // }
-    //                                   });
-    //                                 },
-    //                               ),
-    //                               FutureBuilder(
-    //                                 future: countAllArticles(
-    //                                   true,
-    //                                   acc["id"] as int,
-    //                                 ),
-    //                                 builder: (context, snapshot) {
-    //                                   if (snapshot.connectionState !=
-    //                                       ConnectionState.done) {
-    //                                     return CircularProgressIndicator.adaptive();
-    //                                   }
-    //                                   return ListTile(
-    //                                     title: Text(
-    //                                       "Total articles: ${snapshot.data!.values.reduce((count, value) => count + value)}",
-    //                                     ),
-    //                                     // subtitle: Text(
-    //                                     //     "categories: ${snapshot.data!.entries.map((entry) => entry.key.startsWith("feed/") ? 0 : 1).reduce((count, value) => count + value)}, subscriptions: ${snapshot.data!.entries.map((entry) => entry.key.startsWith("feed/") ? 1 : 0).reduce((count, value) => count + value)}"),
-    //                                   );
-    //                                 },
-    //                               ),
-    //                               ListTile(
-    //                                 title: const Text(
-    //                                   "Last sync articles time",
-    //                                 ),
-    //                                 subtitle: Text(
-    //                                   DateTime.fromMillisecondsSinceEpoch(
-    //                                     (acc["updatedArticleTime"] as int) *
-    //                                         1000,
-    //                                   ).toString(),
-    //                                 ),
-    //                                 onTap: () {
-    //                                   showDatePicker(
-    //                                     context: context,
-    //                                     firstDate: DateTime(0),
-    //                                     lastDate: DateTime.now(),
-    //                                     initialDate:
-    //                                         DateTime.fromMillisecondsSinceEpoch(
-    //                                           (acc["updatedArticleTime"]
-    //                                                   as int) *
-    //                                               1000,
-    //                                         ),
-    //                                   ).then((value) {
-    //                                     if (value != null) {
-    //                                       database.update(
-    //                                         "Account",
-    //                                         {
-    //                                           "updatedArticleTime":
-    //                                               (value.millisecondsSinceEpoch /
-    //                                                       1000)
-    //                                                   .floor(),
-    //                                         },
-    //                                         where: "id = ?",
-    //                                         whereArgs: [acc["id"]],
-    //                                       );
-    //                                       setState(() {});
-    //                                     }
-    //                                   });
-    //                                 },
-    //                               ),
-    //                               ListTile(
-    //                                 title: const Text("Last sync starred time"),
-    //                                 subtitle: Text(
-    //                                   DateTime.fromMillisecondsSinceEpoch(
-    //                                     (acc["updatedStarredTime"] as int) *
-    //                                         1000,
-    //                                   ).toString(),
-    //                                 ),
-    //                                 onTap: () {
-    //                                   showDatePicker(
-    //                                     context: context,
-    //                                     firstDate: DateTime(0),
-    //                                     lastDate: DateTime.now(),
-    //                                     initialDate:
-    //                                         DateTime.fromMillisecondsSinceEpoch(
-    //                                           (acc["updatedStarredTime"]
-    //                                                   as int) *
-    //                                               1000,
-    //                                         ),
-    //                                   ).then((value) {
-    //                                     if (value != null) {
-    //                                       database.update(
-    //                                         "Account",
-    //                                         {
-    //                                           "updatedStarredTime":
-    //                                               (value.millisecondsSinceEpoch /
-    //                                                       1000)
-    //                                                   .floor(),
-    //                                         },
-    //                                         where: "id = ?",
-    //                                         whereArgs: [acc["id"]],
-    //                                       );
-    //                                       setState(() {});
-    //                                     }
-    //                                   });
-    //                                 },
-    //                               ),
-    //                               ListTile(
-    //                                 title: const Text("Delete Data or Account"),
-    //                                 onTap: () async {
-    //                                   showAdaptiveDialog(
-    //                                     context: context,
-    //                                     builder: (context) {
-    //                                       return AlertDialog.adaptive(
-    //                                         title: const Text("Are you sure?"),
-    //                                         actions: [
-    //                                           TextButton(
-    //                                             onPressed: () {
-    //                                               int accountID =
-    //                                                   acc["id"] as int;
-    //                                               // Filter.of(context).api.account.id;
-    //                                               database.delete(
-    //                                                 "Article",
-    //                                                 where: "accountID = ?",
-    //                                                 whereArgs: [accountID],
-    //                                               );
-    //                                               database.delete(
-    //                                                 "Categories",
-    //                                                 where: "accountID = ?",
-    //                                                 whereArgs: [accountID],
-    //                                               );
-    //                                               database.delete(
-    //                                                 "Subscriptions",
-    //                                                 where: "accountID = ?",
-    //                                                 whereArgs: [accountID],
-    //                                               );
-    //                                               database.delete(
-    //                                                 "DelayedActions",
-    //                                                 where: "accountID = ?",
-    //                                                 whereArgs: [accountID],
-    //                                               );
-    //                                               database.delete(
-    //                                                 "Account",
-    //                                                 where: "id = ?",
-    //                                                 whereArgs: [accountID],
-    //                                               );
-    //                                               ScaffoldMessenger.of(
-    //                                                 context,
-    //                                               ).showSnackBar(
-    //                                                 const SnackBar(
-    //                                                   content: Text(
-    //                                                     "Account Deleted",
-    //                                                   ),
-    //                                                 ),
-    //                                               );
-    //                                               Navigator.pop(context);
-    //                                               if (Api.of(
-    //                                                     context,
-    //                                                   ).account?.id ==
-    //                                                   accountID) {
-    //                                                 database
-    //                                                     .query(
-    //                                                       "Account",
-    //                                                       where: "id = ?",
-    //                                                       whereArgs: [
-    //                                                         accountID,
-    //                                                       ],
-    //                                                     )
-    //                                                     .then((onValue) {
-    //                                                       Api.of(
-    //                                                         context,
-    //                                                       ).changeAccount(
-    //                                                         Account.fromMap(
-    //                                                           onValue.first,
-    //                                                         ),
-    //                                                       );
-    //                                                     });
-    //                                               }
-    //                                               setState(() {});
-    //                                             },
-    //                                             child: Text(
-    //                                               "Delete Account",
-    //                                               style: TextStyle(
-    //                                                 color: Colors.red[300],
-    //                                               ),
-    //                                             ),
-    //                                           ),
-    //                                           TextButton(
-    //                                             onPressed: () {
-    //                                               int accountID =
-    //                                                   acc["id"] as int;
-    //                                               // Filter.of(context).api.account.id;
-    //                                               database.delete(
-    //                                                 "Articles",
-    //                                                 where: "accountID = ?",
-    //                                                 whereArgs: [accountID],
-    //                                               );
-    //                                               database.delete(
-    //                                                 "Categories",
-    //                                                 where: "accountID = ?",
-    //                                                 whereArgs: [accountID],
-    //                                               );
-    //                                               database.delete(
-    //                                                 "Subscriptions",
-    //                                                 where: "accountID = ?",
-    //                                                 whereArgs: [accountID],
-    //                                               );
-    //                                               database.delete(
-    //                                                 "DelayedActions",
-    //                                                 where: "accountID = ?",
-    //                                                 whereArgs: [accountID],
-    //                                               );
-    //                                               database.update(
-    //                                                 "Account",
-    //                                                 {
-    //                                                   "updatedStarredTime": 0,
-    //                                                   "updatedArticleTime": 0,
-    //                                                 },
-    //                                                 where: "id = ?",
-    //                                                 whereArgs: [accountID],
-    //                                               );
-    //                                               ScaffoldMessenger.of(
-    //                                                 context,
-    //                                               ).showSnackBar(
-    //                                                 const SnackBar(
-    //                                                   content: Text(
-    //                                                     "Data Cleared",
-    //                                                   ),
-    //                                                 ),
-    //                                               );
-    //                                               Navigator.pop(context);
-    //                                               if (Api.of(
-    //                                                     context,
-    //                                                   ).account?.id ==
-    //                                                   accountID) {
-    //                                                 database
-    //                                                     .query(
-    //                                                       "Account",
-    //                                                       where: "id = ?",
-    //                                                       whereArgs: [
-    //                                                         accountID,
-    //                                                       ],
-    //                                                     )
-    //                                                     .then((onValue) {
-    //                                                       Api.of(
-    //                                                         context,
-    //                                                       ).changeAccount(
-    //                                                         Account.fromMap(
-    //                                                           onValue.first,
-    //                                                         ),
-    //                                                       );
-    //                                                     });
-    //                                               }
-    //                                               setState(() {});
-    //                                             },
-    //                                             child: Text(
-    //                                               "Delete only data",
-    //                                               style: TextStyle(
-    //                                                 color: Colors.red[300],
-    //                                               ),
-    //                                             ),
-    //                                           ),
-    //                                           TextButton(
-    //                                             onPressed: () {
-    //                                               Navigator.pop(context);
-    //                                             },
-    //                                             child: const Text("Cancel"),
-    //                                           ),
-    //                                         ],
-    //                                       );
-    //                                     },
-    //                                   );
-    //                                 },
-    //                               ),
-    //                             ],
-    //                           ),
-    //                         );
-    //                       }).toList(),
-    //                 );
-    //               },
-    //             ),
-    //           ],
-    //         ),
-    //       ],
-    //     ),
-    //   ),
-    // );
+  }
+}
+
+const Map<int, String> durations = {
+  -1: "Forever",
+  1: "1 day",
+  2: "2 days",
+  7: "1 week",
+  14: "2 weeks",
+  31: "1 month",
+  62: "2 months",
+};
+
+const Map<int, String> amounts = {
+  -1: "Unlimited",
+  100: "100",
+  200: "200",
+  500: "500",
+  1000: "1000",
+  2000: "2000",
+  5000: "5000",
+};
+
+class ReadDurationTile extends StatefulWidget {
+  const ReadDurationTile({
+    super.key,
+    required this.dbKey,
+    required this.title,
+    required this.values,
+  });
+  final String dbKey;
+  final String title;
+  final Map<int, String> values;
+
+  @override
+  State<ReadDurationTile> createState() => _ReadDurationTileState();
+}
+
+class _ReadDurationTileState extends State<ReadDurationTile> {
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(widget.title),
+      trailing: FutureBuilder(
+        future: getPreference(widget.dbKey),
+        builder: (context, asyncSnapshot) {
+          return PopupMenuButton(
+            child:
+                asyncSnapshot.connectionState == ConnectionState.done
+                    ? Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            asyncSnapshot.data != null
+                                ? widget.values[int.tryParse(
+                                      asyncSnapshot.data!,
+                                    )] ??
+                                    asyncSnapshot.data!
+                                : widget.values.values.first,
+                          ),
+                          Icon(Icons.arrow_drop_down),
+                        ],
+                      ),
+                    )
+                    : CircularProgressIndicator.adaptive(),
+            itemBuilder: (context) {
+              return widget.values.entries
+                  .map(
+                    (element) => PopupMenuItem(
+                      child: Text(element.value),
+                      onTap: () {
+                        setState(() {
+                          setPreference(widget.dbKey, element.key.toString());
+                        });
+                      },
+                    ),
+                  )
+                  .toList();
+            },
+          );
+        },
+      ),
+    );
   }
 }
 
@@ -793,7 +500,6 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
         children: [
           Text("Provider"),
           RadioListTile.adaptive(
-            contentPadding: EdgeInsets.all(0.0),
             title: const Text('Freshrss'),
             value: "Freshrss",
             groupValue: newAccount.provider,
@@ -805,7 +511,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
               }
             },
           ),
-          // RadioListTile(
+          // RadioListTile.adaptive(
           //   title: const Text('InoReader'),
           //   value: "InoReader",
           //   groupValue: newAccount.serverUrl.value,
@@ -845,18 +551,15 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
           ),
         ],
       ),
-      actionsAlignment: MainAxisAlignment.spaceBetween,
+      // actionsAlignment: MainAxisAlignment.spaceBetween,
       actions: [
         TextButton(
-          style: ButtonStyle(
-            foregroundColor: WidgetStatePropertyAll<Color>(Colors.red),
-          ),
           onPressed: () {
             Navigator.pop(context);
           },
           child: Text("Cancel"),
         ),
-        TextButton(
+        FilledButton(
           onPressed: () async {
             int index = await addAccount(newAccount);
             Navigator.pop(context, newAccount.copyWith(id: index));

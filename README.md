@@ -24,9 +24,11 @@ An opinionated client for FreshRss (not affiliated) made just for me. but you ca
 - [x] search articles
 
 ## Todo
+- [ ] delete old read articles
+- [ ] limit number of starred articles stored
 - [ ] edit tags
 - [ ] delete tags
-- [ ] bionic reading
+- [ ] Highlight the first letters in a word to ease reading
 - [ ] add date separator in article list
 
 ## Screenshots

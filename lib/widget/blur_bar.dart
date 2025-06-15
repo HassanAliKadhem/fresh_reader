@@ -11,12 +11,10 @@ class BlurBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return ClipRRect(
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+        filter: ImageFilter.blur(sigmaX: 14.0, sigmaY: 14.0),
         child: Container(
           decoration: BoxDecoration(
-            color: Theme.of(
-              context,
-            ).canvasColor.withAlpha(hasBorder ? 128 : 80),
+            color: Theme.of(context).canvasColor.withAlpha(164),
             border:
                 !hasBorder
                     ? null

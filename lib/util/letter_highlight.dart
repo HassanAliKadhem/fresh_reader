@@ -2,7 +2,7 @@ import 'package:html/dom.dart';
 import 'package:html/dom_parsing.dart';
 import 'package:html/parser.dart';
 
-String getBionicContent(String oldContent) {
+String getLetterHighlightContent(String oldContent) {
   Document document = parse(oldContent);
   // if (document.body != null) {
   //   for (var i = 0; i < document.body!.nodes.length; i++) {

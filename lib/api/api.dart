@@ -165,6 +165,17 @@ class ApiData extends ChangeNotifier {
       _getStarredArticles(auth),
     ]);
     //https://github.com/FreshRSS/FreshRSS/issues/2566
+
+    await getPreference("read_duration").then((duration) {
+      if (duration != null && duration != "-1") {
+        // TODO: add code to delete old articles
+      }
+    });
+    await getPreference("star_duration").then((duration) {
+      if (duration != null && duration != "-1") {
+        // TODO: add code to delete starred articles
+      }
+    });
     return true;
   }
 

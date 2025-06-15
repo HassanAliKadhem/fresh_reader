@@ -46,6 +46,9 @@ class _MyAppState extends State<MyApp> {
           cupertinoOverrideTheme: CupertinoThemeData(
             primaryColor: Colors.deepPurple,
             brightness: Brightness.dark,
+            textTheme: CupertinoTextThemeData(
+              primaryColor: Colors.grey.shade600,
+            ),
           ),
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(
@@ -68,6 +71,7 @@ class _MyAppState extends State<MyApp> {
           ),
           listTileTheme: ListTileThemeData(selectedTileColor: Colors.white10),
           sliderTheme: SliderThemeData(year2023: false),
+          progressIndicatorTheme: ProgressIndicatorThemeData(year2023: false),
         ),
         home: const HomeWidget(),
       ),
@@ -83,71 +87,115 @@ class HomeWidget extends StatefulWidget {
 }
 
 final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+final ValueNotifier<bool> isExpanded = ValueNotifier<bool>(false);
 
 class _HomeWidgetState extends State<HomeWidget> {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Theme.of(context).cardColor,
-      child: PopScope(
-        canPop: false,
-        onPopInvokedWithResult: (didPop, result) {
-          if (!didPop) {
-            _navigatorKey.currentState!.maybePop();
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          _navigatorKey.currentState!.maybePop();
+        }
+      },
+      child: Navigator(
+        key: _navigatorKey,
+        onDidRemovePage: (page) {
+          if (page.name == "/article") {
+            Api.of(context).selectedIndex = null;
+          } else if (page.name == "/list") {
+            Api.of(context).selectedIndex = null;
+            Api.of(context).filteredArticleIDs = null;
           }
         },
-        child: Navigator(
-          key: _navigatorKey,
-          onDidRemovePage: (page) {
-            if (page.name == "/article") {
-              Api.of(context).selectedIndex = null;
-            } else if (page.name == "/list") {
-              Api.of(context).selectedIndex = null;
-              Api.of(context).filteredArticleIDs = null;
-            }
-          },
-          pages: [
-            MaterialPage(
-              name: "/",
-              child:
-                  screenSizeOf(context) == ScreenSize.small
-                      ? FeedList(onSelect: _onChooseFeed)
-                      : Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: FeedList(onSelect: _onChooseFeed),
-                          ),
-                          const Expanded(flex: 2, child: ArticleList()),
-                          if (screenSizeOf(context) == ScreenSize.big)
-                            Expanded(
-                              flex: 3,
-                              child: ArticleView(
-                                key: ValueKey(Api.of(context).filteredTitle),
-                                index: Api.of(context).selectedIndex,
-                                articleIDs:
-                                    Api.of(context).searchResults?.toSet(),
-                              ),
+        pages: [
+          MaterialPage(
+            name: "/",
+            child:
+                screenSizeOf(context) != ScreenSize.big
+                    ? FeedList(onSelect: _onChooseFeed)
+                    : Stack(
+                      alignment: Alignment.centerLeft,
+                      children: [
+                        SizedBox(
+                          width: (MediaQuery.sizeOf(context).width / 4),
+                          child: FeedList(onSelect: _onChooseFeed),
+                        ),
+                        Row(
+                          children: [
+                            ValueListenableBuilder(
+                              valueListenable: isExpanded,
+                              builder: (context, value, child) {
+                                return AnimatedSize(
+                                  duration: Duration(milliseconds: 400),
+                                  alignment: Alignment.centerLeft,
+                                  child: SizedBox(
+                                    width:
+                                        (screenSizeOf(context) ==
+                                                    ScreenSize.big &&
+                                                value)
+                                            ? 0.0
+                                            : (MediaQuery.sizeOf(
+                                                  context,
+                                                ).width /
+                                                4),
+                                  ),
+                                );
+                              },
                             ),
-                        ],
-                      ),
+                            const Expanded(flex: 2, child: ArticleList()),
+                            if (screenSizeOf(context) == ScreenSize.big)
+                              Expanded(
+                                flex: 3,
+                                child: ArticleView(
+                                  key: ValueKey(Api.of(context).filteredTitle),
+                                  index: Api.of(context).selectedIndex,
+                                  articleIDs:
+                                      Api.of(context).searchResults?.toSet(),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+          ),
+          if (Api.of(context).account == null && Api.of(context).justBooted)
+            const MaterialPage(
+              name: "/settings",
+              fullscreenDialog: true,
+              child: SettingsView(),
             ),
-            if (Api.of(context).account == null && Api.of(context).justBooted)
-              const MaterialPage(name: "/settings", child: SettingsView()),
-            if (screenSizeOf(context) == ScreenSize.small &&
-                Api.of(context).filteredArticleIDs != null)
-              const MaterialPage(name: "/list", child: ArticleList()),
-            if (screenSizeOf(context) != ScreenSize.big &&
-                Api.of(context).selectedIndex != null)
-              MaterialPage(
-                name: "/article",
-                child: ArticleView(
-                  index: Api.of(context).selectedIndex ?? 0,
-                  articleIDs: Api.of(context).searchResults?.toSet(),
-                ),
+          if (screenSizeOf(context) == ScreenSize.medium &&
+              Api.of(context).filteredArticleIDs != null)
+            MaterialPage(
+              child: Row(
+                children: [
+                  const Expanded(flex: 2, child: ArticleList()),
+                  Expanded(
+                    flex: 3,
+                    child: ArticleView(
+                      key: ValueKey(Api.of(context).filteredTitle),
+                      index: Api.of(context).selectedIndex,
+                      articleIDs: Api.of(context).searchResults?.toSet(),
+                    ),
+                  ),
+                ],
               ),
-          ],
-        ),
+            ),
+          if (screenSizeOf(context) == ScreenSize.small &&
+              Api.of(context).filteredArticleIDs != null)
+            const MaterialPage(name: "/list", child: ArticleList()),
+          if (screenSizeOf(context) == ScreenSize.small &&
+              Api.of(context).selectedIndex != null)
+            MaterialPage(
+              name: "/article",
+              child: ArticleView(
+                index: Api.of(context).selectedIndex ?? 0,
+                articleIDs: Api.of(context).searchResults?.toSet(),
+              ),
+            ),
+        ],
       ),
     );
   }

@@ -33,7 +33,7 @@ ValueNotifier<Article?> currentArticleNotifier = ValueNotifier<Article?>(null);
 
 class _ArticleViewState extends State<ArticleView> {
   bool showWebView = false;
-  final FormattingSetting formattingSetting = FormattingSetting();
+  late final FormattingSetting formattingSetting = FormattingSetting();
   late final PageController _pageController = PageController(
     initialPage: widget.index ?? 0,
   );
@@ -58,7 +58,9 @@ class _ArticleViewState extends State<ArticleView> {
       Api.of(
         context,
       ).filteredArticles![Api.of(context).searchResults![page]]!.articleID,
-      currentArticleNotifier.value!.subID,
+      Api.of(
+        context,
+      ).filteredArticles![Api.of(context).searchResults![page]]!.subID,
       true,
     );
   }
@@ -71,36 +73,58 @@ class _ArticleViewState extends State<ArticleView> {
           currentArticleNotifier: currentArticleNotifier,
           articleIDS: widget.articleIDs ?? {},
         ),
-        actions:
-            widget.index != null && widget.articleIDs != null
-                ? [
-                  IconButton(
-                    onPressed: () {
-                      showModalBottomSheet(
-                        context: context,
-                        enableDrag: true,
-                        isDismissible: true,
-                        showDragHandle: true,
-                        // isScrollControlled: true,
-                        scrollControlDisabledMaxHeightRatio: 0.75,
-                        // useSafeArea: true,
-                        builder: (context) {
-                          return FormattingBottomSheet(
-                            formattingSetting: formattingSetting,
-                          );
-                        },
-                      ).then((_) {
-                        setState(() {});
-                      });
-                    },
-                    icon: Icon(
-                      (Platform.isIOS || Platform.isMacOS)
-                          ? CupertinoIcons.textformat
-                          : Icons.text_format_rounded,
+        automaticallyImplyLeading: screenSizeOf(context) == ScreenSize.small,
+        actions: [
+          IconButton(
+            onPressed: () {
+              showDialog(
+                barrierDismissible: true,
+                barrierColor: Colors.transparent,
+                context: context,
+                builder: (context) {
+                  return AlertDialog(
+                    alignment: Alignment.topRight,
+                    scrollable: true,
+                    contentPadding: EdgeInsets.all(8.0),
+                    insetPadding: EdgeInsets.only(
+                      top: MediaQuery.paddingOf(context).top + kToolbarHeight,
+                      right: 16.0,
+                      left: 16.0,
                     ),
-                  ),
-                ]
-                : null,
+                    // title: Text("Formatting settings"),
+                    content: ConstrainedBox(
+                      constraints: BoxConstraints.tightFor(width: 400.0),
+                      child: FormattingBottomSheet(
+                        formattingSetting: formattingSetting,
+                      ),
+                    ),
+                  );
+                },
+              );
+              // showModalBottomSheet(
+              //   context: context,
+              //   enableDrag: true,
+              //   isDismissible: true,
+              //   showDragHandle: true,
+              //   // isScrollControlled: true,
+              //   scrollControlDisabledMaxHeightRatio: 0.75,
+              //   // useSafeArea: true,
+              //   builder: (context) {
+              //     return FormattingBottomSheet(
+              //       formattingSetting: formattingSetting,
+              //     );
+              //   },
+              // ).then((_) {
+              //   setState(() {});
+              // });
+            },
+            icon: Icon(
+              (Platform.isIOS || Platform.isMacOS)
+                  ? CupertinoIcons.textformat
+                  : Icons.text_format_rounded,
+            ),
+          ),
+        ],
         flexibleSpace: const BlurBar(),
       ),
       extendBodyBehindAppBar: !showWebView,
@@ -160,10 +184,10 @@ class _ArticleViewPagesState extends State<ArticleViewPages> {
       onPageChanged: (value) => widget.onPageChanged(value),
       itemCount: widget.articleIDs.length,
       itemBuilder: (context, index) {
-        return FutureBuilder(
+        return FutureBuilder<Article>(
           future: loadArticle(
             widget.articleIDs.elementAt(index),
-            Api.of(context).account?.id ?? -1,
+            Api.of(context).account!.id,
           ),
           builder: (context, snapshot) {
             if (snapshot.data != null) {
@@ -302,7 +326,7 @@ List<String> imgExtensions = [
 ];
 
 class ArticleTextWidget extends StatelessWidget {
-  const ArticleTextWidget({
+  ArticleTextWidget({
     super.key,
     required this.url,
     required this.title,
@@ -321,6 +345,7 @@ class ArticleTextWidget extends StatelessWidget {
   final String? feedTitle;
   final int timePublished;
   final FormattingSetting formattingSetting;
+  final ScrollController scrollController = ScrollController();
 
   void showLinkMenu(BuildContext context, String link, String? imgUrl) {
     showDialog(
@@ -425,7 +450,7 @@ class ArticleTextWidget extends StatelessWidget {
         return AnimatedDefaultTextStyle(
           style: TextStyle(
             fontFamily: formattingSetting.font,
-            fontFamilyFallback: ["Arial"],
+            // fontFamilyFallback: [formattingSetting.fonts[0]],
             fontSize: formattingSetting.fontSize,
             wordSpacing: formattingSetting.wordSpacing,
             height: formattingSetting.lineHeight,
@@ -435,137 +460,138 @@ class ArticleTextWidget extends StatelessWidget {
         );
       },
       child: SelectionArea(
-        child: ListView(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 4.0,
-              ),
-              child: Text.rich(
-                textScaler: TextScaler.linear(0.8),
-                TextSpan(
-                  children: [
-                    WidgetSpan(
-                      child: Builder(
-                        builder: (context) {
-                          return GestureDetector(
-                            onLongPress: () {
-                              showLinkMenu(context, url, null);
-                            },
-                            onTap: () {
-                              launchUrl(Uri.parse(url));
-                            },
-                            child: Text(
-                              title,
-                              textScaler: TextScaler.linear(1.45),
-                              style: urlStyle,
-                            ),
-                          );
-                        },
+        child: Scrollbar(
+          controller: scrollController,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ListView(
+              controller: scrollController,
+              children: [
+                Text.rich(
+                  textScaler: TextScaler.linear(0.8),
+                  TextSpan(
+                    children: [
+                      WidgetSpan(
+                        child: Builder(
+                          builder: (context) {
+                            return GestureDetector(
+                              onLongPress: () {
+                                showLinkMenu(context, url, null);
+                              },
+                              onTap: () {
+                                launchUrl(Uri.parse(url));
+                              },
+                              child: Text(
+                                title,
+                                textScaler: TextScaler.linear(1.45),
+                                style: urlStyle,
+                              ),
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                    TextSpan(
-                      text:
-                          "\n${getRelativeDate(timePublished)}, ${DateTime.fromMillisecondsSinceEpoch(timePublished * 1000).toString().split(".").first}\n",
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                    WidgetSpan(
-                      alignment: PlaceholderAlignment.middle,
-                      child: CachedNetworkImage(
-                        alignment: Alignment.bottomCenter,
-                        height: formattingSetting.fontSize * 0.8,
-                        width: formattingSetting.fontSize * 0.8,
-                        imageUrl: iconUrl ?? "",
-                        errorWidget:
-                            (context, url, error) => const Icon(Icons.error),
+                      TextSpan(
+                        text:
+                            "\n${getRelativeDate(timePublished)}, ${DateTime.fromMillisecondsSinceEpoch(timePublished * 1000).toString().split(".").first}\n",
+                        style: TextStyle(color: Colors.grey),
                       ),
-                    ),
-                    TextSpan(
-                      text: " $subName",
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ],
+                      WidgetSpan(
+                        alignment: PlaceholderAlignment.middle,
+                        child: CachedNetworkImage(
+                          alignment: Alignment.bottomCenter,
+                          height: formattingSetting.fontSize * 0.8,
+                          width: formattingSetting.fontSize * 0.8,
+                          imageUrl: iconUrl ?? "",
+                          errorWidget:
+                              (context, url, error) => const Icon(Icons.error),
+                        ),
+                      ),
+                      TextSpan(
+                        text: "  $subName\n",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: HtmlWidget(
-                content,
-                buildAsync: true,
-                enableCaching: true,
-                onErrorBuilder: (context, element, error) {
-                  return Placeholder(child: Text(error.toString()));
-                },
-                customWidgetBuilder: (element) {
-                  if (element.localName == "a") {
-                    Widget? imgWidget;
-                    String? imgUrl;
-                    if (element.children.any(
-                      (child) => child.localName == "img",
-                    )) {
-                      for (var child in element.children) {
-                        if (child.localName == "img") {
-                          imgUrl = child.attributes["src"];
-                          imgWidget = ArticleImage(
-                            imageUrl: child.attributes["src"] ?? "",
-                            width: double.tryParse(
-                              child.attributes["width"] ?? "",
-                            ),
-                            height: double.tryParse(
-                              child.attributes["height"] ?? "",
-                            ),
-                          );
+                HtmlWidget(
+                  content,
+                  // buildAsync: true,
+                  enableCaching: false,
+                  renderMode: RenderMode.column,
+                  onErrorBuilder: (context, element, error) {
+                    return Placeholder(child: Text(error.toString()));
+                  },
+                  customWidgetBuilder: (element) {
+                    if (element.localName == "a") {
+                      Widget? imgWidget;
+                      String? imgUrl;
+                      if (element.children.any(
+                        (child) => child.localName == "img",
+                      )) {
+                        for (var child in element.children) {
+                          if (child.localName == "img") {
+                            imgUrl = child.attributes["src"];
+                            imgWidget = ArticleImage(
+                              imageUrl: imgUrl ?? "",
+                              width: double.tryParse(
+                                child.attributes["width"] ?? "",
+                              ),
+                              height: double.tryParse(
+                                child.attributes["height"] ?? "",
+                              ),
+                            );
+                            break;
+                          }
                         }
                       }
+                      return InlineCustomWidget(
+                        child: GestureDetector(
+                          onTap: () {
+                            launchUrl(Uri.parse(element.attributes["href"]!));
+                          },
+                          onLongPress: () {
+                            showLinkMenu(
+                              context,
+                              element.attributes["href"]!,
+                              imgUrl,
+                            );
+                          },
+                          child:
+                              imgWidget ?? Text(element.text, style: urlStyle),
+                        ),
+                      );
+                    } else if (element.localName == "img" &&
+                        element.attributes["src"] != null) {
+                      return InlineCustomWidget(
+                        child: GestureDetector(
+                          onTap: () {
+                            showImage(context, element.attributes["src"]!);
+                          },
+                          onLongPress: () {
+                            showLinkMenu(
+                              context,
+                              element.attributes["src"]!,
+                              null,
+                            );
+                          },
+                          child: ArticleImage(
+                            imageUrl: element.attributes["src"]!,
+                            width: double.tryParse(
+                              element.attributes["width"] ?? "",
+                            ),
+                            height: double.tryParse(
+                              element.attributes["height"] ?? "",
+                            ),
+                          ),
+                        ),
+                      );
                     }
-                    return InlineCustomWidget(
-                      child: GestureDetector(
-                        onLongPress: () {
-                          showLinkMenu(
-                            context,
-                            element.attributes["href"]!,
-                            imgUrl,
-                          );
-                        },
-                        onTap: () {
-                          launchUrl(Uri.parse(element.attributes["href"]!));
-                        },
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (imgWidget != null) imgWidget,
-                            Text(element.text, style: urlStyle),
-                          ],
-                        ),
-                      ),
-                    );
-                  } else if (element.localName == "img" &&
-                      element.attributes["src"] != null) {
-                    return GestureDetector(
-                      onLongPress: () {
-                        showLinkMenu(context, element.attributes["src"]!, null);
-                      },
-                      onTap: () {
-                        showImage(context, element.attributes["src"]!);
-                      },
-                      child: ArticleImage(
-                        imageUrl: element.attributes["src"]!,
-                        width: double.tryParse(
-                          element.attributes["width"] ?? "",
-                        ),
-                        height: double.tryParse(
-                          element.attributes["height"] ?? "",
-                        ),
-                      ),
-                    );
-                  }
-                  return null;
-                },
-              ),
+                    return null;
+                  },
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
