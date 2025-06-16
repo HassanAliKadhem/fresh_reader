@@ -30,6 +30,13 @@ Future<Database> getDatabase() async {
       await db.execute(delTable);
       await db.execute(prefTable);
     },
+    onOpen: (db) async {
+      if ((await db.getVersion()) < 8) {
+        await db.execute(
+          "create table if not exists preferences (key TEXT primary key, value TEXT)",
+        );
+      }
+    },
     onUpgrade: (db, oldVersion, newVersion) async {
       if (oldVersion == 1 && newVersion == 2) {
         await db.execute('ALTER TABLE Article add column isStarred TEXT');

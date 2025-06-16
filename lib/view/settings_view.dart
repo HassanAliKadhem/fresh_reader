@@ -17,6 +17,9 @@ class _SettingsViewState extends State<SettingsView> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      scrollable: true,
+      contentPadding: EdgeInsets.all(8.0),
+      titlePadding: EdgeInsets.all(8.0),
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -26,7 +29,7 @@ class _SettingsViewState extends State<SettingsView> {
             onPressed:
                 () => showAboutDialog(
                   context: context,
-                  applicationVersion: "1.2.4",
+                  applicationVersion: "1.2.5",
                   children: [
                     const ListTile(
                       title: Text("Made By"),
@@ -51,13 +54,14 @@ class _SettingsViewState extends State<SettingsView> {
           ),
         ],
       ),
-      scrollable: true,
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           ListTile(
             leading: Icon(Icons.account_circle),
             title: Text("Add new account"),
+            trailing: Icon(Icons.add),
+            dense: true,
             onTap: () {
               showAdaptiveDialog(
                 context: context,
@@ -71,7 +75,6 @@ class _SettingsViewState extends State<SettingsView> {
                 setState(() {});
               });
             },
-            trailing: Icon(Icons.add),
           ),
           FutureBuilder(
             future: database.query("Account"),
@@ -358,7 +361,7 @@ class _SettingsViewState extends State<SettingsView> {
             },
           ),
           Divider(),
-          ListTile(title: Text("Other settings")),
+          ListTile(title: Text("Other settings"), dense: true),
           const ReadDurationTile(
             title: "Keep read articles",
             dbKey: "read_duration",
@@ -413,49 +416,54 @@ class ReadDurationTile extends StatefulWidget {
 class _ReadDurationTileState extends State<ReadDurationTile> {
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      title: Text(widget.title),
-      trailing: FutureBuilder(
-        future: getPreference(widget.dbKey),
-        builder: (context, asyncSnapshot) {
-          return PopupMenuButton(
-            child:
-                asyncSnapshot.connectionState == ConnectionState.done
-                    ? Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            asyncSnapshot.data != null
-                                ? widget.values[int.tryParse(
-                                      asyncSnapshot.data!,
-                                    )] ??
-                                    asyncSnapshot.data!
-                                : widget.values.values.first,
-                          ),
-                          Icon(Icons.arrow_drop_down),
-                        ],
-                      ),
-                    )
-                    : CircularProgressIndicator.adaptive(),
-            itemBuilder: (context) {
-              return widget.values.entries
-                  .map(
-                    (element) => PopupMenuItem(
-                      child: Text(element.value),
-                      onTap: () {
-                        setState(() {
-                          setPreference(widget.dbKey, element.key.toString());
-                        });
-                      },
-                    ),
-                  )
-                  .toList();
-            },
-          );
-        },
-      ),
+    return FutureBuilder(
+      future: getPreference(widget.dbKey),
+      builder: (context, asyncSnapshot) {
+        return ListTile(
+          title: Text(widget.title),
+          subtitle: Text(
+            asyncSnapshot.data != null
+                ? widget.values[int.tryParse(asyncSnapshot.data!)] ??
+                    asyncSnapshot.data!
+                : widget.values.values.first,
+          ),
+          onTap: () {
+            showAdaptiveDialog(
+              context: context,
+              barrierDismissible: true,
+              builder: (context) {
+                return AlertDialog(
+                  scrollable: true,
+                  title: Text(widget.title),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children:
+                        widget.values.entries
+                            .map(
+                              (element) => RadioListTile.adaptive(
+                                dense: true,
+                                title: Text(element.value),
+                                value: element.key.toString(),
+                                groupValue: asyncSnapshot.data,
+                                toggleable: true,
+                                onChanged: (newVal) {
+                                  if (newVal != null) {
+                                    setState(() {
+                                      setPreference(widget.dbKey, newVal);
+                                    });
+                                  }
+                                  Navigator.pop(context);
+                                },
+                              ),
+                            )
+                            .toList(),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 }
