@@ -21,7 +21,7 @@ class ArticleList extends StatefulWidget {
 class _ArticleListState extends State<ArticleList> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  int currentIndex = -1;
+  int currentIndex = -1; // used to save last scroll position
 
   @override
   void didChangeDependencies() {
@@ -29,6 +29,7 @@ class _ArticleListState extends State<ArticleList> {
     if (Api.of(context).selectedIndex != null &&
         _scrollController.hasClients &&
         Api.of(context).selectedIndex != currentIndex) {
+      currentIndex = Api.of(context).selectedIndex!;
       double scrollTarget = (Api.of(context).selectedIndex! * 128);
       _scrollController.animateTo(
         min(scrollTarget, _scrollController.position.maxScrollExtent),
@@ -41,6 +42,7 @@ class _ArticleListState extends State<ArticleList> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor.withAlpha(220),
       appBar: AppBar(
         flexibleSpace: const BlurBar(),
         title: Text(
@@ -61,6 +63,7 @@ class _ArticleListState extends State<ArticleList> {
       extendBody: true,
       extendBodyBehindAppBar: true,
       bottomNavigationBar: BlurBar(
+        hasBorder: false,
         child: SizedBox(height: MediaQuery.paddingOf(context).bottom),
       ),
       body:
@@ -87,7 +90,10 @@ class _ArticleListState extends State<ArticleList> {
                       itemBuilder: (context, index) {
                         if (index == 0) {
                           return Padding(
-                            padding: const EdgeInsets.all(8.0),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 8.0,
+                              horizontal: 12.0,
+                            ),
                             child:
                                 (Platform.isIOS || Platform.isMacOS)
                                     ? CupertinoSearchTextField(
@@ -102,6 +108,9 @@ class _ArticleListState extends State<ArticleList> {
                                       leading: Padding(
                                         padding: const EdgeInsets.all(8.0),
                                         child: Icon(Icons.search),
+                                      ),
+                                      padding: WidgetStatePropertyAll(
+                                        const EdgeInsets.all(8.0),
                                       ),
                                       trailing:
                                           _searchController.text != ""
@@ -248,44 +257,45 @@ class ArticleWidget extends StatelessWidget {
                         article.articleID
                 ? Theme.of(context).listTileTheme.selectedTileColor
                 : null,
-        borderRadius: BorderRadius.circular(12.0),
+        borderRadius: BorderRadius.circular(8.0),
       ),
-      padding: EdgeInsets.symmetric(horizontal: 16.0),
+      margin: EdgeInsets.symmetric(horizontal: 8.0),
       child: Opacity(
-        opacity: (article.read) ? 0.3 : 1,
+        opacity: (article.read) ? 0.3 : 1.0,
         child: InkWell(
           onTap: onSelect,
-          borderRadius: BorderRadius.circular(12.0),
+          borderRadius: BorderRadius.circular(8.0),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              const SizedBox(width: 8.0),
               if (article.image != null)
                 Container(
                   clipBehavior: Clip.hardEdge,
-                  width: 100,
-                  height: 100,
+                  width: 100.0,
+                  height: 100.0,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(5),
+                    borderRadius: BorderRadius.circular(8.0),
                     color: Colors.grey.shade800,
                   ),
                   child: CachedNetworkImage(
                     imageUrl: article.image!,
                     fit: BoxFit.cover,
                     progressIndicatorBuilder:
-                        (context, url, progress) => SizedBox(
-                          width: 16.0,
-                          height: 16.0,
-                          child: CircularProgressIndicator.adaptive(
-                            year2023: false,
-                            value: progress.progress,
-                          ),
-                        ),
+                        (context, url, progress) =>
+                            CircularProgressIndicator.adaptive(
+                              constraints: BoxConstraints(
+                                maxWidth: 16.0,
+                                maxHeight: 16.0,
+                              ),
+                              value: progress.progress,
+                            ),
                     errorWidget:
                         (context, url, error) => const Icon(Icons.error),
                   ),
                 ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8.0),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -330,6 +340,7 @@ class ArticleWidget extends StatelessWidget {
                   ],
                 ),
               ),
+              const SizedBox(width: 8.0),
             ],
           ),
         ),

@@ -77,6 +77,15 @@ class _ArticleViewState extends State<ArticleView> {
         actions: [
           IconButton(
             onPressed: () {
+              setState(() {
+                showWebView = !showWebView;
+              });
+            },
+            icon: Icon(showWebView ? Icons.article_rounded : Icons.web_rounded),
+            tooltip: showWebView ? "Article" : "Web",
+          ),
+          IconButton(
+            onPressed: () {
               showDialog(
                 barrierDismissible: true,
                 barrierColor: Colors.transparent,
@@ -101,28 +110,13 @@ class _ArticleViewState extends State<ArticleView> {
                   );
                 },
               );
-              // showModalBottomSheet(
-              //   context: context,
-              //   enableDrag: true,
-              //   isDismissible: true,
-              //   showDragHandle: true,
-              //   // isScrollControlled: true,
-              //   scrollControlDisabledMaxHeightRatio: 0.75,
-              //   // useSafeArea: true,
-              //   builder: (context) {
-              //     return FormattingBottomSheet(
-              //       formattingSetting: formattingSetting,
-              //     );
-              //   },
-              // ).then((_) {
-              //   setState(() {});
-              // });
             },
             icon: Icon(
               (Platform.isIOS || Platform.isMacOS)
                   ? CupertinoIcons.textformat
                   : Icons.text_format_rounded,
             ),
+            tooltip: "Text formatting",
           ),
         ],
         flexibleSpace: const BlurBar(),
@@ -130,16 +124,10 @@ class _ArticleViewState extends State<ArticleView> {
       extendBodyBehindAppBar: !showWebView,
       extendBody: !showWebView,
       bottomNavigationBar:
-          widget.index != null && widget.articleIDs != null
+          widget.index != null && widget.articleIDs != null && !showWebView
               ? ArticleBottomButtons(
                 articleNotifier: currentArticleNotifier,
                 formattingSetting: formattingSetting,
-                showWebView: showWebView,
-                changeShowWebView: () {
-                  setState(() {
-                    showWebView = !showWebView;
-                  });
-                },
               )
               : null,
       body:
@@ -297,18 +285,50 @@ class _ArticleWebWidgetState extends State<ArticleWebWidget> {
   late final WebViewController webViewController =
       WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..loadRequest(Uri.parse(widget.url));
+        ..loadRequest(Uri.parse(widget.url))
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onProgress: (newProgress) {
+              if (mounted) {
+                setState(() {
+                  progress = newProgress;
+                });
+              }
+            },
+          ),
+        );
+
+  int progress = 0;
 
   @override
   Widget build(BuildContext context) {
-    return WebViewWidget(
-      controller: webViewController,
-      gestureRecognizers: {
-        Factory<LongPressGestureRecognizer>(() => LongPressGestureRecognizer()),
-        Factory<VerticalDragGestureRecognizer>(
-          () => VerticalDragGestureRecognizer(),
+    return Column(
+      children: [
+        SizedBox(
+          height: 2,
+          child:
+              progress < 100
+                  ? LinearProgressIndicator(
+                    value: progress / 100.0,
+                    year2023: false,
+                  )
+                  : null,
         ),
-      },
+        Expanded(
+          child: WebViewWidget(
+            controller: webViewController,
+            gestureRecognizers: {
+              Factory<LongPressGestureRecognizer>(
+                () => LongPressGestureRecognizer(),
+              ),
+              Factory<VerticalDragGestureRecognizer>(
+                () => VerticalDragGestureRecognizer(),
+              ),
+            },
+          ),
+        ),
+        ArticleWebViewButtons(webViewController: webViewController),
+      ],
     );
   }
 }
@@ -382,30 +402,34 @@ class ArticleTextWidget extends StatelessWidget {
                     Navigator.pop(context);
                   },
                 ),
-                AdaptiveListTile(
-                  title: "Share Link",
-                  trailing: Icon(
-                    (Platform.isIOS || Platform.isMacOS)
-                        ? CupertinoIcons.share
-                        : Icons.share_rounded,
-                  ),
-                  onTap: () {
-                    try {
-                      final box = context.findRenderObject() as RenderBox?;
-                      SharePlus.instance.share(
-                        ShareParams(
-                          uri: Uri.parse(link),
-                          sharePositionOrigin:
-                              box!.localToGlobal(Offset.zero) & box.size,
-                        ),
-                      );
-                    } catch (e) {
-                      debugPrint(e.toString());
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(e.toString(), maxLines: 3)),
-                      );
-                    }
-                    // Navigator.pop(context);
+                Builder(
+                  builder: (context) {
+                    return AdaptiveListTile(
+                      title: "Share Link",
+                      trailing: Icon(
+                        (Platform.isIOS || Platform.isMacOS)
+                            ? CupertinoIcons.share
+                            : Icons.share_rounded,
+                      ),
+                      onTap: () {
+                        try {
+                          final box = context.findRenderObject() as RenderBox?;
+                          SharePlus.instance.share(
+                            ShareParams(
+                              uri: Uri.parse(link),
+                              sharePositionOrigin:
+                                  box!.localToGlobal(Offset.zero) & box.size,
+                            ),
+                          );
+                        } catch (e) {
+                          debugPrint(e.toString());
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(e.toString(), maxLines: 3)),
+                          );
+                        }
+                        // Navigator.pop(context);
+                      },
+                    );
                   },
                 ),
                 if (imgUrl != null) const Divider(),
@@ -463,61 +487,70 @@ class ArticleTextWidget extends StatelessWidget {
         child: Scrollbar(
           controller: scrollController,
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: CustomScrollView(
               controller: scrollController,
-              children: [
-                Text.rich(
-                  textScaler: TextScaler.linear(0.8),
-                  TextSpan(
-                    children: [
-                      WidgetSpan(
-                        child: Builder(
-                          builder: (context) {
-                            return GestureDetector(
-                              onLongPress: () {
-                                showLinkMenu(context, url, null);
-                              },
-                              onTap: () {
-                                launchUrl(Uri.parse(url));
-                              },
-                              child: Text(
-                                title,
-                                textScaler: TextScaler.linear(1.45),
-                                style: urlStyle,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "\n${getRelativeDate(timePublished)}, ${DateTime.fromMillisecondsSinceEpoch(timePublished * 1000).toString().split(".").first}\n",
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                      WidgetSpan(
-                        alignment: PlaceholderAlignment.middle,
-                        child: CachedNetworkImage(
-                          alignment: Alignment.bottomCenter,
-                          height: formattingSetting.fontSize * 0.8,
-                          width: formattingSetting.fontSize * 0.8,
-                          imageUrl: iconUrl ?? "",
-                          errorWidget:
-                              (context, url, error) => const Icon(Icons.error),
-                        ),
-                      ),
-                      TextSpan(
-                        text: "  $subName\n",
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ],
+              slivers: [
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: MediaQuery.paddingOf(context).top + 16.0,
                   ),
                 ),
+                SliverToBoxAdapter(
+                  child: Text.rich(
+                    textScaler: TextScaler.linear(0.8),
+                    TextSpan(
+                      children: [
+                        WidgetSpan(
+                          child: Builder(
+                            builder: (context) {
+                              return GestureDetector(
+                                onLongPress: () {
+                                  showLinkMenu(context, url, null);
+                                },
+                                onTap: () {
+                                  launchUrl(Uri.parse(url));
+                                },
+                                child: Text(
+                                  title,
+                                  textScaler: TextScaler.linear(1.45),
+                                  style: urlStyle,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "\n${getRelativeDate(timePublished)}, ${DateTime.fromMillisecondsSinceEpoch(timePublished * 1000).toString().split(".").first}\n",
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                        WidgetSpan(
+                          alignment: PlaceholderAlignment.middle,
+                          child: CachedNetworkImage(
+                            alignment: Alignment.bottomCenter,
+                            height: formattingSetting.fontSize * 0.8,
+                            width: formattingSetting.fontSize * 0.8,
+                            imageUrl: iconUrl ?? "",
+                            errorWidget:
+                                (context, url, error) =>
+                                    const Icon(Icons.error),
+                          ),
+                        ),
+                        TextSpan(
+                          text: "  $subName",
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(child: SizedBox(height: 8.0)),
                 HtmlWidget(
                   content,
                   // buildAsync: true,
                   enableCaching: false,
-                  renderMode: RenderMode.column,
+                  renderMode: RenderMode.sliverList,
                   onErrorBuilder: (context, element, error) {
                     return Placeholder(child: Text(error.toString()));
                   },
@@ -588,6 +621,11 @@ class ArticleTextWidget extends StatelessWidget {
                     }
                     return null;
                   },
+                ),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: MediaQuery.paddingOf(context).bottom + 16.0,
+                  ),
                 ),
               ],
             ),

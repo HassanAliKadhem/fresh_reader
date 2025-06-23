@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 import '../api/api.dart';
 import '../api/data_types.dart';
@@ -15,12 +16,8 @@ class ArticleBottomButtons extends StatefulWidget {
     super.key,
     required this.articleNotifier,
     required this.formattingSetting,
-    required this.showWebView,
-    required this.changeShowWebView,
   });
   final ValueNotifier<Article?> articleNotifier;
-  final bool showWebView;
-  final Function() changeShowWebView;
   final FormattingSetting formattingSetting;
 
   @override
@@ -31,8 +28,9 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
   @override
   Widget build(BuildContext context) {
     return BlurBar(
+      hasBorder: false,
       child: SafeArea(
-        minimum: EdgeInsets.symmetric(vertical: 8.0),
+        minimum: EdgeInsets.only(top: 8.0),
         child: ValueListenableBuilder(
           valueListenable: widget.articleNotifier,
           builder: (context, value, child) {
@@ -42,7 +40,7 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
               crossAxisAlignment: CrossAxisAlignment.center,
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                TextButton(
+                IconButton(
                   onPressed: () {
                     if (value != null) {
                       setState(() {
@@ -53,15 +51,10 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
                       });
                     }
                   },
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(isRead ? Icons.circle_outlined : Icons.circle),
-                      Text("Read"),
-                    ],
-                  ),
+                  icon: Icon(isRead ? Icons.circle_outlined : Icons.circle),
+                  tooltip: "Read",
                 ),
-                TextButton(
+                IconButton(
                   onPressed: () {
                     if (value != null) {
                       setState(() {
@@ -72,52 +65,12 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
                       });
                     }
                   },
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isStarred
-                            ? Icons.star_rounded
-                            : Icons.star_border_rounded,
-                      ),
-                      Text("Star"),
-                    ],
+                  icon: Icon(
+                    isStarred ? Icons.star_rounded : Icons.star_border_rounded,
                   ),
+                  tooltip: "Star",
                 ),
-                TextButton(
-                  onPressed: () {
-                    if (widget.articleNotifier.value != null) {
-                      try {
-                        final box = context.findRenderObject() as RenderBox?;
-                        SharePlus.instance.share(
-                          ShareParams(
-                            uri: Uri.parse(widget.articleNotifier.value!.url),
-                            subject: widget.articleNotifier.value!.title,
-                            sharePositionOrigin:
-                                box!.localToGlobal(Offset.zero) & box.size,
-                          ),
-                        );
-                      } catch (e) {
-                        debugPrint(e.toString());
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(e.toString(), maxLines: 3)),
-                        );
-                      }
-                    }
-                  },
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        (Platform.isIOS || Platform.isMacOS)
-                            ? CupertinoIcons.share
-                            : Icons.share_rounded,
-                      ),
-                      Text("Share"),
-                    ],
-                  ),
-                ),
-                TextButton(
+                IconButton(
                   onPressed: () {
                     if (widget.articleNotifier.value != null) {
                       try {
@@ -133,40 +86,154 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
                       }
                     }
                   },
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
+                  icon: Icon(Icons.open_in_browser_rounded),
+                  tooltip: "Browser",
+                ),
+
+                Builder(
+                  builder: (context) {
+                    return IconButton(
+                      onPressed: () {
+                        if (widget.articleNotifier.value != null) {
+                          try {
+                            final box =
+                                context.findRenderObject() as RenderBox?;
+                            SharePlus.instance.share(
+                              ShareParams(
+                                uri: Uri.parse(
+                                  widget.articleNotifier.value!.url,
+                                ),
+                                subject: widget.articleNotifier.value!.title,
+                                sharePositionOrigin:
+                                    box!.localToGlobal(Offset.zero) & box.size,
+                              ),
+                            );
+                          } catch (e) {
+                            debugPrint(e.toString());
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(e.toString(), maxLines: 3),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      icon: Icon(
                         (Platform.isIOS || Platform.isMacOS)
-                            ? CupertinoIcons.globe
-                            : Icons.public_rounded,
+                            ? CupertinoIcons.share
+                            : Icons.share_rounded,
                       ),
-                      Text("Browser"),
-                    ],
-                  ),
+                      tooltip: "Share",
+                    );
+                  },
                 ),
-                TextButton(
-                  onPressed: () => widget.changeShowWebView(),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        widget.showWebView
-                            ? Icons.article_rounded
-                            : Icons.article_outlined,
-                      ),
-                      Text("Web View"),
-                    ],
-                  ),
-                ),
-                // FormattingButton(
-                //   formattingSetting: widget.formattingSetting,
-                //   showWebView: widget.showWebView,
-                // ),
               ],
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+class ArticleWebViewButtons extends StatefulWidget {
+  const ArticleWebViewButtons({super.key, required this.webViewController});
+  final WebViewController webViewController;
+
+  @override
+  State<ArticleWebViewButtons> createState() => _ArticleWebViewButtonsState();
+}
+
+class _ArticleWebViewButtonsState extends State<ArticleWebViewButtons> {
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      minimum: EdgeInsets.only(top: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          FutureBuilder(
+            future: widget.webViewController.canGoBack(),
+            builder: (context, snapshot) {
+              return IconButton(
+                onPressed:
+                    snapshot.data == true
+                        ? () {
+                          widget.webViewController.goBack();
+                        }
+                        : null,
+                icon: Icon(
+                  (Platform.isIOS || Platform.isMacOS)
+                      ? CupertinoIcons.back
+                      : Icons.arrow_back,
+                ),
+              );
+            },
+          ),
+          FutureBuilder(
+            future: widget.webViewController.canGoForward(),
+            builder: (context, snapshot) {
+              return IconButton(
+                onPressed:
+                    snapshot.data == true
+                        ? () {
+                          widget.webViewController.goForward();
+                        }
+                        : null,
+                icon: Icon(
+                  (Platform.isIOS || Platform.isMacOS)
+                      ? CupertinoIcons.forward
+                      : Icons.arrow_forward,
+                ),
+              );
+            },
+          ),
+          IconButton(
+            onPressed: () {
+              widget.webViewController.reload();
+            },
+            icon: Icon(
+              (Platform.isIOS || Platform.isMacOS)
+                  ? CupertinoIcons.refresh
+                  : Icons.refresh,
+            ),
+          ),
+          Builder(
+            builder: (context) {
+              return IconButton(
+                onPressed: () {
+                  widget.webViewController.currentUrl().then((url) async {
+                    if (url != null) {
+                      try {
+                        final box = context.findRenderObject() as RenderBox?;
+                        SharePlus.instance.share(
+                          ShareParams(
+                            uri: Uri.parse(url),
+                            subject:
+                                (await widget.webViewController.getTitle()),
+                            sharePositionOrigin:
+                                box!.localToGlobal(Offset.zero) & box.size,
+                          ),
+                        );
+                      } catch (e) {
+                        debugPrint(e.toString());
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(e.toString(), maxLines: 3)),
+                        );
+                      }
+                    }
+                  });
+                },
+                icon: Icon(
+                  (Platform.isIOS || Platform.isMacOS)
+                      ? CupertinoIcons.share
+                      : Icons.share,
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -251,7 +318,7 @@ class _FormattingBottomSheetState extends State<FormattingBottomSheet>
               showSelectedIcon: false,
               multiSelectionEnabled: false,
             ),
-    
+
         Table(
           columnWidths: {0: FlexColumnWidth(1), 1: FlexColumnWidth(3)},
           defaultVerticalAlignment: TableCellVerticalAlignment.middle,
@@ -300,8 +367,7 @@ class _FormattingBottomSheetState extends State<FormattingBottomSheet>
                       Text("Word"),
                       Slider.adaptive(
                         value: widget.formattingSetting.wordSpacing,
-                        label:
-                            widget.formattingSetting.wordSpacing.toString(),
+                        label: widget.formattingSetting.wordSpacing.toString(),
                         min: 0.0,
                         max: 10.0,
                         onChanged: (v) {
@@ -316,8 +382,7 @@ class _FormattingBottomSheetState extends State<FormattingBottomSheet>
                     (entry) => TableRow(
                       children: [
                         TableCell(
-                          verticalAlignment:
-                              TableCellVerticalAlignment.bottom,
+                          verticalAlignment: TableCellVerticalAlignment.bottom,
                           child: Padding(
                             padding: EdgeInsetsGeometry.only(top: 16.0),
                             child: Column(
@@ -328,8 +393,7 @@ class _FormattingBottomSheetState extends State<FormattingBottomSheet>
                           ),
                         ),
                         TableCell(
-                          verticalAlignment:
-                              TableCellVerticalAlignment.bottom,
+                          verticalAlignment: TableCellVerticalAlignment.bottom,
                           child: entry[2],
                         ),
                       ],
@@ -385,7 +449,7 @@ class _FormattingBottomSheetState extends State<FormattingBottomSheet>
         //     });
         //   },
         // ),
-    
+
         // ListTile(
         //   leading: Icon(Icons.format_line_spacing),
         //   title: Text("Line spacing"),

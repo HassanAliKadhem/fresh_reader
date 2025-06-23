@@ -20,6 +20,7 @@ class _FeedListState extends State<FeedList> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor.withAlpha(200),
       appBar: AppBar(
         title: const Text("FreshReader"),
         leading: FutureBuilder(
@@ -129,17 +130,13 @@ class _FeedListState extends State<FeedList> {
             },
           ),
         ],
-        flexibleSpace: const BlurBar(
-          // child: Column(
-          //   mainAxisAlignment: MainAxisAlignment.end,
-          //   children: [LinearProgressIndicator()],
-          // ),
-        ),
+        flexibleSpace: const BlurBar(),
       ),
       extendBody: true,
       extendBodyBehindAppBar: true,
       body: CategoryList(onSelect: widget.onSelect),
       bottomNavigationBar: BlurBar(
+        hasBorder: false,
         child: SizedBox(height: MediaQuery.paddingOf(context).bottom),
       ),
     );
@@ -243,6 +240,20 @@ class _CategoryListState extends State<CategoryList> {
                             child: ListView(
                               primary: true,
                               children: [
+                                ValueListenableBuilder(
+                                  valueListenable: Api.of(context).progress,
+                                  builder: (context, value, child) {
+                                    return SizedBox(
+                                      height: 2.0,
+                                      child:
+                                          value < 1.0
+                                              ? LinearProgressIndicator(
+                                                value: value,
+                                              )
+                                              : null,
+                                    );
+                                  },
+                                ),
                                 ListTile(
                                   selected:
                                       Api.of(context).filteredTitle ==

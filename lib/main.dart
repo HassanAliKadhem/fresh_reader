@@ -11,7 +11,6 @@ import 'view/article_list.dart';
 import 'view/article_view.dart';
 import 'view/feed_list.dart';
 
-late ApiData _apiData;
 late Database database;
 
 void main() {
@@ -19,16 +18,20 @@ void main() {
   getDatabase().then((db) {
     database = db;
     database.query("Account").then((accounts) {
-      _apiData = ApiData(
-        accounts.isEmpty ? null : Account.fromMap(accounts[0]),
+      runApp(
+        MyApp(
+          apiData: ApiData(
+            accounts.isEmpty ? null : Account.fromMap(accounts[0]),
+          ),
+        ),
       );
-      runApp(const MyApp());
     });
   });
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, required this.apiData});
+  final ApiData apiData;
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -38,7 +41,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return Api(
-      notifier: _apiData,
+      notifier: widget.apiData,
       child: MaterialApp(
         title: 'FreshReader',
         themeMode: ThemeMode.dark,
@@ -56,7 +59,6 @@ class _MyAppState extends State<MyApp> {
             brightness: Brightness.dark,
           ),
           appBarTheme: const AppBarTheme(
-            // backgroundColor: Colors.deepPurple,
             backgroundColor: Colors.transparent,
             scrolledUnderElevation: 0,
             systemOverlayStyle: SystemUiOverlayStyle(

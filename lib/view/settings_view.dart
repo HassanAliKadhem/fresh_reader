@@ -29,7 +29,7 @@ class _SettingsViewState extends State<SettingsView> {
             onPressed:
                 () => showAboutDialog(
                   context: context,
-                  applicationVersion: "1.2.5",
+                  applicationVersion: "1.2.6",
                   children: [
                     const ListTile(
                       title: Text("Made By"),

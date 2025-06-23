@@ -48,6 +48,7 @@ class ApiData extends ChangeNotifier {
   List<String>? searchResults;
   String? filteredTitle;
   int? selectedIndex;
+  ValueNotifier<double> progress = ValueNotifier<double>(1.0);
 
   ApiData(this.account) {
     if (account != null) {
@@ -84,6 +85,7 @@ class ApiData extends ChangeNotifier {
   }
 
   Future<bool> serverSync() async {
+    progress.value = 0.0;
     if (auth == "") {
       await _getAuth().then((value) {
         auth = value;
@@ -99,6 +101,7 @@ class ApiData extends ChangeNotifier {
     }
 
     final delayedActions = await loadDelayedActions(account!.id);
+    progress.value = 0.2;
     debugPrint("delayed actions: ${delayedActions.length}");
     debugPrint(delayedActions.toString());
     if (delayedActions.isNotEmpty) {
@@ -108,6 +111,7 @@ class ApiData extends ChangeNotifier {
           if (value != null) {
             articleSub[element] = value;
           }
+          progress.value = 0.4;
         });
       }
       Map<String, String> readIds = {};
@@ -150,6 +154,7 @@ class ApiData extends ChangeNotifier {
         unStarIds.values.toList(),
         false,
       );
+      progress.value = 0.6;
       debugPrint("synced delayed actions: ${delayedActions.length}");
     } else {
       debugPrint("no delayed actions");
@@ -159,6 +164,7 @@ class ApiData extends ChangeNotifier {
     await _getCategories(auth);
     await _getSubscriptions(auth);
     await _getAllArticles(auth, "reading-list");
+    progress.value = 0.8;
     await Future.wait([
       _getReadIds(auth),
       _getStarredIds(auth),
@@ -176,6 +182,7 @@ class ApiData extends ChangeNotifier {
         // TODO: add code to delete starred articles
       }
     });
+    progress.value = 1.0;
     return true;
   }
 
