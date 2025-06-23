@@ -271,7 +271,11 @@ enum ScreenSize { big, medium, small }
 
 String tryDecode(content) {
   try {
-    return decoder.convert(content.codeUnits).replaceAll("＆#x27;", "'");
+    return decoder
+        .convert(content.codeUnits)
+        .replaceAll("＆#x27;", "'")
+        .replaceAll("&#x27;", "'")
+        .replaceAll("&quot;", "\"");
   } catch (e) {
     return content.replaceAll("＆#x27;", "'");
   }

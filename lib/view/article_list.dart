@@ -84,6 +84,8 @@ class _ArticleListState extends State<ArticleList> {
                     controller: _scrollController,
                     child: ListView.builder(
                       key: const PageStorageKey(0),
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
                       itemCount:
                           (Api.of(context).searchResults?.length ?? 0) + 1,
                       controller: _scrollController,
