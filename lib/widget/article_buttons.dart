@@ -9,7 +9,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../api/api.dart';
 import '../api/data_types.dart';
 import '../util/formatting_setting.dart';
-import 'blur_bar.dart';
+import '../widget/transparent_container.dart';
 
 class ArticleBottomButtons extends StatefulWidget {
   const ArticleBottomButtons({
@@ -27,7 +27,7 @@ class ArticleBottomButtons extends StatefulWidget {
 class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
   @override
   Widget build(BuildContext context) {
-    return BlurBar(
+    return TransparentContainer(
       hasBorder: false,
       child: SafeArea(
         minimum: EdgeInsets.only(top: 8.0),

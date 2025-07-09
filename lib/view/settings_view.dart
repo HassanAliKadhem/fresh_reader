@@ -7,373 +7,338 @@ import '../api/data_types.dart';
 import '../api/database.dart';
 import '../widget/adaptive_text_field.dart';
 
-class SettingsView extends StatefulWidget {
-  const SettingsView({super.key});
-  @override
-  State<SettingsView> createState() => _SettingsViewState();
-}
+class SettingsDialog extends StatelessWidget {
+  const SettingsDialog({super.key});
 
-class _SettingsViewState extends State<SettingsView> {
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      scrollable: true,
-      contentPadding: EdgeInsets.all(8.0),
-      titlePadding: EdgeInsets.all(8.0),
-      title: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          CloseButton(),
-          Text("Settings"),
-          IconButton(
-            onPressed:
-                () => showAboutDialog(
-                  context: context,
-                  applicationVersion: "1.2.6",
-                  children: [
-                    const ListTile(
-                      title: Text("Made By"),
-                      subtitle: Text("Hasan Kadhem"),
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      clipBehavior: Clip.hardEdge,
+      insetPadding: EdgeInsets.symmetric(horizontal: 100.0, vertical: 50.0),
+      child: SettingsPage(),
+    );
+  }
+}
+
+class SettingsPage extends StatefulWidget {
+  const SettingsPage({super.key});
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Settings")),
+      body: SingleChildScrollView(child: SettingsContent()),
+    );
+  }
+}
+
+class SettingsContent extends StatefulWidget {
+  const SettingsContent({super.key});
+
+  @override
+  State<SettingsContent> createState() => _SettingsContentState();
+}
+
+class _SettingsContentState extends State<SettingsContent> {
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ListTile(
+          leading: Icon(Icons.account_circle),
+          title: Text("Add new account"),
+          trailing: Icon(Icons.add),
+          dense: true,
+          onTap: () {
+            showAdaptiveDialog(
+              context: context,
+              builder: (context) {
+                return AddAccountDialog();
+              },
+            ).then((onValue) {
+              if (onValue != null && onValue is Account) {
+                Api.of(context).changeAccount(onValue);
+              }
+              setState(() {});
+            });
+          },
+        ),
+        AccountDetails(),
+        Divider(),
+        ListTile(title: Text("Other settings"), dense: true),
+        const ReadDurationTile(
+          title: "Keep read articles",
+          dbKey: "read_duration",
+          values: durations,
+        ),
+        const ReadDurationTile(
+          title: "Keep starred articles",
+          dbKey: "star_duration",
+          values: amounts,
+        ),
+        Divider(),
+        AboutListTile(
+          applicationVersion: "1.2.7",
+          aboutBoxChildren: [
+            const ListTile(
+              title: Text("Made By"),
+              subtitle: Text("Hasan Kadhem"),
+            ),
+            ListTile(
+              title: const Text("Source Code"),
+              subtitle: const Text(
+                "https://github.com/HassanAliKadhem/fresh_reader",
+              ),
+              trailing: const Icon(Icons.open_in_browser),
+              onTap:
+                  () => launchUrl(
+                    Uri.parse(
+                      "https://github.com/HassanAliKadhem/fresh_reader",
                     ),
-                    ListTile(
-                      title: const Text("Source Code"),
-                      subtitle: const Text(
-                        "https://github.com/HassanAliKadhem/fresh_reader",
-                      ),
-                      trailing: const Icon(Icons.open_in_browser),
-                      onTap:
-                          () => launchUrl(
-                            Uri.parse(
-                              "https://github.com/HassanAliKadhem/fresh_reader",
+                  ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class AccountDetails extends StatefulWidget {
+  const AccountDetails({super.key});
+
+  @override
+  State<AccountDetails> createState() => _AccountDetailsState();
+}
+
+class _AccountDetailsState extends State<AccountDetails> {
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: getAccountIds(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return CircularProgressIndicator.adaptive();
+        }
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children:
+              snapshot.data!.map((id) {
+                return AccountCard(id: id);
+              }).toList(),
+        );
+      },
+    );
+  }
+}
+
+class AccountCard extends StatefulWidget {
+  const AccountCard({super.key, required this.id});
+  final int id;
+
+  @override
+  State<AccountCard> createState() => _AccountCardState();
+}
+
+class _AccountCardState extends State<AccountCard> {
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: getAccount(widget.id),
+      builder: (context, asyncSnapshot) {
+        if (!asyncSnapshot.hasData) {
+          return Card(
+            child:
+                asyncSnapshot.connectionState == ConnectionState.done
+                    ? Text(asyncSnapshot.error.toString())
+                    : LinearProgressIndicator(),
+          );
+        }
+        Account account = asyncSnapshot.data!;
+        return Card(
+          clipBehavior: Clip.antiAlias,
+          margin: EdgeInsets.all(8.0),
+          child: ExpansionTile(
+            shape: const Border(),
+            title: Text("${account.provider}: ${account.username}"),
+            subtitle: Text(account.serverUrl.toString()),
+            children: [
+              ListTile(
+                title: Text("Edit account"),
+                trailing: Icon(Icons.edit),
+                onTap: () {
+                  showAdaptiveDialog(
+                    context: context,
+                    builder: (context) {
+                      return AddAccountDialog(oldAccount: account);
+                    },
+                  ).then((onValue) {
+                    // if (onValue != null &&
+                    //     onValue is AccountData) {
+                    //   widget.chooseAccount(onValue);
+                    // }
+                  });
+                },
+              ),
+              FutureBuilder(
+                future: countAllArticles(true, account.id),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return ListTile(
+                      title: Text("Loading"),
+                      subtitle: LinearProgressIndicator(),
+                    );
+                  }
+                  return ListTile(
+                    title: Text(
+                      "Total articles: ${snapshot.data!.values.reduce((count, value) => count + value)}",
+                    ),
+                    subtitle: Text(
+                      "categories: ${snapshot.data!.entries.map((entry) => entry.key.startsWith("feed/") ? 0 : 1).reduce((count, value) => count + value)}, subscriptions: ${snapshot.data!.entries.map((entry) => entry.key.startsWith("feed/") ? 1 : 0).reduce((count, value) => count + value)}",
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                title: const Text("Last sync articles time"),
+                subtitle: Text(
+                  DateTime.fromMillisecondsSinceEpoch(
+                    account.updatedArticleTime * 1000,
+                  ).toString(),
+                ),
+                onTap: () {
+                  showDatePicker(
+                    context: context,
+                    firstDate: DateTime(0),
+                    lastDate: DateTime.now(),
+                    initialDate: DateTime.fromMillisecondsSinceEpoch(
+                      account.updatedArticleTime * 1000,
+                    ),
+                  ).then((value) {
+                    if (value != null) {
+                      database.update(
+                        "Account",
+                        {
+                          "updatedArticleTime":
+                              (value.millisecondsSinceEpoch / 1000).floor(),
+                        },
+                        where: "id = ?",
+                        whereArgs: [account.id],
+                      );
+                      setState(() {});
+                    }
+                  });
+                },
+              ),
+              ListTile(
+                title: const Text("Last sync starred time"),
+                subtitle: Text(
+                  DateTime.fromMillisecondsSinceEpoch(
+                    account.updatedStarredTime * 1000,
+                  ).toString(),
+                ),
+                onTap: () {
+                  showDatePicker(
+                    context: context,
+                    firstDate: DateTime(0),
+                    lastDate: DateTime.now(),
+                    initialDate: DateTime.fromMillisecondsSinceEpoch(
+                      account.updatedStarredTime * 1000,
+                    ),
+                  ).then((value) {
+                    if (value != null) {
+                      database.update(
+                        "Account",
+                        {
+                          "updatedStarredTime":
+                              (value.millisecondsSinceEpoch / 1000).floor(),
+                        },
+                        where: "id = ?",
+                        whereArgs: [account.id],
+                      );
+                      setState(() {});
+                    }
+                  });
+                },
+              ),
+              ListTile(
+                title: const Text("Delete Data or Account"),
+                onTap: () async {
+                  showAdaptiveDialog(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog.adaptive(
+                        title: const Text("Are you sure?"),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              deleteAccount(account.id).then((_) {
+                                // ScaffoldMessenger.of(
+                                //   context,
+                                // ).showSnackBar(
+                                //   const SnackBar(
+                                //     content: Text("Account Deleted"),
+                                //   ),
+                                // );
+                                setState(() {
+                                  if (Api.of(context).account?.id ==
+                                      account.id) {
+                                    getAllAccounts(limit: 1).then((onValue) {
+                                      Api.of(
+                                        context,
+                                      ).changeAccount(onValue.first);
+                                    });
+                                  }
+                                });
+                              });
+                              Navigator.pop(context);
+                            },
+                            child: Text(
+                              "Delete Account",
+                              style: TextStyle(color: Colors.red[300]),
                             ),
                           ),
-                    ),
-                  ],
-                ),
-            icon: Icon(Icons.info),
-          ),
-        ],
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: Icon(Icons.account_circle),
-            title: Text("Add new account"),
-            trailing: Icon(Icons.add),
-            dense: true,
-            onTap: () {
-              showAdaptiveDialog(
-                context: context,
-                builder: (context) {
-                  return AddAccountDialog();
-                },
-              ).then((onValue) {
-                if (onValue != null && onValue is Account) {
-                  Api.of(context).changeAccount(onValue);
-                }
-                setState(() {});
-              });
-            },
-          ),
-          FutureBuilder(
-            future: database.query("Account"),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState != ConnectionState.done) {
-                return CircularProgressIndicator.adaptive();
-              }
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children:
-                    snapshot.data!.map((acc) {
-                      return Card(
-                        clipBehavior: Clip.antiAlias,
-                        child: ExpansionTile(
-                          shape: const Border(),
-                          title: Text("${acc["provider"]}: ${acc["username"]}"),
-                          subtitle: Text(acc["serverUrl"].toString()),
-                          children: [
-                            ListTile(
-                              title: Text("Edit account"),
-                              trailing: Icon(Icons.edit),
-                              onTap: () {
-                                showAdaptiveDialog(
-                                  context: context,
-                                  builder: (context) {
-                                    return AddAccountDialog(
-                                      oldAccount: Account.fromMap(acc),
-                                    );
-                                  },
-                                ).then((onValue) {
-                                  // if (onValue != null &&
-                                  //     onValue is AccountData) {
-                                  //   widget.chooseAccount(onValue);
-                                  // }
-                                });
-                              },
+                          TextButton(
+                            onPressed: () {
+                              deleteAccountData(account.id).then((_) {
+                                // ScaffoldMessenger.of(
+                                //   context,
+                                // ).showSnackBar(
+                                //   const SnackBar(
+                                //     content: Text("Data Cleared"),
+                                //   ),
+                                // );
+                                setState(() {});
+                              });
+                              Navigator.pop(context);
+                            },
+                            child: Text(
+                              "Delete only data",
+                              style: TextStyle(color: Colors.red[300]),
                             ),
-                            FutureBuilder(
-                              future: countAllArticles(true, acc["id"] as int),
-                              builder: (context, snapshot) {
-                                if (snapshot.connectionState !=
-                                    ConnectionState.done) {
-                                  return CircularProgressIndicator.adaptive();
-                                }
-                                return ListTile(
-                                  title: Text(
-                                    "Total articles: ${snapshot.data!.values.reduce((count, value) => count + value)}",
-                                  ),
-                                  // subtitle: Text(
-                                  //     "categories: ${snapshot.data!.entries.map((entry) => entry.key.startsWith("feed/") ? 0 : 1).reduce((count, value) => count + value)}, subscriptions: ${snapshot.data!.entries.map((entry) => entry.key.startsWith("feed/") ? 1 : 0).reduce((count, value) => count + value)}"),
-                                );
-                              },
-                            ),
-                            ListTile(
-                              title: const Text("Last sync articles time"),
-                              subtitle: Text(
-                                DateTime.fromMillisecondsSinceEpoch(
-                                  (acc["updatedArticleTime"] as int) * 1000,
-                                ).toString(),
-                              ),
-                              onTap: () {
-                                showDatePicker(
-                                  context: context,
-                                  firstDate: DateTime(0),
-                                  lastDate: DateTime.now(),
-                                  initialDate:
-                                      DateTime.fromMillisecondsSinceEpoch(
-                                        (acc["updatedArticleTime"] as int) *
-                                            1000,
-                                      ),
-                                ).then((value) {
-                                  if (value != null) {
-                                    database.update(
-                                      "Account",
-                                      {
-                                        "updatedArticleTime":
-                                            (value.millisecondsSinceEpoch /
-                                                    1000)
-                                                .floor(),
-                                      },
-                                      where: "id = ?",
-                                      whereArgs: [acc["id"]],
-                                    );
-                                    setState(() {});
-                                  }
-                                });
-                              },
-                            ),
-                            ListTile(
-                              title: const Text("Last sync starred time"),
-                              subtitle: Text(
-                                DateTime.fromMillisecondsSinceEpoch(
-                                  (acc["updatedStarredTime"] as int) * 1000,
-                                ).toString(),
-                              ),
-                              onTap: () {
-                                showDatePicker(
-                                  context: context,
-                                  firstDate: DateTime(0),
-                                  lastDate: DateTime.now(),
-                                  initialDate:
-                                      DateTime.fromMillisecondsSinceEpoch(
-                                        (acc["updatedStarredTime"] as int) *
-                                            1000,
-                                      ),
-                                ).then((value) {
-                                  if (value != null) {
-                                    database.update(
-                                      "Account",
-                                      {
-                                        "updatedStarredTime":
-                                            (value.millisecondsSinceEpoch /
-                                                    1000)
-                                                .floor(),
-                                      },
-                                      where: "id = ?",
-                                      whereArgs: [acc["id"]],
-                                    );
-                                    setState(() {});
-                                  }
-                                });
-                              },
-                            ),
-                            ListTile(
-                              title: const Text("Delete Data or Account"),
-                              onTap: () async {
-                                showAdaptiveDialog(
-                                  context: context,
-                                  builder: (context) {
-                                    return AlertDialog.adaptive(
-                                      title: const Text("Are you sure?"),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () {
-                                            int accountID = acc["id"] as int;
-                                            // Filter.of(context).api.account.id;
-                                            database.delete(
-                                              "Article",
-                                              where: "accountID = ?",
-                                              whereArgs: [accountID],
-                                            );
-                                            database.delete(
-                                              "Categories",
-                                              where: "accountID = ?",
-                                              whereArgs: [accountID],
-                                            );
-                                            database.delete(
-                                              "Subscriptions",
-                                              where: "accountID = ?",
-                                              whereArgs: [accountID],
-                                            );
-                                            database.delete(
-                                              "DelayedActions",
-                                              where: "accountID = ?",
-                                              whereArgs: [accountID],
-                                            );
-                                            database.delete(
-                                              "Account",
-                                              where: "id = ?",
-                                              whereArgs: [accountID],
-                                            );
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  "Account Deleted",
-                                                ),
-                                              ),
-                                            );
-                                            Navigator.pop(context);
-                                            if (Api.of(context).account?.id ==
-                                                accountID) {
-                                              database
-                                                  .query(
-                                                    "Account",
-                                                    where: "id = ?",
-                                                    whereArgs: [accountID],
-                                                  )
-                                                  .then((onValue) {
-                                                    Api.of(
-                                                      context,
-                                                    ).changeAccount(
-                                                      Account.fromMap(
-                                                        onValue.first,
-                                                      ),
-                                                    );
-                                                  });
-                                            }
-                                            setState(() {});
-                                          },
-                                          child: Text(
-                                            "Delete Account",
-                                            style: TextStyle(
-                                              color: Colors.red[300],
-                                            ),
-                                          ),
-                                        ),
-                                        TextButton(
-                                          onPressed: () {
-                                            int accountID = acc["id"] as int;
-                                            // Filter.of(context).api.account.id;
-                                            database.delete(
-                                              "Articles",
-                                              where: "accountID = ?",
-                                              whereArgs: [accountID],
-                                            );
-                                            database.delete(
-                                              "Categories",
-                                              where: "accountID = ?",
-                                              whereArgs: [accountID],
-                                            );
-                                            database.delete(
-                                              "Subscriptions",
-                                              where: "accountID = ?",
-                                              whereArgs: [accountID],
-                                            );
-                                            database.delete(
-                                              "DelayedActions",
-                                              where: "accountID = ?",
-                                              whereArgs: [accountID],
-                                            );
-                                            database.update(
-                                              "Account",
-                                              {
-                                                "updatedStarredTime": 0,
-                                                "updatedArticleTime": 0,
-                                              },
-                                              where: "id = ?",
-                                              whereArgs: [accountID],
-                                            );
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text("Data Cleared"),
-                                              ),
-                                            );
-                                            Navigator.pop(context);
-                                            if (Api.of(context).account?.id ==
-                                                accountID) {
-                                              database
-                                                  .query(
-                                                    "Account",
-                                                    where: "id = ?",
-                                                    whereArgs: [accountID],
-                                                  )
-                                                  .then((onValue) {
-                                                    Api.of(
-                                                      context,
-                                                    ).changeAccount(
-                                                      Account.fromMap(
-                                                        onValue.first,
-                                                      ),
-                                                    );
-                                                  });
-                                            }
-                                            setState(() {});
-                                          },
-                                          child: Text(
-                                            "Delete only data",
-                                            style: TextStyle(
-                                              color: Colors.red[300],
-                                            ),
-                                          ),
-                                        ),
-                                        TextButton(
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                          },
-                                          child: const Text("Cancel"),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                );
-                              },
-                            ),
-                          ],
-                        ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                            child: const Text("Cancel"),
+                          ),
+                        ],
                       );
-                    }).toList(),
-              );
-            },
+                    },
+                  );
+                },
+              ),
+            ],
           ),
-          Divider(),
-          ListTile(title: Text("Other settings"), dense: true),
-          const ReadDurationTile(
-            title: "Keep read articles",
-            dbKey: "read_duration",
-            values: durations,
-          ),
-          const ReadDurationTile(
-            title: "Keep starred articles",
-            dbKey: "star_duration",
-            values: amounts,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -485,13 +450,10 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
   Future<int> addAccount(Account accountToAdd) async {
     int index = -1;
     if (widget.oldAccount != null) {
-      database.update("Account", accountToAdd.toMap());
+      await updateAccount(accountToAdd);
       index = accountToAdd.id;
     } else {
-      index = await database.insert(
-        "Account",
-        accountToAdd.toMap()..remove("id"),
-      );
+      index = await addAccount(accountToAdd);
     }
     return index;
   }

@@ -67,9 +67,17 @@ class ApiData extends ChangeNotifier {
     database.close();
   }
 
+  void clear() {
+    filteredArticleIDs?.clear();
+    selectedIndex = null;
+    filteredArticles = {};
+    searchResults = [];
+  }
+
   void changeAccount(Account acc) {
     account = acc;
     justBooted = false;
+    clear();
     loadAllSubs(account!.id).then((subs) {
       notifyListeners();
       subscriptions = subs;
@@ -81,6 +89,7 @@ class ApiData extends ChangeNotifier {
 
   void setShowAll(bool newValue) {
     showAll = newValue;
+    clear();
     notifyListeners();
   }
 

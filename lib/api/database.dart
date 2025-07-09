@@ -375,3 +375,70 @@ void saveDelayedActions(Map<String, DelayedAction> actions, int accountID) {
   }
   batch.commit(continueOnError: true);
 }
+
+Future<List<Account>> getAllAccounts({int? limit}) async {
+  return (await database.query(
+    "Account",
+    limit: limit,
+  )).map((elm) => Account.fromMap(elm)).toList();
+}
+
+Future<List<int>> getAccountIds() async {
+  return (await database.query(
+    "Account",
+    columns: ["id"],
+  )).map((elm) => elm["id"] as int).toList();
+}
+
+Future<Account> getAccount(int accountID) async {
+  return Account.fromMap(
+    (await database.query(
+      "Account",
+      where: "id = ?",
+      whereArgs: [accountID],
+      limit: 1,
+    )).first,
+  );
+}
+
+Future<int> addAccount(Account accountToAdd) async {
+  return await database.insert("Account", accountToAdd.toMap()..remove("id"));
+}
+
+Future<void> updateAccount(Account accountToAdd) async {
+  await database.update("Account", accountToAdd.toMap());
+}
+
+Future<void> deleteAccount(int accountID) async {
+  await deleteAccountData(accountID);
+  await database.delete("Account", where: "id = ?", whereArgs: [accountID]);
+}
+
+Future<void> deleteAccountData(int accountID) async {
+  await database.delete(
+    "Articles",
+    where: "accountID = ?",
+    whereArgs: [accountID],
+  );
+  await database.delete(
+    "Categories",
+    where: "accountID = ?",
+    whereArgs: [accountID],
+  );
+  await database.delete(
+    "Subscriptions",
+    where: "accountID = ?",
+    whereArgs: [accountID],
+  );
+  await database.delete(
+    "DelayedActions",
+    where: "accountID = ?",
+    whereArgs: [accountID],
+  );
+  await database.update(
+    "Account",
+    {"updatedStarredTime": 0, "updatedArticleTime": 0},
+    where: "id = ?",
+    whereArgs: [accountID],
+  );
+}

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class BlurBar extends StatelessWidget {
-  const BlurBar({super.key, this.child, this.hasBorder = true});
+class TransparentContainer extends StatelessWidget {
+  const TransparentContainer({super.key, this.child, this.hasBorder = true});
   final Widget? child;
   final bool hasBorder;
 

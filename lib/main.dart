@@ -15,16 +15,22 @@ late Database database;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   getDatabase().then((db) {
     database = db;
     database.query("Account").then((accounts) {
-      runApp(
-        MyApp(
-          apiData: ApiData(
-            accounts.isEmpty ? null : Account.fromMap(accounts[0]),
-          ),
-        ),
-      );
+      Account? acc;
+      if (accounts.isNotEmpty) {
+        try {
+          acc = Account.fromMap(accounts.first);
+        } catch (e, stack) {
+          debugPrint(e.toString());
+          debugPrintStack(stackTrace: stack);
+        }
+      } else {
+        debugPrint("No accounts found");
+      }
+      runApp(MyApp(apiData: ApiData(acc)));
     });
   });
 }
@@ -43,7 +49,7 @@ class _MyAppState extends State<MyApp> {
     return Api(
       notifier: widget.apiData,
       child: MaterialApp(
-        title: 'FreshReader',
+        title: 'Fresh Reader',
         themeMode: ThemeMode.dark,
         darkTheme: ThemeData(
           cupertinoOverrideTheme: CupertinoThemeData(
@@ -146,7 +152,9 @@ class _HomeWidgetState extends State<HomeWidget> {
                                 );
                               },
                             ),
+                            // VerticalDivider(width: 1.0),
                             const Expanded(flex: 2, child: ArticleList()),
+                            // VerticalDivider(width: 1.0),
                             if (screenSizeOf(context) == ScreenSize.big)
                               Expanded(
                                 flex: 3,
@@ -163,17 +171,20 @@ class _HomeWidgetState extends State<HomeWidget> {
                     ),
           ),
           if (Api.of(context).account == null && Api.of(context).justBooted)
-            const MaterialPage(
-              name: "/settings",
-              fullscreenDialog: true,
-              child: SettingsView(),
-            ),
+            screenSizeOf(context) == ScreenSize.big
+                ? const MaterialPage(
+                  name: "/settings",
+                  fullscreenDialog: true,
+                  child: SettingsDialog(),
+                )
+                : const MaterialPage(name: "/settings", child: SettingsPage()),
           if (screenSizeOf(context) == ScreenSize.medium &&
               Api.of(context).filteredArticleIDs != null)
             MaterialPage(
               child: Row(
                 children: [
                   const Expanded(flex: 2, child: ArticleList()),
+                  // VerticalDivider(width: 1),
                   Expanded(
                     flex: 3,
                     child: ArticleView(

@@ -18,7 +18,7 @@ import '../util/formatting_setting.dart';
 import '../widget/adaptive_list_tile.dart';
 import '../widget/article_buttons.dart';
 import '../widget/article_image.dart';
-import '../widget/blur_bar.dart';
+import '../widget/transparent_container.dart';
 
 class ArticleView extends StatefulWidget {
   const ArticleView({super.key, required this.index, required this.articleIDs});
@@ -85,32 +85,41 @@ class _ArticleViewState extends State<ArticleView> {
             tooltip: showWebView ? "Article" : "Web",
           ),
           IconButton(
-            onPressed: () {
-              showDialog(
-                barrierDismissible: true,
-                barrierColor: Colors.transparent,
-                context: context,
-                builder: (context) {
-                  return AlertDialog(
-                    alignment: Alignment.topRight,
-                    scrollable: true,
-                    contentPadding: EdgeInsets.all(8.0),
-                    insetPadding: EdgeInsets.only(
-                      top: MediaQuery.paddingOf(context).top + kToolbarHeight,
-                      right: 16.0,
-                      left: 16.0,
-                    ),
-                    // title: Text("Formatting settings"),
-                    content: ConstrainedBox(
-                      constraints: BoxConstraints.tightFor(width: 400.0),
-                      child: FormattingBottomSheet(
-                        formattingSetting: formattingSetting,
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
+            onPressed:
+                showWebView
+                    ? null
+                    : () {
+                      showDialog(
+                        barrierDismissible: true,
+                        barrierColor: Colors.transparent,
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            alignment: Alignment.topRight,
+                            scrollable: true,
+                            contentPadding: EdgeInsets.all(8.0),
+                            insetPadding: EdgeInsets.only(
+                              top:
+                                  MediaQuery.paddingOf(context).top +
+                                  kToolbarHeight,
+                              right: 16.0,
+                              left: 16.0,
+                            ),
+                            // title: Text("Formatting settings"),
+                            content: ConstrainedBox(
+                              constraints: BoxConstraints.tightFor(
+                                width: 400.0,
+                              ),
+                              child: FormattingBottomSheet(
+                                formattingSetting: formattingSetting,
+                              ),
+                            ),
+                          );
+                        },
+                      ).then((_) {
+                        setState(() {});
+                      });
+                    },
             icon: Icon(
               (Platform.isIOS || Platform.isMacOS)
                   ? CupertinoIcons.textformat
@@ -119,7 +128,7 @@ class _ArticleViewState extends State<ArticleView> {
             tooltip: "Text formatting",
           ),
         ],
-        flexibleSpace: const BlurBar(),
+        flexibleSpace: const TransparentContainer(),
       ),
       extendBodyBehindAppBar: !showWebView,
       extendBody: !showWebView,
@@ -491,61 +500,61 @@ class ArticleTextWidget extends StatelessWidget {
             child: CustomScrollView(
               controller: scrollController,
               slivers: [
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: MediaQuery.paddingOf(context).top + 16.0,
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Text.rich(
-                    textScaler: TextScaler.linear(0.8),
-                    TextSpan(
-                      children: [
-                        WidgetSpan(
-                          child: Builder(
-                            builder: (context) {
-                              return GestureDetector(
-                                onLongPress: () {
-                                  showLinkMenu(context, url, null);
-                                },
-                                onTap: () {
-                                  launchUrl(Uri.parse(url));
-                                },
-                                child: Text(
-                                  title,
-                                  textScaler: TextScaler.linear(1.45),
-                                  style: urlStyle,
-                                ),
-                              );
-                            },
+                SliverList(
+                  delegate: SliverChildListDelegate([
+                    SizedBox(height: MediaQuery.paddingOf(context).top + 16.0),
+                    Text.rich(
+                      textScaler: TextScaler.linear(0.8),
+                      TextSpan(
+                        children: [
+                          WidgetSpan(
+                            alignment: PlaceholderAlignment.middle,
+                            child: CachedNetworkImage(
+                              alignment: Alignment.bottomCenter,
+                              height: formattingSetting.fontSize * 0.8,
+                              width: formattingSetting.fontSize * 0.8,
+                              imageUrl: iconUrl ?? "",
+                              errorWidget:
+                                  (context, url, error) => Icon(
+                                    Icons.error,
+                                    size: formattingSetting.fontSize * 0.8,
+                                  ),
+                            ),
                           ),
-                        ),
-                        TextSpan(
-                          text:
-                              "\n${getRelativeDate(timePublished)}, ${DateTime.fromMillisecondsSinceEpoch(timePublished * 1000).toString().split(".").first}\n",
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                        WidgetSpan(
-                          alignment: PlaceholderAlignment.middle,
-                          child: CachedNetworkImage(
-                            alignment: Alignment.bottomCenter,
-                            height: formattingSetting.fontSize * 0.8,
-                            width: formattingSetting.fontSize * 0.8,
-                            imageUrl: iconUrl ?? "",
-                            errorWidget:
-                                (context, url, error) =>
-                                    const Icon(Icons.error),
+                          TextSpan(
+                            text: " $subName",
+                            style: TextStyle(color: Colors.grey.shade500),
                           ),
-                        ),
-                        TextSpan(
-                          text: "  $subName",
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ],
+                          WidgetSpan(
+                            child: Builder(
+                              builder: (context) {
+                                return GestureDetector(
+                                  onLongPress: () {
+                                    showLinkMenu(context, url, null);
+                                  },
+                                  onTap: () {
+                                    launchUrl(Uri.parse(url));
+                                  },
+                                  child: Text(
+                                    title,
+                                    textScaler: TextScaler.linear(1.45),
+                                    style: urlStyle,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                "${getRelativeDate(timePublished)}, ${DateTime.fromMillisecondsSinceEpoch(timePublished * 1000).toString().split(".").first}",
+                            style: TextStyle(color: Colors.grey.shade500),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                    SizedBox(height: 8.0),
+                  ]),
                 ),
-                SliverToBoxAdapter(child: SizedBox(height: 8.0)),
                 HtmlWidget(
                   content,
                   // buildAsync: true,

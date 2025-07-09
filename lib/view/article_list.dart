@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import '../api/api.dart';
 import '../api/data_types.dart';
 import '../main.dart';
-import '../widget/blur_bar.dart';
+import '../widget/transparent_container.dart';
 import 'article_view.dart';
 
 class ArticleList extends StatefulWidget {
@@ -42,9 +42,12 @@ class _ArticleListState extends State<ArticleList> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor.withAlpha(220),
+      backgroundColor: Color.alphaBlend(
+        Colors.black.withAlpha(24),
+        Theme.of(context).scaffoldBackgroundColor,
+      ),
       appBar: AppBar(
-        flexibleSpace: const BlurBar(),
+        flexibleSpace: const TransparentContainer(),
         title: Text(
           Api.of(context).filteredTitle == null
               ? ""
@@ -62,7 +65,7 @@ class _ArticleListState extends State<ArticleList> {
       ),
       extendBody: true,
       extendBodyBehindAppBar: true,
-      bottomNavigationBar: BlurBar(
+      bottomNavigationBar: TransparentContainer(
         hasBorder: false,
         child: SizedBox(height: MediaQuery.paddingOf(context).bottom),
       ),
@@ -247,106 +250,105 @@ class ArticleWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 128,
-      decoration: BoxDecoration(
-        color:
-            Api.of(context).filteredArticleIDs != null &&
-                    Api.of(context).selectedIndex != null &&
-                    Api.of(context).filteredArticleIDs!.elementAt(
-                          Api.of(context).selectedIndex!,
-                        ) ==
-                        article.articleID
-                ? Theme.of(context).listTileTheme.selectedTileColor
-                : null,
-        borderRadius: BorderRadius.circular(8.0),
-      ),
-      margin: EdgeInsets.symmetric(horizontal: 8.0),
-      child: Opacity(
-        opacity: (article.read) ? 0.3 : 1.0,
-        child: InkWell(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return InkWell(
           onTap: onSelect,
-          borderRadius: BorderRadius.circular(8.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox(width: 8.0),
-              if (article.image != null)
-                Container(
-                  clipBehavior: Clip.hardEdge,
-                  width: 100.0,
-                  height: 100.0,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8.0),
-                    color: Colors.grey.shade800,
-                  ),
-                  child: CachedNetworkImage(
-                    imageUrl: article.image!,
-                    fit: BoxFit.cover,
-                    progressIndicatorBuilder:
-                        (context, url, progress) =>
-                            CircularProgressIndicator.adaptive(
-                              constraints: BoxConstraints(
-                                maxWidth: 16.0,
-                                maxHeight: 16.0,
-                              ),
-                              value: progress.progress,
-                            ),
-                    errorWidget:
-                        (context, url, error) => const Icon(Icons.error),
-                  ),
-                ),
-              const SizedBox(width: 8.0),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    Text(
-                      article.title,
-                      style: Theme.of(context).textTheme.titleMedium,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    RichText(
-                      maxLines: 2,
-                      softWrap: false,
-                      overflow: TextOverflow.fade,
-                      text: TextSpan(
-                        style: TextStyle(
-                          color: Colors.grey.shade500,
-                          height: 1.2,
-                        ),
-                        children: [
-                          WidgetSpan(
-                            child: SizedBox(
-                              height: 16,
-                              width: 16,
-                              child: CachedNetworkImage(
-                                imageUrl: Api.of(context).getIconUrl(subIcon),
-                                fit: BoxFit.contain,
-                                errorWidget:
-                                    (context, url, error) =>
-                                        const Icon(Icons.error, size: 16),
-                              ),
-                            ),
-                          ),
-                          TextSpan(
-                            text:
-                                " $subTitle\n${article.read ? "" : "⚪️"}${article.starred ? "⭐️" : ""}${getRelativeDate(article.published)}",
-                          ),
-                        ],
+          // borderRadius: BorderRadius.circular(8.0),
+          child: Container(
+            height: 128.0,
+            decoration: BoxDecoration(
+              color:
+                  Api.of(context).filteredArticleIDs != null &&
+                          Api.of(context).selectedIndex != null &&
+                          Api.of(context).filteredArticleIDs!.elementAt(
+                                Api.of(context).selectedIndex!,
+                              ) ==
+                              article.articleID
+                      ? Theme.of(context).listTileTheme.selectedTileColor
+                      : null,
+              // borderRadius: BorderRadius.circular(8.0),
+            ),
+            padding: EdgeInsets.all(8.0),
+            child: Opacity(
+              opacity: (article.read) ? 0.3 : 1.0,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
+                spacing: 8.0,
+                children: [
+                  if (article.image != null)
+                    Container(
+                      clipBehavior: Clip.hardEdge,
+                      width: min(112.0, constraints.maxWidth / 3.0),
+                      height: 112.0,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8.0),
+                        color: Colors.grey.shade800,
+                      ),
+                      child: CachedNetworkImage(
+                        imageUrl: article.image!,
+                        fit: BoxFit.cover,
+                        progressIndicatorBuilder:
+                            (context, url, progress) =>
+                                CircularProgressIndicator.adaptive(
+                                  constraints: BoxConstraints(
+                                    maxWidth: 16.0,
+                                    maxHeight: 16.0,
+                                  ),
+                                  value: progress.progress,
+                                ),
+                        errorWidget:
+                            (context, url, error) => const Icon(Icons.error),
                       ),
                     ),
-                  ],
-                ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        RichText(
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.fade,
+                          text: TextSpan(
+                            style: TextStyle(color: Colors.grey.shade500),
+                            children: [
+                              WidgetSpan(
+                                child: CachedNetworkImage(
+                                  imageUrl: Api.of(context).getIconUrl(subIcon),
+                                  fit: BoxFit.contain,
+                                  alignment: Alignment.center,
+                                  width: 16.0,
+                                  height: 16.0,
+                                  errorWidget:
+                                      (context, url, error) =>
+                                          const Icon(Icons.error, size: 16.0),
+                                ),
+                              ),
+                              TextSpan(text: " $subTitle"),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          article.title,
+                          style: Theme.of(context).textTheme.titleMedium,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          "${article.read ? "" : "⚪️"}${article.starred ? "⭐️" : ""} ${getRelativeDate(article.published)}",
+                          style: TextStyle(color: Colors.grey.shade500),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8.0),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
