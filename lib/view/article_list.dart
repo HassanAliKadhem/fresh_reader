@@ -269,7 +269,7 @@ class ArticleWidget extends StatelessWidget {
                       : null,
               // borderRadius: BorderRadius.circular(8.0),
             ),
-            padding: EdgeInsets.all(8.0),
+            padding: EdgeInsets.symmetric(horizontal: 8.0),
             child: Opacity(
               opacity: (article.read) ? 0.3 : 1.0,
               child: Row(
