@@ -47,12 +47,49 @@ class _ArticleListState extends State<ArticleList> {
         Theme.of(context).scaffoldBackgroundColor,
       ),
       appBar: AppBar(
-        flexibleSpace: const TransparentContainer(),
-        title: Text(
-          Api.of(context).filteredTitle == null
-              ? ""
-              : Api.of(context).filteredTitle!.split("/").last,
-        ),
+        flexibleSpace: const TransparentContainer(hasBorder: false),
+        // title: Text(
+        //   Api.of(context).filteredTitle == null
+        //       ? ""
+        //       : Api.of(context).filteredTitle!.split("/").last,
+        // ),
+        title:
+            (Platform.isIOS || Platform.isMacOS)
+                ? CupertinoSearchTextField(
+                  controller: _searchController,
+                  onChanged: (value) => setState(() {}),
+                  padding: const EdgeInsets.all(12.0),
+                  placeholder:
+                      "Search ${Api.of(context).filteredTitle == null ? "" : Api.of(context).filteredTitle!.split("/").last}",
+                )
+                : SearchBar(
+                  hintText:
+                      "Search ${Api.of(context).filteredTitle == null ? "" : Api.of(context).filteredTitle!.split("/").last}",
+                  controller: _searchController,
+                  textInputAction: TextInputAction.search,
+                  leading: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Icon(Icons.search),
+                  ),
+                  constraints: BoxConstraints(minHeight: 42.0),
+                  elevation: WidgetStatePropertyAll(0.0),
+                  trailing:
+                      _searchController.text != ""
+                          ? [
+                            IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  _searchController.clear();
+                                });
+                              },
+                              icon: const Icon(Icons.clear),
+                            ),
+                          ]
+                          : null,
+                  onChanged: (value) {
+                    setState(() {});
+                  },
+                ),
         leading:
             screenSizeOf(context) == ScreenSize.big
                 ? IconButton(
@@ -89,59 +126,15 @@ class _ArticleListState extends State<ArticleList> {
                       key: const PageStorageKey(0),
                       keyboardDismissBehavior:
                           ScrollViewKeyboardDismissBehavior.onDrag,
-                      itemCount:
-                          (Api.of(context).searchResults?.length ?? 0) + 1,
+                      itemCount: Api.of(context).searchResults?.length,
                       controller: _scrollController,
                       itemBuilder: (context, index) {
-                        if (index == 0) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 8.0,
-                              horizontal: 12.0,
-                            ),
-                            child:
-                                (Platform.isIOS || Platform.isMacOS)
-                                    ? CupertinoSearchTextField(
-                                      controller: _searchController,
-                                      onChanged: (value) => setState(() {}),
-                                      padding: const EdgeInsets.all(12.0),
-                                    )
-                                    : SearchBar(
-                                      hintText: "Search",
-                                      controller: _searchController,
-                                      textInputAction: TextInputAction.search,
-                                      leading: Padding(
-                                        padding: const EdgeInsets.all(8.0),
-                                        child: Icon(Icons.search),
-                                      ),
-                                      padding: WidgetStatePropertyAll(
-                                        const EdgeInsets.all(8.0),
-                                      ),
-                                      trailing:
-                                          _searchController.text != ""
-                                              ? [
-                                                IconButton(
-                                                  onPressed: () {
-                                                    setState(() {
-                                                      _searchController.clear();
-                                                    });
-                                                  },
-                                                  icon: const Icon(Icons.clear),
-                                                ),
-                                              ]
-                                              : null,
-                                      onChanged: (value) {
-                                        setState(() {});
-                                      },
-                                    ),
-                          );
-                        }
                         return ArticleTile(
                           article:
                               Api.of(context).filteredArticles![Api.of(
                                 context,
-                              ).searchResults![index - 1]]!,
-                          index: index - 1,
+                              ).searchResults![index]]!,
+                          index: index,
                         );
                       },
                     ),
@@ -269,7 +262,7 @@ class ArticleWidget extends StatelessWidget {
                       : null,
               // borderRadius: BorderRadius.circular(8.0),
             ),
-            padding: EdgeInsets.symmetric(horizontal: 8.0),
+            padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
             child: Opacity(
               opacity: (article.read) ? 0.3 : 1.0,
               child: Row(
@@ -305,7 +298,7 @@ class ArticleWidget extends StatelessWidget {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         RichText(
                           maxLines: 1,

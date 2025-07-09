@@ -81,54 +81,16 @@ class _ArticleViewState extends State<ArticleView> {
                 showWebView = !showWebView;
               });
             },
-            icon: Icon(showWebView ? Icons.article_rounded : Icons.web_rounded),
-            tooltip: showWebView ? "Article" : "Web",
-          ),
-          IconButton(
-            onPressed:
-                showWebView
-                    ? null
-                    : () {
-                      showDialog(
-                        barrierDismissible: true,
-                        barrierColor: Colors.transparent,
-                        context: context,
-                        builder: (context) {
-                          return AlertDialog(
-                            alignment: Alignment.topRight,
-                            scrollable: true,
-                            contentPadding: EdgeInsets.all(8.0),
-                            insetPadding: EdgeInsets.only(
-                              top:
-                                  MediaQuery.paddingOf(context).top +
-                                  kToolbarHeight,
-                              right: 16.0,
-                              left: 16.0,
-                            ),
-                            // title: Text("Formatting settings"),
-                            content: ConstrainedBox(
-                              constraints: BoxConstraints.tightFor(
-                                width: 400.0,
-                              ),
-                              child: FormattingBottomSheet(
-                                formattingSetting: formattingSetting,
-                              ),
-                            ),
-                          );
-                        },
-                      ).then((_) {
-                        setState(() {});
-                      });
-                    },
             icon: Icon(
               (Platform.isIOS || Platform.isMacOS)
-                  ? CupertinoIcons.textformat
-                  : Icons.text_format_rounded,
+                  ? CupertinoIcons.globe
+                  : Icons.public,
+              color: showWebView ? Theme.of(context).colorScheme.primary : null,
             ),
-            tooltip: "Text formatting",
+            tooltip: showWebView ? "Article" : "Web",
           ),
         ],
-        flexibleSpace: const TransparentContainer(),
+        flexibleSpace: const TransparentContainer(hasBorder: false),
       ),
       extendBodyBehindAppBar: !showWebView,
       extendBody: !showWebView,
@@ -504,53 +466,51 @@ class ArticleTextWidget extends StatelessWidget {
                   delegate: SliverChildListDelegate([
                     SizedBox(height: MediaQuery.paddingOf(context).top + 16.0),
                     Text.rich(
-                      textScaler: TextScaler.linear(0.8),
+                      textScaler: TextScaler.linear(0.9),
                       TextSpan(
                         children: [
                           WidgetSpan(
                             alignment: PlaceholderAlignment.middle,
-                            child: CachedNetworkImage(
-                              alignment: Alignment.bottomCenter,
-                              height: formattingSetting.fontSize * 0.8,
-                              width: formattingSetting.fontSize * 0.8,
-                              imageUrl: iconUrl ?? "",
-                              errorWidget:
-                                  (context, url, error) => Icon(
-                                    Icons.error,
-                                    size: formattingSetting.fontSize * 0.8,
-                                  ),
+                            child: Builder(
+                              builder: (context) {
+                                double? size =
+                                    DefaultTextStyle.of(context).style.fontSize;
+                                return CachedNetworkImage(
+                                  alignment: Alignment.bottomCenter,
+                                  height: size,
+                                  width: size,
+                                  imageUrl: iconUrl ?? "",
+                                  errorWidget:
+                                      (context, url, error) =>
+                                          Icon(Icons.error, size: size),
+                                );
+                              },
                             ),
                           ),
                           TextSpan(
                             text: " $subName",
                             style: TextStyle(color: Colors.grey.shade500),
                           ),
-                          WidgetSpan(
-                            child: Builder(
-                              builder: (context) {
-                                return GestureDetector(
-                                  onLongPress: () {
-                                    showLinkMenu(context, url, null);
-                                  },
-                                  onTap: () {
-                                    launchUrl(Uri.parse(url));
-                                  },
-                                  child: Text(
-                                    title,
-                                    textScaler: TextScaler.linear(1.45),
-                                    style: urlStyle,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          TextSpan(
-                            text:
-                                "${getRelativeDate(timePublished)}, ${DateTime.fromMillisecondsSinceEpoch(timePublished * 1000).toString().split(".").first}",
-                            style: TextStyle(color: Colors.grey.shade500),
-                          ),
                         ],
                       ),
+                    ),
+                    GestureDetector(
+                      onLongPress: () {
+                        showLinkMenu(context, url, null);
+                      },
+                      onTap: () {
+                        launchUrl(Uri.parse(url));
+                      },
+                      child: Text(
+                        title,
+                        textScaler: TextScaler.linear(1.15),
+                        style: urlStyle,
+                      ),
+                    ),
+                    Text(
+                      "${getRelativeDate(timePublished)}, ${DateTime.fromMillisecondsSinceEpoch(timePublished * 1000).toString().split(".").first}",
+                      style: TextStyle(color: Colors.grey.shade500),
+                      textScaler: TextScaler.linear(0.8),
                     ),
                     SizedBox(height: 8.0),
                   ]),
@@ -561,7 +521,10 @@ class ArticleTextWidget extends StatelessWidget {
                   enableCaching: false,
                   renderMode: RenderMode.sliverList,
                   onErrorBuilder: (context, element, error) {
-                    return Placeholder(child: Text(error.toString()));
+                    return Text(error.toString());
+                  },
+                  customStylesBuilder: (element) {
+                    return {"width": "100%"};
                   },
                   customWidgetBuilder: (element) {
                     if (element.localName == "a") {
@@ -631,9 +594,9 @@ class ArticleTextWidget extends StatelessWidget {
                     return null;
                   },
                 ),
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: MediaQuery.paddingOf(context).bottom + 16.0,
+                SliverPadding(
+                  padding: EdgeInsetsGeometry.only(
+                    bottom: MediaQuery.paddingOf(context).bottom + 16.0,
                   ),
                 ),
               ],

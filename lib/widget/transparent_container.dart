@@ -9,7 +9,7 @@ class TransparentContainer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).canvasColor.withAlpha(230),
+        color: Theme.of(context).canvasColor.withAlpha(235),
         border:
             !hasBorder
                 ? null

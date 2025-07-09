@@ -127,6 +127,42 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
                     );
                   },
                 ),
+                IconButton(
+                  onPressed: () {
+                    showDialog(
+                      barrierDismissible: true,
+                      barrierColor: Colors.transparent,
+                      context: context,
+                      builder: (context) {
+                        return AlertDialog(
+                          alignment: Alignment.bottomRight,
+                          scrollable: true,
+                          contentPadding: EdgeInsets.all(12.0),
+                          insetPadding: EdgeInsets.only(
+                            bottom: MediaQuery.paddingOf(context).bottom,
+                            right: 16.0,
+                            left: 16.0,
+                          ),
+                          // title: Text("Formatting settings"),
+                          content: ConstrainedBox(
+                            constraints: BoxConstraints.tightFor(width: 400.0),
+                            child: FormattingBottomSheet(
+                              formattingSetting: widget.formattingSetting,
+                            ),
+                          ),
+                        );
+                      },
+                    ).then((_) {
+                      setState(() {});
+                    });
+                  },
+                  icon: Icon(
+                    (Platform.isIOS || Platform.isMacOS)
+                        ? CupertinoIcons.textformat
+                        : Icons.text_format_rounded,
+                  ),
+                  tooltip: "Text formatting",
+                ),
               ],
             );
           },
@@ -294,7 +330,7 @@ class _FormattingBottomSheetState extends State<FormattingBottomSheet>
                   font,
                   Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: Text(font),
+                    child: Text(font.replaceFirst(".", "")),
                   ),
                 ),
               ),
@@ -305,7 +341,7 @@ class _FormattingBottomSheetState extends State<FormattingBottomSheet>
                       .map(
                         (font) => ButtonSegment(
                           value: font,
-                          label: Text(font.replaceAll(".", "")),
+                          label: Text(font.replaceFirst(".", "")),
                         ),
                       )
                       .toList(),

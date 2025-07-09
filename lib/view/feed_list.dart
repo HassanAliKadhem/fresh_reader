@@ -143,6 +143,7 @@ class _FeedListState extends State<FeedList> {
           ),
         ],
         flexibleSpace: TransparentContainer(
+          hasBorder: false,
           child: Align(
             alignment: Alignment.bottomCenter,
             child: ValueListenableBuilder(
@@ -182,7 +183,7 @@ class UnreadCount extends StatelessWidget {
         borderRadius: const BorderRadius.all(Radius.circular(5)),
         color: Theme.of(context).scaffoldBackgroundColor,
       ),
-      child: Text(unread.toString()),
+      child: Text(unread.toString(), textScaler: TextScaler.linear(1.15)),
     );
   }
 }
@@ -221,9 +222,12 @@ class _CategoryListState extends State<CategoryList> {
             })
             .catchError((onError) {
               debugPrint(onError.toString());
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(onError.toString(), maxLines: 3)),
-              );
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(onError.toString(), maxLines: 3)),
+                );
+                Api.of(context).progress.value = 1.0;
+              }
             });
       },
       child:
@@ -402,6 +406,15 @@ class _CategoryListState extends State<CategoryList> {
                                           )
                                           .map<Widget>((key) {
                                             return ListTile(
+                                              // shape: Border(
+                                              //   top: BorderSide(
+                                              //     color:
+                                              //         Theme.of(
+                                              //           context,
+                                              //         ).scaffoldBackgroundColor,
+                                              //     width: 2.0,
+                                              //   ),
+                                              // ),
                                               selected:
                                                   Api.of(
                                                     context,
