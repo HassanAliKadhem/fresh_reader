@@ -18,10 +18,16 @@ const accTable =
     "CREATE TABLE Account (id INTEGER PRIMARY KEY, serverUrl TEXT, provider TEXT, username TEXT, password TEXT, updatedArticleTime INTEGER, updatedStarredTime INTEGER)";
 const prefTable = "create table preferences (key TEXT primary key, value TEXT)";
 
+const _indexes = [
+  "CREATE INDEX if not exists idx_article_id ON articles (articleID)",
+  "CREATE INDEX if not exists idx_article_subid ON articles (subID)",
+  "CREATE INDEX if not exists idx_article_accid ON articles (accountID)",
+];
+
 Future<Database> getDatabase() async {
   return await openDatabase(
     'my_db.db',
-    version: 7,
+    version: 8,
     onCreate: (db, version) async {
       await db.execute(accTable);
       await db.execute(subTable);
@@ -29,14 +35,17 @@ Future<Database> getDatabase() async {
       await db.execute(artTable);
       await db.execute(delTable);
       await db.execute(prefTable);
-    },
-    onOpen: (db) async {
-      if ((await db.getVersion()) < 8) {
-        await db.execute(
-          "create table if not exists preferences (key TEXT primary key, value TEXT)",
-        );
+
+      // create indexes for articles table
+      for (var ind in _indexes) {
+        await db.execute(ind);
       }
     },
+    // onOpen: (db) async {
+    //   if ((await db.getVersion()) < 8) {
+    //     await db.execute(prefTable);
+    //   }
+    // },
     onUpgrade: (db, oldVersion, newVersion) async {
       if (oldVersion == 1 && newVersion == 2) {
         await db.execute('ALTER TABLE Article add column isStarred TEXT');
@@ -118,6 +127,12 @@ Future<Database> getDatabase() async {
           "create table preferences (key TEXT primary key, value TEXT)",
         );
         debugPrint("Finished upgrading db to: version 7");
+      } else if (oldVersion == 7 && newVersion == 8) {
+        // create indexes for articles table
+        for (var ind in _indexes) {
+          await db.execute(ind);
+        }
+        debugPrint("Finished upgrading db to: version 8");
       }
     },
     // singleInstance: true,
@@ -372,6 +387,19 @@ void saveDelayedActions(Map<String, DelayedAction> actions, int accountID) {
       "action": element.value.index,
       "accountID": accountID,
     });
+  }
+  batch.commit(continueOnError: true);
+}
+
+void deleteDelayedActions(Map<String, DelayedAction> actions, int accountID) {
+  final Batch batch = database.batch();
+
+  for (var element in actions.entries) {
+    batch.delete(
+      "DelayedActions",
+      where: "articleID = ? and action = ? and accountID = ?",
+      whereArgs: [element.key, element.value.index, accountID],
+    );
   }
   batch.commit(continueOnError: true);
 }

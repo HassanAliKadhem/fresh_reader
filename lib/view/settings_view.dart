@@ -186,6 +186,75 @@ class _AccountCardState extends State<AccountCard> {
                   });
                 },
               ),
+              ListTile(
+                title: const Text("Delete Data or Account"),
+                trailing: Icon(Icons.delete),
+                onTap: () async {
+                  showAdaptiveDialog(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog.adaptive(
+                        title: const Text("Are you sure?"),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              deleteAccount(account.id).then((_) {
+                                // ScaffoldMessenger.of(
+                                //   context,
+                                // ).showSnackBar(
+                                //   const SnackBar(
+                                //     content: Text("Account Deleted"),
+                                //   ),
+                                // );
+                                setState(() {
+                                  if (Api.of(context).account?.id ==
+                                      account.id) {
+                                    getAllAccounts(limit: 1).then((onValue) {
+                                      Api.of(
+                                        context,
+                                      ).changeAccount(onValue.first);
+                                    });
+                                  }
+                                });
+                              });
+                              Navigator.pop(context);
+                            },
+                            child: Text(
+                              "Delete Account",
+                              style: TextStyle(color: Colors.red[300]),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              deleteAccountData(account.id).then((_) {
+                                // ScaffoldMessenger.of(
+                                //   context,
+                                // ).showSnackBar(
+                                //   const SnackBar(
+                                //     content: Text("Data Cleared"),
+                                //   ),
+                                // );
+                                setState(() {});
+                              });
+                              Navigator.pop(context);
+                            },
+                            child: Text(
+                              "Delete only data",
+                              style: TextStyle(color: Colors.red[300]),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                            child: const Text("Cancel"),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
               FutureBuilder(
                 future: countAllArticles(true, account.id),
                 builder: (context, snapshot) {
@@ -197,7 +266,7 @@ class _AccountCardState extends State<AccountCard> {
                   }
                   return ListTile(
                     title: Text(
-                      "Total articles: ${snapshot.data!.values.reduce((count, value) => count + value)}",
+                      "Total articles: ${snapshot.data!.entries.map((entry) => entry.key.startsWith("feed/") ? entry.value : 0).reduce((count, value) => count + value)}",
                     ),
                     subtitle: Text(
                       "categories: ${snapshot.data!.entries.map((entry) => entry.key.startsWith("feed/") ? 0 : 1).reduce((count, value) => count + value)}, subscriptions: ${snapshot.data!.entries.map((entry) => entry.key.startsWith("feed/") ? 1 : 0).reduce((count, value) => count + value)}",
@@ -265,74 +334,6 @@ class _AccountCardState extends State<AccountCard> {
                       setState(() {});
                     }
                   });
-                },
-              ),
-              ListTile(
-                title: const Text("Delete Data or Account"),
-                onTap: () async {
-                  showAdaptiveDialog(
-                    context: context,
-                    builder: (context) {
-                      return AlertDialog.adaptive(
-                        title: const Text("Are you sure?"),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              deleteAccount(account.id).then((_) {
-                                // ScaffoldMessenger.of(
-                                //   context,
-                                // ).showSnackBar(
-                                //   const SnackBar(
-                                //     content: Text("Account Deleted"),
-                                //   ),
-                                // );
-                                setState(() {
-                                  if (Api.of(context).account?.id ==
-                                      account.id) {
-                                    getAllAccounts(limit: 1).then((onValue) {
-                                      Api.of(
-                                        context,
-                                      ).changeAccount(onValue.first);
-                                    });
-                                  }
-                                });
-                              });
-                              Navigator.pop(context);
-                            },
-                            child: Text(
-                              "Delete Account",
-                              style: TextStyle(color: Colors.red[300]),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              deleteAccountData(account.id).then((_) {
-                                // ScaffoldMessenger.of(
-                                //   context,
-                                // ).showSnackBar(
-                                //   const SnackBar(
-                                //     content: Text("Data Cleared"),
-                                //   ),
-                                // );
-                                setState(() {});
-                              });
-                              Navigator.pop(context);
-                            },
-                            child: Text(
-                              "Delete only data",
-                              style: TextStyle(color: Colors.red[300]),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                            child: const Text("Cancel"),
-                          ),
-                        ],
-                      );
-                    },
-                  );
                 },
               ),
             ],

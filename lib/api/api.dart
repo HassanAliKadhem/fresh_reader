@@ -141,52 +141,92 @@ class ApiData extends ChangeNotifier {
           }
         }
       }
-      // debugPrint(readIds.toString());
-      // debugPrint(unReadIds.toString());
-      await _setServerRead(
-        readIds.keys.toList(),
-        readIds.values.toList(),
-        true,
-      );
-      await _setServerRead(
-        unReadIds.keys.toList(),
-        unReadIds.values.toList(),
-        false,
-      );
-      await _setServerStar(
-        starIds.keys.toList(),
-        starIds.values.toList(),
-        true,
-      );
-      await _setServerStar(
-        unStarIds.keys.toList(),
-        unStarIds.values.toList(),
-        false,
-      );
-      progress.value = 0.6;
+      if (readIds.isNotEmpty) {
+        await _setServerRead(
+          readIds.keys.toList(),
+          readIds.values.toList(),
+          true,
+        ).then((done) {
+          if (done) {
+            deleteDelayedActions(
+              readIds.map((key, value) => MapEntry(key, DelayedAction.read)),
+              account!.id,
+            );
+          }
+        });
+      }
+      if (unReadIds.isNotEmpty) {
+        await _setServerRead(
+          unReadIds.keys.toList(),
+          unReadIds.values.toList(),
+          false,
+        ).then((done) {
+          if (done) {
+            deleteDelayedActions(
+              unReadIds.map(
+                (key, value) => MapEntry(key, DelayedAction.unread),
+              ),
+              account!.id,
+            );
+          }
+        });
+      }
+      if (starIds.isNotEmpty) {
+        await _setServerStar(
+          starIds.keys.toList(),
+          starIds.values.toList(),
+          true,
+        ).then((done) {
+          if (done) {
+            deleteDelayedActions(
+              starIds.map((key, value) => MapEntry(key, DelayedAction.star)),
+              account!.id,
+            );
+          }
+        });
+      }
+      if (unStarIds.isNotEmpty) {
+        await _setServerStar(
+          unStarIds.keys.toList(),
+          unStarIds.values.toList(),
+          false,
+        ).then((done) {
+          if (done) {
+            deleteDelayedActions(
+              unStarIds.map(
+                (key, value) => MapEntry(key, DelayedAction.unStar),
+              ),
+              account!.id,
+            );
+          }
+        });
+      }
       debugPrint("synced delayed actions: ${delayedActions.length}");
     } else {
       debugPrint("no delayed actions");
     }
+    progress.value = 0.6;
     // _getModifyAuth(auth)
     //     .then((value) => modifyAuth = value.body.replaceAll("\n", "")),
-    await _getCategories(auth);
-    await _getSubscriptions(auth);
-    await _getAllArticles(auth, "reading-list");
+    await _getServerCategories(auth);
+    await _getServerSubscriptions(auth);
+    await _getAllServerArticles(auth, "reading-list");
     progress.value = 0.8;
     await Future.wait([
-      _getReadIds(auth),
-      _getStarredIds(auth),
-      _getStarredArticles(auth),
+      _getServerReadIds(auth),
+      _getServerStarredIds(auth),
+      _getServerStarredArticles(auth),
     ]);
     //https://github.com/FreshRSS/FreshRSS/issues/2566
 
     await getPreference("read_duration").then((duration) {
+      debugPrint("read duration to keep: $duration");
       if (duration != null && duration != "-1") {
         // TODO: add code to delete old articles
       }
     });
     await getPreference("star_duration").then((duration) {
+      debugPrint("starred count to keep: $duration");
       if (duration != null && duration != "-1") {
         // TODO: add code to delete starred articles
       }
@@ -218,7 +258,7 @@ class ApiData extends ChangeNotifier {
     );
   }
 
-  Future<void> _getSubscriptions(String auth) async {
+  Future<void> _getServerSubscriptions(String auth) async {
     int count = 0;
     http
         .get(
@@ -251,7 +291,7 @@ class ApiData extends ChangeNotifier {
         });
   }
 
-  Future<void> _getCategories(String auth) async {
+  Future<void> _getServerCategories(String auth) async {
     int count = 0;
     await http
         .get(
@@ -283,7 +323,7 @@ class ApiData extends ChangeNotifier {
         });
   }
 
-  Future<void> _getAllArticles(String auth, String feed) async {
+  Future<void> _getAllServerArticles(String auth, String feed) async {
     int count = 0;
     bool updateTime = true;
     String url =
@@ -332,7 +372,7 @@ class ApiData extends ChangeNotifier {
     debugPrint("Fetched new articles: $count");
   }
 
-  Future<void> _getReadIds(String auth) async {
+  Future<void> _getServerReadIds(String auth) async {
     int count = 0;
     Set<String> syncedArticleIDs = <String>{};
     String con = "";
@@ -368,7 +408,7 @@ class ApiData extends ChangeNotifier {
     debugPrint("Fetched readIds: $count");
   }
 
-  Future<void> _getStarredIds(String auth) async {
+  Future<void> _getServerStarredIds(String auth) async {
     int count = 0;
     bool updateTime = true;
     Set<String> syncedArticleIDs = <String>{};
@@ -417,7 +457,7 @@ class ApiData extends ChangeNotifier {
     debugPrint("Fetched starredIDs: $count");
   }
 
-  Future<void> _getStarredArticles(String auth) async {
+  Future<void> _getServerStarredArticles(String auth) async {
     int count = 0;
     String con = "";
     do {

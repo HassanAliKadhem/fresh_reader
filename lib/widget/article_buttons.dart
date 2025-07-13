@@ -309,11 +309,7 @@ class _FormattingBottomSheetState extends State<FormattingBottomSheet>
       mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ListTile(
-          leading: Icon(Icons.font_download),
-          title: Text("Font"),
-          dense: true,
-        ),
+        ListTile(leading: Icon(Icons.font_download), title: Text("Font")),
         (Platform.isIOS || Platform.isMacOS)
             ? CupertinoSlidingSegmentedControl(
               groupValue: widget.formattingSetting.font,
@@ -356,8 +352,7 @@ class _FormattingBottomSheetState extends State<FormattingBottomSheet>
             ),
 
         Table(
-          columnWidths: {0: FlexColumnWidth(1), 1: FlexColumnWidth(3)},
-          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          columnWidths: {0: FlexColumnWidth(1), 1: FlexColumnWidth(4)},
           children:
               [
                     [
@@ -437,83 +432,7 @@ class _FormattingBottomSheetState extends State<FormattingBottomSheet>
                   )
                   .toList(),
         ),
-        // SizedBox(height: 8.0),
-        // Row(
-        //   children: [
-        //     Column(
-        //       children: [
-        //         Icon(
-        //           (Platform.isIOS || Platform.isMacOS)
-        //               ? CupertinoIcons.textformat_size
-        //               : Icons.format_size,
-        //         ),
-        //         Text("Font size"),
-        //       ],
-        //     ),
-        //     Expanded(
-        //       child: Slider.adaptive(
-        //         value: widget.formattingSetting.fontSize,
-        //         label: widget.formattingSetting.fontSize.toString(),
-        //         min: 10.0,
-        //         max: 30.0,
-        //         onChanged: (v) {
-        //           setState(() {
-        //             widget.formattingSetting.setSize(v);
-        //           });
-        //         },
-        //       ),
-        //     ),
-        //   ],
-        // ),
-        // SizedBox(height: 8.0),
-        // ListTile(
-        //   leading: Icon(
-        //     (Platform.isIOS || Platform.isMacOS)
-        //         ? CupertinoIcons.textformat_size
-        //         : Icons.format_size,
-        //   ),
-        //   title: Text("Font size"),
-        // ),
-        // Slider.adaptive(
-        //   value: widget.formattingSetting.fontSize,
-        //   label: widget.formattingSetting.fontSize.toString(),
-        //   min: 10.0,
-        //   max: 30.0,
-        //   onChanged: (v) {
-        //     setState(() {
-        //       widget.formattingSetting.setSize(v);
-        //     });
-        //   },
-        // ),
-
-        // ListTile(
-        //   leading: Icon(Icons.format_line_spacing),
-        //   title: Text("Line spacing"),
-        // ),
-        // Slider.adaptive(
-        //   value: widget.formattingSetting.lineHeight,
-        //   label: widget.formattingSetting.lineHeight.toString(),
-        //   min: 1.0,
-        //   max: 2.0,
-        //   onChanged: (v) {
-        //     setState(() {
-        //       widget.formattingSetting.setLineHeight(v);
-        //     });
-        //   },
-        // ),
-        // ListTile(leading: Icon(Icons.space_bar), title: Text("Word Spacing")),
-        // Slider.adaptive(
-        //   value: widget.formattingSetting.wordSpacing,
-        //   label: widget.formattingSetting.wordSpacing.toString(),
-        //   min: 0.0,
-        //   max: 10.0,
-        //   onChanged: (v) {
-        //     setState(() {
-        //       widget.formattingSetting.setSpacing(v);
-        //     });
-        //   },
-        // ),
-        SizedBox(height: 16.0),
+        SizedBox(height: 8.0),
       ],
     );
   }

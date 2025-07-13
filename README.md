@@ -28,7 +28,7 @@ An opinionated client for FreshRss (not affiliated) made just for me. but you ca
 - [ ] limit number of starred articles stored
 - [ ] edit tags
 - [ ] delete tags
-- [ ] Highlight the first letters in a word to ease reading
+- [ ] Highlight the first half of a word to make it easier to read
 - [ ] add date separator in article list
 
 ## Screenshots
