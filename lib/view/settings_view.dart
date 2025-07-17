@@ -179,10 +179,11 @@ class _AccountCardState extends State<AccountCard> {
                       return AddAccountDialog(oldAccount: account);
                     },
                   ).then((onValue) {
-                    // if (onValue != null &&
-                    //     onValue is AccountData) {
-                    //   widget.chooseAccount(onValue);
-                    // }
+                    if (onValue != null &&
+                        onValue is Account &&
+                        onValue.id == Api.of(context).account?.id) {
+                      Api.of(context).changeAccount(onValue);
+                    }
                   });
                 },
               ),
@@ -199,20 +200,15 @@ class _AccountCardState extends State<AccountCard> {
                           TextButton(
                             onPressed: () {
                               deleteAccount(account.id).then((_) {
-                                // ScaffoldMessenger.of(
-                                //   context,
-                                // ).showSnackBar(
-                                //   const SnackBar(
-                                //     content: Text("Account Deleted"),
-                                //   ),
-                                // );
                                 setState(() {
                                   if (Api.of(context).account?.id ==
                                       account.id) {
                                     getAllAccounts(limit: 1).then((onValue) {
-                                      Api.of(
-                                        context,
-                                      ).changeAccount(onValue.first);
+                                      if (onValue.isNotEmpty) {
+                                        Api.of(
+                                          context,
+                                        ).changeAccount(onValue.first);
+                                      }
                                     });
                                   }
                                 });
@@ -227,14 +223,11 @@ class _AccountCardState extends State<AccountCard> {
                           TextButton(
                             onPressed: () {
                               deleteAccountData(account.id).then((_) {
-                                // ScaffoldMessenger.of(
-                                //   context,
-                                // ).showSnackBar(
-                                //   const SnackBar(
-                                //     content: Text("Data Cleared"),
-                                //   ),
-                                // );
-                                setState(() {});
+                                setState(() {
+                                  getAccount(account.id).then((onValue) {
+                                    Api.of(context).changeAccount(onValue);
+                                  });
+                                });
                               });
                               Navigator.pop(context);
                             },

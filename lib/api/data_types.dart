@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'api.dart';
+import 'package:html_unescape/html_unescape.dart';
 
-const Utf8Decoder decoder = Utf8Decoder();
+import 'api.dart';
 
 class Account {
   int id;
@@ -269,14 +269,15 @@ enum DelayedAction { unread, read, star, unStar }
 
 enum ScreenSize { big, medium, small }
 
-String tryDecode(content) {
+const Utf8Decoder decoder = Utf8Decoder();
+final HtmlUnescape unescape = HtmlUnescape();
+
+String tryDecode(String content) {
   try {
-    return decoder
-        .convert(content.codeUnits)
-        .replaceAll("＆#x27;", "'")
-        .replaceAll("&#x27;", "'")
-        .replaceAll("&quot;", "\"");
+    return unescape.convert(
+      decoder.convert(content.codeUnits).replaceAll("＆", "&"),
+    );
   } catch (e) {
-    return content.replaceAll("＆#x27;", "'");
+    return content;
   }
 }
