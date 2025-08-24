@@ -84,7 +84,7 @@ class _SettingsContentState extends State<SettingsContent> {
         ),
         Divider(),
         AboutListTile(
-          applicationVersion: "1.2.8",
+          applicationVersion: "1.2.9",
           aboutBoxChildren: [
             const ListTile(
               title: Text("Made By"),
