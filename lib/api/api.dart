@@ -43,6 +43,9 @@ class ApiData extends ChangeNotifier {
   bool showAll = false;
 
   Map<String, Subscription> subscriptions = <String, Subscription>{};
+  // Map<String, Category> categories = <String, Category>{};
+  // Map<String, (int, int)> counts = <String, (int, int)>{}; // (all, unread)
+  // Map<String, Article> articles = <String, Article>{};
   Set<String>? filteredArticleIDs;
   Map<String, Article>? filteredArticles;
   List<String>? searchResults;

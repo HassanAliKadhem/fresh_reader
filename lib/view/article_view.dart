@@ -141,10 +141,17 @@ class _ArticleViewPagesState extends State<ArticleViewPages> {
       itemCount: widget.articleIDs.length,
       itemBuilder: (context, index) {
         return FutureBuilder<Article>(
-          future: loadArticle(
-            widget.articleIDs.elementAt(index),
-            Api.of(context).account!.id,
-          ),
+          future:
+              Api.of(context).filteredArticles != null &&
+                      Api.of(context).filteredArticles!.containsKey(
+                        widget.articleIDs.elementAt(index),
+                      )
+                  ? loadArticleContent(
+                    Api.of(context).filteredArticles![widget.articleIDs
+                        .elementAt(index)]!,
+                    Api.of(context).account!.id,
+                  )
+                  : null,
           builder: (context, snapshot) {
             if (snapshot.data != null) {
               return ArticlePage(

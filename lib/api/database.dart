@@ -208,6 +208,19 @@ Future<List<Article>> loadArticles(
   )).map((article) => Article.fromDB(article)).toList();
 }
 
+Future<Article> loadArticleContent(Article article, int accountID) async {
+  var res = await database.query(
+    "Articles",
+    columns: ["content"],
+    where: "articleID = ? and accountID = ?",
+    whereArgs: [article.articleID, accountID],
+    limit: 1,
+  );
+  article.content =
+      (res.first.values.first != null ? res.first.values.first as String : "");
+  return article;
+}
+
 Future<String?> loadArticleSubID(String articleID, int accountID) async {
   List<Map<String, Object?>> result = await database.query(
     "Articles",
