@@ -1,12 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:fresh_reader/view/settings_view.dart';
 import 'package:sqflite/sqflite.dart';
 
 import 'api/api.dart';
 import 'api/data_types.dart';
 import 'api/database.dart';
+import 'util/formatting_setting.dart';
+import 'view/settings_view.dart';
 import 'view/article_list.dart';
 import 'view/article_view.dart';
 import 'view/feed_list.dart';
@@ -48,40 +49,43 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return Api(
       notifier: widget.apiData,
-      child: MaterialApp(
-        title: 'Fresh Reader',
-        themeMode: ThemeMode.dark,
-        darkTheme: ThemeData(
-          cupertinoOverrideTheme: CupertinoThemeData(
-            primaryColor: Colors.deepPurple,
-            brightness: Brightness.dark,
-            textTheme: CupertinoTextThemeData(
-              primaryColor: Colors.grey.shade600,
+      child: Formatting(
+        notifier: FormattingSetting(),
+        child: MaterialApp(
+          title: 'Fresh Reader',
+          themeMode: ThemeMode.dark,
+          darkTheme: ThemeData(
+            cupertinoOverrideTheme: CupertinoThemeData(
+              primaryColor: Colors.deepPurple,
+              brightness: Brightness.dark,
+              textTheme: CupertinoTextThemeData(
+                primaryColor: Colors.grey.shade600,
+              ),
             ),
-          ),
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.deepPurple,
-            brightness: Brightness.dark,
-          ),
-          appBarTheme: const AppBarTheme(
-            backgroundColor: Colors.transparent,
-            scrolledUnderElevation: 0,
-            systemOverlayStyle: SystemUiOverlayStyle(
-              statusBarColor: Colors.transparent,
-              systemStatusBarContrastEnforced: false,
-              statusBarIconBrightness: Brightness.light,
-              systemNavigationBarColor: Colors.transparent,
-              systemNavigationBarDividerColor: Colors.transparent,
-              systemNavigationBarContrastEnforced: false,
-              systemNavigationBarIconBrightness: Brightness.light,
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.deepPurple,
+              brightness: Brightness.dark,
             ),
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Colors.transparent,
+              scrolledUnderElevation: 0,
+              systemOverlayStyle: SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                systemStatusBarContrastEnforced: false,
+                statusBarIconBrightness: Brightness.light,
+                systemNavigationBarColor: Colors.transparent,
+                systemNavigationBarDividerColor: Colors.transparent,
+                systemNavigationBarContrastEnforced: false,
+                systemNavigationBarIconBrightness: Brightness.light,
+              ),
+            ),
+            listTileTheme: ListTileThemeData(selectedTileColor: Colors.white10),
+            sliderTheme: SliderThemeData(year2023: false),
+            progressIndicatorTheme: ProgressIndicatorThemeData(year2023: false),
           ),
-          listTileTheme: ListTileThemeData(selectedTileColor: Colors.white10),
-          sliderTheme: SliderThemeData(year2023: false),
-          progressIndicatorTheme: ProgressIndicatorThemeData(year2023: false),
+          home: const HomeWidget(),
         ),
-        home: const HomeWidget(),
       ),
     );
   }

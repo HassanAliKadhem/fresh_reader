@@ -12,13 +12,8 @@ import '../util/formatting_setting.dart';
 import '../widget/transparent_container.dart';
 
 class ArticleBottomButtons extends StatefulWidget {
-  const ArticleBottomButtons({
-    super.key,
-    required this.articleNotifier,
-    required this.formattingSetting,
-  });
+  const ArticleBottomButtons({super.key, required this.articleNotifier});
   final ValueNotifier<Article?> articleNotifier;
-  final FormattingSetting formattingSetting;
 
   @override
   State<ArticleBottomButtons> createState() => _ArticleBottomButtonsState();
@@ -89,7 +84,6 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
                   icon: Icon(Icons.open_in_browser_rounded),
                   tooltip: "Browser",
                 ),
-
                 Builder(
                   builder: (context) {
                     return IconButton(
@@ -134,23 +128,7 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
                       barrierColor: Colors.transparent,
                       context: context,
                       builder: (context) {
-                        return AlertDialog(
-                          alignment: Alignment.bottomRight,
-                          scrollable: true,
-                          contentPadding: EdgeInsets.all(12.0),
-                          insetPadding: EdgeInsets.only(
-                            bottom: MediaQuery.paddingOf(context).bottom,
-                            right: 16.0,
-                            left: 16.0,
-                          ),
-                          // title: Text("Formatting settings"),
-                          content: ConstrainedBox(
-                            constraints: BoxConstraints.tightFor(width: 400.0),
-                            child: FormattingBottomSheet(
-                              formattingSetting: widget.formattingSetting,
-                            ),
-                          ),
-                        );
+                        return FormattingDialog();
                       },
                     ).then((_) {
                       setState(() {});
@@ -275,165 +253,155 @@ class _ArticleWebViewButtonsState extends State<ArticleWebViewButtons> {
   }
 }
 
-class FormattingBottomSheet extends StatefulWidget {
-  const FormattingBottomSheet({super.key, required this.formattingSetting});
-  final FormattingSetting formattingSetting;
-
-  @override
-  State<FormattingBottomSheet> createState() => _FormattingBottomSheetState();
-}
-
-class _FormattingBottomSheetState extends State<FormattingBottomSheet>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 300),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+class FormattingDialog extends StatelessWidget {
+  const FormattingDialog({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ListTile(leading: Icon(Icons.font_download), title: Text("Font")),
-        (Platform.isIOS || Platform.isMacOS)
-            ? CupertinoSlidingSegmentedControl(
-              groupValue: widget.formattingSetting.font,
-              thumbColor: Theme.of(context).colorScheme.onPrimary,
-              onValueChanged: (value) {
-                if (value != null) {
-                  setState(() {
-                    widget.formattingSetting.setFontFamily(value);
-                  });
-                }
-              },
-              children: widget.formattingSetting.fonts.asMap().map(
-                (i, font) => MapEntry(
-                  font,
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text(font.replaceFirst(".", "")),
-                  ),
-                ),
+    return AlertDialog(
+      alignment: Alignment.bottomRight,
+      scrollable: true,
+      contentPadding: EdgeInsets.all(12.0),
+      insetPadding: EdgeInsets.only(
+        bottom: MediaQuery.paddingOf(context).bottom,
+        right: 16.0,
+        left: 16.0,
+      ),
+      // title: Text("Formatting settings"),
+      content: ConstrainedBox(
+        constraints: BoxConstraints.tightFor(width: 400.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ListTile(
+              leading: Icon(Icons.font_download),
+              title: Text("Font"),
+              trailing: IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: Icon(Icons.close),
               ),
-            )
-            : SegmentedButton<String>(
-              segments:
-                  widget.formattingSetting.fonts
+              contentPadding: EdgeInsetsDirectional.only(start: 16.0),
+            ),
+            (Platform.isIOS || Platform.isMacOS)
+                ? CupertinoSlidingSegmentedControl(
+                  groupValue: Formatting.of(context).font,
+                  thumbColor: Theme.of(context).colorScheme.onPrimary,
+                  onValueChanged: (value) {
+                    if (value != null) {
+                      Formatting.of(context).setFontFamily(value);
+                    }
+                  },
+                  children: Formatting.of(context).fonts.asMap().map(
+                    (i, font) => MapEntry(
+                      font,
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(font.replaceFirst(".", "")),
+                      ),
+                    ),
+                  ),
+                )
+                : SegmentedButton<String>(
+                  segments:
+                      Formatting.of(context).fonts
+                          .map(
+                            (font) => ButtonSegment(
+                              value: font,
+                              label: Text(font.replaceFirst(".", "")),
+                            ),
+                          )
+                          .toList(),
+                  selected: {Formatting.of(context).font},
+                  onSelectionChanged: (Set<String> newSelection) {
+                    Formatting.of(context).setFontFamily(newSelection.first);
+                  },
+                  showSelectedIcon: false,
+                  multiSelectionEnabled: false,
+                ),
+            Table(
+              columnWidths: {0: FlexColumnWidth(1), 1: FlexColumnWidth(4)},
+              children:
+                  [
+                        [
+                          Icon(
+                            (Platform.isIOS || Platform.isMacOS)
+                                ? CupertinoIcons.textformat_size
+                                : Icons.format_size,
+                          ),
+                          Text("Size"),
+                          Slider.adaptive(
+                            value: Formatting.of(context).fontSize,
+                            label: Formatting.of(context).fontSize.toString(),
+                            min: 10.0,
+                            max: 30.0,
+                            onChanged: (v) {
+                              Formatting.of(context).setSize(v);
+                            },
+                          ),
+                        ],
+                        [
+                          Icon(
+                            (Platform.isIOS || Platform.isMacOS)
+                                ? CupertinoIcons.textformat_size
+                                : Icons.format_size,
+                          ),
+                          Text("Line"),
+                          Slider.adaptive(
+                            value: Formatting.of(context).lineHeight,
+                            label: Formatting.of(context).lineHeight.toString(),
+                            min: 1.0,
+                            max: 2.0,
+                            onChanged: (v) {
+                              Formatting.of(context).setLineHeight(v);
+                            },
+                          ),
+                        ],
+                        [
+                          Icon(Icons.space_bar),
+                          Text("Word"),
+                          Slider.adaptive(
+                            value: Formatting.of(context).wordSpacing,
+                            label:
+                                Formatting.of(context).wordSpacing.toString(),
+                            min: 0.0,
+                            max: 10.0,
+                            onChanged: (v) {
+                              Formatting.of(context).setSpacing(v);
+                            },
+                          ),
+                        ],
+                      ]
                       .map(
-                        (font) => ButtonSegment(
-                          value: font,
-                          label: Text(font.replaceFirst(".", "")),
+                        (entry) => TableRow(
+                          children: [
+                            TableCell(
+                              verticalAlignment:
+                                  TableCellVerticalAlignment.bottom,
+                              child: Padding(
+                                padding: EdgeInsetsGeometry.only(top: 16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [entry[0], entry[1]],
+                                ),
+                              ),
+                            ),
+                            TableCell(
+                              verticalAlignment:
+                                  TableCellVerticalAlignment.bottom,
+                              child: entry[2],
+                            ),
+                          ],
                         ),
                       )
                       .toList(),
-              selected: {widget.formattingSetting.font},
-              onSelectionChanged: (Set<String> newSelection) {
-                setState(() {
-                  widget.formattingSetting.setFontFamily(newSelection.first);
-                });
-              },
-              showSelectedIcon: false,
-              multiSelectionEnabled: false,
             ),
-
-        Table(
-          columnWidths: {0: FlexColumnWidth(1), 1: FlexColumnWidth(4)},
-          children:
-              [
-                    [
-                      Icon(
-                        (Platform.isIOS || Platform.isMacOS)
-                            ? CupertinoIcons.textformat_size
-                            : Icons.format_size,
-                      ),
-                      Text("Size"),
-                      Slider.adaptive(
-                        value: widget.formattingSetting.fontSize,
-                        label: widget.formattingSetting.fontSize.toString(),
-                        min: 10.0,
-                        max: 30.0,
-                        onChanged: (v) {
-                          setState(() {
-                            widget.formattingSetting.setSize(v);
-                          });
-                        },
-                      ),
-                    ],
-                    [
-                      Icon(
-                        (Platform.isIOS || Platform.isMacOS)
-                            ? CupertinoIcons.textformat_size
-                            : Icons.format_size,
-                      ),
-                      Text("Line"),
-                      Slider.adaptive(
-                        value: widget.formattingSetting.lineHeight,
-                        label: widget.formattingSetting.lineHeight.toString(),
-                        min: 1.0,
-                        max: 2.0,
-                        onChanged: (v) {
-                          setState(() {
-                            widget.formattingSetting.setLineHeight(v);
-                          });
-                        },
-                      ),
-                    ],
-                    [
-                      Icon(Icons.space_bar),
-                      Text("Word"),
-                      Slider.adaptive(
-                        value: widget.formattingSetting.wordSpacing,
-                        label: widget.formattingSetting.wordSpacing.toString(),
-                        min: 0.0,
-                        max: 10.0,
-                        onChanged: (v) {
-                          setState(() {
-                            widget.formattingSetting.setSpacing(v);
-                          });
-                        },
-                      ),
-                    ],
-                  ]
-                  .map(
-                    (entry) => TableRow(
-                      children: [
-                        TableCell(
-                          verticalAlignment: TableCellVerticalAlignment.bottom,
-                          child: Padding(
-                            padding: EdgeInsetsGeometry.only(top: 16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [entry[0], entry[1]],
-                            ),
-                          ),
-                        ),
-                        TableCell(
-                          verticalAlignment: TableCellVerticalAlignment.bottom,
-                          child: entry[2],
-                        ),
-                      ],
-                    ),
-                  )
-                  .toList(),
+            const SizedBox(height: 8.0),
+          ],
         ),
-        SizedBox(height: 8.0),
-      ],
+      ),
     );
   }
 }

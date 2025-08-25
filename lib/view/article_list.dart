@@ -302,10 +302,10 @@ class ArticleWidget extends StatelessWidget {
                       children: [
                         RichText(
                           maxLines: 1,
-                          softWrap: false,
-                          overflow: TextOverflow.fade,
+                          overflow: TextOverflow.ellipsis,
                           text: TextSpan(
-                            style: TextStyle(color: Colors.grey.shade500),
+                            // style: TextStyle(color: Colors.grey.shade500),
+                            style: Theme.of(context).textTheme.bodySmall,
                             children: [
                               WidgetSpan(
                                 child: CachedNetworkImage(
@@ -330,8 +330,11 @@ class ArticleWidget extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          "${article.read ? "" : "⚪️"}${article.starred ? "⭐️" : ""} ${getRelativeDate(article.published)}",
-                          style: TextStyle(color: Colors.grey.shade500),
+                          "${article.read ? "" : "⚪️ "}${article.starred ? "⭐️ " : ""}${getRelativeDate(article.published)}, ${DateTime.fromMillisecondsSinceEpoch(article.published * 1000).toString().split(".").first}",
+                          // style: TextStyle(color: Colors.grey.shade500),
+                          style: Theme.of(context).textTheme.bodySmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),

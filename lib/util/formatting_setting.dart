@@ -1,7 +1,26 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:fresh_reader/api/database.dart';
+
+class Formatting extends InheritedNotifier<FormattingSetting> {
+  const Formatting({super.key, required super.child, required super.notifier});
+
+  static FormattingSetting of(BuildContext context) {
+    assert(
+      context.dependOnInheritedWidgetOfExactType<Formatting>() != null,
+      "Formatting not found in current context",
+    );
+    return context.dependOnInheritedWidgetOfExactType<Formatting>()!.notifier!;
+  }
+
+  @override
+  bool updateShouldNotify(
+    covariant InheritedNotifier<FormattingSetting> oldWidget,
+  ) {
+    return notifier != oldWidget.notifier;
+  }
+}
 
 class FormattingSetting extends ChangeNotifier {
   double fontSize = 14.0;

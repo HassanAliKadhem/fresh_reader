@@ -33,8 +33,7 @@ ValueNotifier<Article?> currentArticleNotifier = ValueNotifier<Article?>(null);
 
 class _ArticleViewState extends State<ArticleView> {
   bool showWebView = false;
-  late final FormattingSetting formattingSetting = FormattingSetting();
-  late final PageController _pageController = PageController(
+  late final PageController pageController = PageController(
     initialPage: widget.index ?? 0,
   );
 
@@ -42,17 +41,17 @@ class _ArticleViewState extends State<ArticleView> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (Api.of(context).selectedIndex != null &&
-        _pageController.hasClients &&
-        Api.of(context).selectedIndex != _pageController.page!.toInt() &&
-        _pageController.page!.toInt() == _pageController.page) {
+        pageController.hasClients &&
+        Api.of(context).selectedIndex != pageController.page!.toInt() &&
+        pageController.page!.toInt() == pageController.page) {
       final int index = Api.of(context).selectedIndex!;
       Future.microtask(() {
-        _pageController.jumpToPage(index);
+        pageController.jumpToPage(index);
       });
     }
   }
 
-  void _onPageChanged(int page) {
+  void onPageChanged(int page) {
     Api.of(context).selectedIndex = page;
     currentArticleNotifier.value = Api.of(context).setRead(
       Api.of(
@@ -96,19 +95,16 @@ class _ArticleViewState extends State<ArticleView> {
       extendBody: !showWebView,
       bottomNavigationBar:
           widget.index != null && widget.articleIDs != null && !showWebView
-              ? ArticleBottomButtons(
-                articleNotifier: currentArticleNotifier,
-                formattingSetting: formattingSetting,
-              )
+              ? ArticleBottomButtons(articleNotifier: currentArticleNotifier)
               : null,
       body:
           widget.index != null && widget.articleIDs != null
               ? ArticleViewPages(
-                controller: _pageController,
-                onPageChanged: (value) => _onPageChanged(value),
-                articleIDs: widget.articleIDs!,
+                articleIDs: widget.articleIDs ?? {},
+                pageController: pageController,
+                onPageChanged: (page) => onPageChanged(page),
+                initialIndex: widget.index,
                 showWebView: showWebView,
-                formattingSetting: formattingSetting,
               )
               : const Center(child: Text("Please select an article")),
     );
@@ -119,16 +115,16 @@ class ArticleViewPages extends StatefulWidget {
   const ArticleViewPages({
     super.key,
     required this.articleIDs,
-    required this.controller,
-    required this.onPageChanged,
     required this.showWebView,
-    required this.formattingSetting,
+    required this.onPageChanged,
+    required this.pageController,
+    required this.initialIndex,
   });
   final Set<String> articleIDs;
-  final PageController controller;
-  final void Function(int) onPageChanged;
   final bool showWebView;
-  final FormattingSetting formattingSetting;
+  final Function(int) onPageChanged;
+  final PageController pageController;
+  final int? initialIndex;
 
   @override
   State<ArticleViewPages> createState() => _ArticleViewPagesState();
@@ -139,7 +135,7 @@ class _ArticleViewPagesState extends State<ArticleViewPages> {
   Widget build(BuildContext context) {
     return PageView.builder(
       allowImplicitScrolling: true,
-      controller: widget.controller,
+      controller: widget.pageController,
       onPageChanged: (value) => widget.onPageChanged(value),
       itemCount: widget.articleIDs.length,
       itemBuilder: (context, index) {
@@ -156,7 +152,6 @@ class _ArticleViewPagesState extends State<ArticleViewPages> {
                     Api.of(context).subscriptions[snapshot.data!.subID]!,
                 article: snapshot.data!,
                 showWebView: widget.showWebView,
-                formattingSetting: widget.formattingSetting,
               );
             } else {
               return const Center(
@@ -208,13 +203,11 @@ class ArticlePage extends StatefulWidget {
     required this.article,
     required this.subscription,
     required this.showWebView,
-    required this.formattingSetting,
   });
 
   final Article article;
   final Subscription subscription;
   final bool showWebView;
-  final FormattingSetting formattingSetting;
 
   @override
   State<ArticlePage> createState() => _ArticlePageState();
@@ -238,7 +231,6 @@ class _ArticlePageState extends State<ArticlePage> {
         timePublished: widget.article.published,
         subName: widget.subscription.title,
         iconUrl: Api.of(context).getIconUrl(widget.subscription.iconUrl),
-        formattingSetting: widget.formattingSetting,
       );
     }
   }
@@ -326,7 +318,6 @@ class ArticleTextWidget extends StatelessWidget {
     required this.subName,
     this.feedTitle,
     required this.timePublished,
-    required this.formattingSetting,
   });
   final String url;
   final String title;
@@ -335,7 +326,6 @@ class ArticleTextWidget extends StatelessWidget {
   final String subName;
   final String? feedTitle;
   final int timePublished;
-  final FormattingSetting formattingSetting;
   final ScrollController scrollController = ScrollController();
 
   void showLinkMenu(BuildContext context, String link, String? imgUrl) {
@@ -439,21 +429,15 @@ class ArticleTextWidget extends StatelessWidget {
       color: Theme.of(context).colorScheme.primary,
       decoration: TextDecoration.underline,
     );
-    return ListenableBuilder(
-      listenable: formattingSetting,
-      builder: (context, child) {
-        return AnimatedDefaultTextStyle(
-          style: TextStyle(
-            fontFamily: formattingSetting.font,
-            // fontFamilyFallback: [formattingSetting.fonts[0]],
-            fontSize: formattingSetting.fontSize,
-            wordSpacing: formattingSetting.wordSpacing,
-            height: formattingSetting.lineHeight,
-          ),
-          duration: const Duration(milliseconds: 100),
-          child: child!,
-        );
-      },
+    return AnimatedDefaultTextStyle(
+      style: TextStyle(
+        fontFamily: Formatting.of(context).font,
+        // fontFamilyFallback: [formattingSetting.fonts[0]],
+        fontSize: Formatting.of(context).fontSize,
+        wordSpacing: Formatting.of(context).wordSpacing,
+        height: Formatting.of(context).lineHeight,
+      ),
+      duration: const Duration(milliseconds: 100),
       child: SelectionArea(
         child: Scrollbar(
           controller: scrollController,
