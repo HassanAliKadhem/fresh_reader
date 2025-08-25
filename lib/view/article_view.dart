@@ -14,6 +14,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../api/api.dart';
 import '../api/data_types.dart';
 import '../api/database.dart';
+import '../util/date.dart';
 import '../util/formatting_setting.dart';
 import '../widget/adaptive_list_tile.dart';
 import '../widget/article_buttons.dart';
@@ -492,7 +493,7 @@ class ArticleTextWidget extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      "${getRelativeDate(timePublished)}, ${DateTime.fromMillisecondsSinceEpoch(timePublished * 1000).toString().split(".").first}",
+                      getFormattedDate(timePublished),
                       style: TextStyle(color: Colors.grey.shade500),
                       textScaler: TextScaler.linear(0.8),
                     ),

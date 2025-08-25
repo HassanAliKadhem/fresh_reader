@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:fresh_reader/util/date.dart';
 
 import '../api/api.dart';
 import '../api/data_types.dart';
@@ -330,7 +331,7 @@ class ArticleWidget extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          "${article.read ? "" : "⚪️ "}${article.starred ? "⭐️ " : ""}${getRelativeDate(article.published)}, ${DateTime.fromMillisecondsSinceEpoch(article.published * 1000).toString().split(".").first}",
+                          "${article.read ? "" : "⚪️ "}${article.starred ? "⭐️ " : ""}${getFormattedDate(article.published)}",
                           // style: TextStyle(color: Colors.grey.shade500),
                           style: Theme.of(context).textTheme.bodySmall,
                           maxLines: 1,
