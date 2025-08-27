@@ -43,9 +43,8 @@ class ApiData extends ChangeNotifier {
   bool showAll = false;
 
   Map<String, Subscription> subscriptions = <String, Subscription>{};
-  // Map<String, Category> categories = <String, Category>{};
-  // Map<String, (int, int)> counts = <String, (int, int)>{}; // (all, unread)
-  // Map<String, Article> articles = <String, Article>{};
+  Map<String, Category> categories = <String, Category>{};
+  Map<String, int> counts = <String, int>{};
   Set<String>? filteredArticleIDs;
   Map<String, Article>? filteredArticles;
   List<String>? searchResults;
@@ -57,6 +56,13 @@ class ApiData extends ChangeNotifier {
     if (account != null) {
       loadAllSubs(account!.id).then((subs) {
         subscriptions = subs;
+        loadAllCategory(account!.id).then((cats) {
+          categories = cats;
+          countAllArticles(showAll, account!.id).then((con) {
+            counts = con;
+            notifyListeners();
+          });
+        });
       });
       _getAuth().then((value) {
         auth = value;
@@ -93,7 +99,10 @@ class ApiData extends ChangeNotifier {
   void setShowAll(bool newValue) {
     showAll = newValue;
     clear();
-    notifyListeners();
+    countAllArticles(showAll, account!.id).then((con) {
+      counts = con;
+      notifyListeners();
+    });
   }
 
   Future<bool> serverSync() async {
@@ -214,6 +223,9 @@ class ApiData extends ChangeNotifier {
     await _getServerCategories(auth);
     await _getServerSubscriptions(auth);
     await _getAllServerArticles(auth, "reading-list");
+    await countAllArticles(showAll, account!.id).then((con) {
+      counts = con;
+    });
     progress.value = 0.8;
     await Future.wait([
       _getServerReadIds(auth),
@@ -277,14 +289,16 @@ class ApiData extends ChangeNotifier {
         .then((value) {
           final subs = <Subscription>[];
           jsonDecode(value.body)["subscriptions"].forEach((element) {
-            subs.add(Subscription.fromJson(element, account!.id));
+            Subscription sub = Subscription.fromJson(element, account!.id);
+            subs.add(sub);
+            subscriptions[sub.subID] = sub;
             count++;
           });
           saveSubs(subs);
           debugPrint("Fetched subscriptions: $count");
-          loadAllSubs(account!.id).then((subs) {
-            subscriptions = subs;
-          });
+          // loadAllSubs(account!.id).then((subs) {
+          //   subscriptions = subs;
+          // });
         })
         .catchError((onError) {
           if (foundation.kDebugMode) {
@@ -308,11 +322,13 @@ class ApiData extends ChangeNotifier {
         .then((value) async {
           final batch = database.batch();
           jsonDecode(value.body)["tags"].forEach((element) {
+            Category cat = Category.fromJson(element, account!.id);
             batch.insert(
               "Categories",
-              Category.fromJson(element, account!.id).toMap(),
+              cat.toMap(),
               conflictAlgorithm: ConflictAlgorithm.replace,
             );
+            categories[cat.catID] = cat;
             count++;
           });
           await batch.commit(continueOnError: true);
@@ -576,7 +592,26 @@ class ApiData extends ChangeNotifier {
   }
 
   Article? setRead(String id, String subID, bool isRead) {
-    filteredArticles?[id]?.read = isRead;
+    if (filteredArticles != null && filteredArticles!.containsKey(id)) {
+      filteredArticles![id]!.read = isRead;
+      if (!showAll) {
+        counts.update(
+          filteredArticles![id]!.subID,
+          (val) => val + (isRead ? -1 : 1),
+        );
+        // debugPrint(counts[filteredArticles![id]!.subID].toString());
+        if (subscriptions.containsKey(filteredArticles![id]!.subID)) {
+          counts.update(
+            subscriptions[filteredArticles![id]!.subID]!.catID,
+            (val) => val + (isRead ? -1 : 1),
+          );
+          // debugPrint(
+          //   counts[subscriptions[filteredArticles![id]!.subID]!.catID]
+          //       .toString(),
+          // );
+        }
+      }
+    }
     _setServerRead([id], [subID], isRead);
     updateArticleRead(id, isRead, account!.id);
     notifyListeners();
@@ -585,6 +620,8 @@ class ApiData extends ChangeNotifier {
 
   void setStarred(String id, String subID, bool isStarred) {
     filteredArticles?[id]?.starred = isStarred;
+    counts.update("Starred", (val) => val + (isStarred ? 1 : -1));
+    // debugPrint(counts["Starred"].toString());
     _setServerStar([id], [subID], isStarred);
     updateArticleStar(id, isStarred, account!.id);
     notifyListeners();

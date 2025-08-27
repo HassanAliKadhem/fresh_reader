@@ -28,6 +28,10 @@ Future<Database> getDatabase() async {
   return await openDatabase(
     'my_db.db',
     version: 8,
+    onConfigure: (db) {
+      db.execute("PRAGMA journal_mode = WAL;");
+      db.execute("PRAGMA synchronous = NORMAL;");
+    },
     onCreate: (db, version) async {
       await db.execute(accTable);
       await db.execute(subTable);
@@ -176,6 +180,17 @@ Future<Map<String, Subscription>> loadAllSubs(int accountID) async {
   );
 }
 
+Future<Map<String, Category>> loadAllCategory(int accountID) async {
+  return (await database.query(
+    "Categories",
+    where: "accountID = ?",
+    whereArgs: [accountID],
+  )).asMap().map(
+    (key, element) =>
+        MapEntry(element["catID"] as String, Category.fromMap(element)),
+  );
+}
+
 void saveSubs(List<Subscription> subs) {
   final Batch batch = database.batch();
   for (var sub in subs) {
@@ -261,6 +276,7 @@ Future<Map<String, int>> countAllArticles(bool showAll, int accountID) async {
     ((key, value) =>
         MapEntry(value["subID"] as String, value["COUNT(id)"] as int)),
   );
+
   List<Map<String, Object?>> categories = await database.query(
     "Categories",
     columns: ["catID"],

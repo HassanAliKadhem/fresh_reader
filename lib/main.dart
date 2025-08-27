@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:extended_image/extended_image.dart';
 import 'package:sqflite/sqflite.dart';
 
 import 'api/api.dart';
@@ -16,6 +17,7 @@ late Database database;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  clearDiskCachedImages(duration: Duration(days: 7));
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   getDatabase().then((db) {
     database = db;
@@ -126,13 +128,13 @@ class _HomeWidgetState extends State<HomeWidget> {
             name: "/",
             child:
                 screenSizeOf(context) != ScreenSize.big
-                    ? FeedList(onSelect: _onChooseFeed)
+                    ? const FeedList()
                     : Stack(
                       alignment: Alignment.centerLeft,
                       children: [
                         SizedBox(
                           width: (MediaQuery.sizeOf(context).width / 4),
-                          child: FeedList(onSelect: _onChooseFeed),
+                          child: const FeedList(),
                         ),
                         Row(
                           children: [
@@ -215,13 +217,5 @@ class _HomeWidgetState extends State<HomeWidget> {
         ],
       ),
     );
-  }
-
-  void _onChooseFeed(String? column, String? value, String title) {
-    Api.of(context)
-        .getFilteredArticles(Api.of(context).showAll, column, value, title)
-        .then((_) {
-          setState(() {});
-        });
   }
 }

@@ -1,7 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/widgets.dart';
-import 'package:fresh_reader/api/database.dart';
+
+import '../api/database.dart';
 
 class Formatting extends InheritedNotifier<FormattingSetting> {
   const Formatting({super.key, required super.child, required super.notifier});

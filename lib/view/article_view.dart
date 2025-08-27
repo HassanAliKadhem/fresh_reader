@@ -1,11 +1,10 @@
 import 'dart:io';
 
-import 'package:easy_image_viewer/easy_image_viewer.dart';
+import 'package:extended_image/extended_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -342,7 +341,7 @@ class ArticleTextWidget extends StatelessWidget {
       builder: (context) {
         Widget? image;
         if (imgExtensions.any((ext) => link.toLowerCase().endsWith(ext))) {
-          image = CachedNetworkImage(imageUrl: link, width: 164, height: 164);
+          image = ArticleImage(imageUrl: link, width: 164.0, height: 164.0);
         }
         return AlertDialog.adaptive(
           icon: image,
@@ -404,6 +403,15 @@ class ArticleTextWidget extends StatelessWidget {
                 if (imgUrl != null) const Divider(),
                 if (imgUrl != null)
                   AdaptiveListTile(
+                    title: "Preview Image",
+                    trailing: const Icon(Icons.image),
+                    onTap: () {
+                      Navigator.pop(context);
+                      showImage(context, imgUrl, null, null);
+                    },
+                  ),
+                if (imgUrl != null)
+                  AdaptiveListTile(
                     title: "Open image in browser",
                     trailing: const Icon(Icons.image_search_rounded),
                     onTap: () {
@@ -419,15 +427,44 @@ class ArticleTextWidget extends StatelessWidget {
     );
   }
 
-  void showImage(BuildContext context, String url) {
-    showImageViewer(
-      context,
-      CachedNetworkImageProvider(url),
-      backgroundColor: Colors.black54,
-      swipeDismissible: true,
-      doubleTapZoomable: true,
-      immersive: false,
-      useSafeArea: true,
+  void showImage(
+    BuildContext context,
+    String url,
+    double? width,
+    double? height,
+  ) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.transparent,
+      // fullscreenDialog: true,
+      // useSafeArea: false,
+      builder: (context) {
+        return Stack(
+          children: [
+            ExtendedImageGesturePageView(
+              canScrollPage: (gestureDetails) => false,
+              children: [
+                ExtendedImageSlidePage(
+                  slideAxis: SlideAxis.both,
+                  slideType: SlideType.onlyImage,
+                  child: ArticleImage(
+                    imageUrl: url,
+                    width: width,
+                    height: height,
+                    isViewer: true,
+                  ),
+                ),
+              ],
+            ),
+            IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: Icon(Icons.close),
+              tooltip: "Close",
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -467,14 +504,12 @@ class ArticleTextWidget extends StatelessWidget {
                               builder: (context) {
                                 double? size =
                                     DefaultTextStyle.of(context).style.fontSize;
-                                return CachedNetworkImage(
-                                  alignment: Alignment.bottomCenter,
+                                return ArticleImage(
+                                  imageUrl: iconUrl ?? "",
                                   height: size,
                                   width: size,
-                                  imageUrl: iconUrl ?? "",
-                                  errorWidget:
-                                      (context, url, error) =>
-                                          Icon(Icons.error, size: size),
+                                  onError:
+                                      (error) => Icon(Icons.error, size: size),
                                 );
                               },
                             ),
@@ -509,8 +544,8 @@ class ArticleTextWidget extends StatelessWidget {
                 ),
                 HtmlWidget(
                   content,
-                  // buildAsync: true,
-                  enableCaching: false,
+                  buildAsync: false,
+                  enableCaching: true,
                   renderMode: RenderMode.sliverList,
                   onErrorBuilder: (context, element, error) {
                     return Text(error.toString());
@@ -562,13 +597,22 @@ class ArticleTextWidget extends StatelessWidget {
                       return InlineCustomWidget(
                         child: GestureDetector(
                           onTap: () {
-                            showImage(context, element.attributes["src"]!);
+                            showImage(
+                              context,
+                              element.attributes["src"]!,
+                              double.tryParse(
+                                element.attributes["width"] ?? "",
+                              ),
+                              double.tryParse(
+                                element.attributes["height"] ?? "",
+                              ),
+                            );
                           },
                           onLongPress: () {
                             showLinkMenu(
                               context,
                               element.attributes["src"]!,
-                              null,
+                              element.attributes["src"]!,
                             );
                           },
                           child: ArticleImage(

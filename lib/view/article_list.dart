@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'dart:math';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fresh_reader/util/date.dart';
+import 'package:fresh_reader/widget/article_image.dart';
 
 import '../api/api.dart';
 import '../api/data_types.dart';
@@ -280,20 +280,10 @@ class ArticleWidget extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8.0),
                         color: Colors.grey.shade800,
                       ),
-                      child: CachedNetworkImage(
+                      child: ArticleImage(
                         imageUrl: article.image!,
                         fit: BoxFit.cover,
-                        progressIndicatorBuilder:
-                            (context, url, progress) =>
-                                CircularProgressIndicator.adaptive(
-                                  constraints: BoxConstraints(
-                                    maxWidth: 16.0,
-                                    maxHeight: 16.0,
-                                  ),
-                                  value: progress.progress,
-                                ),
-                        errorWidget:
-                            (context, url, error) => const Icon(Icons.error),
+                        onError: (error) => const Icon(Icons.error),
                       ),
                     ),
                   Expanded(
@@ -309,14 +299,13 @@ class ArticleWidget extends StatelessWidget {
                             style: Theme.of(context).textTheme.bodySmall,
                             children: [
                               WidgetSpan(
-                                child: CachedNetworkImage(
+                                child: ArticleImage(
                                   imageUrl: Api.of(context).getIconUrl(subIcon),
                                   fit: BoxFit.contain,
-                                  alignment: Alignment.center,
                                   width: 16.0,
                                   height: 16.0,
-                                  errorWidget:
-                                      (context, url, error) =>
+                                  onError:
+                                      (error) =>
                                           const Icon(Icons.error, size: 16.0),
                                 ),
                               ),
