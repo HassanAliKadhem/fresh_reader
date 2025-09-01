@@ -394,28 +394,30 @@ class _ReadDurationTileState extends State<ReadDurationTile> {
                 return AlertDialog(
                   scrollable: true,
                   title: Text(widget.title),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children:
-                        widget.values.entries
-                            .map(
-                              (element) => RadioListTile.adaptive(
-                                dense: true,
-                                title: Text(element.value),
-                                value: element.key.toString(),
-                                groupValue: asyncSnapshot.data,
-                                toggleable: true,
-                                onChanged: (newVal) {
-                                  if (newVal != null) {
-                                    setState(() {
-                                      setPreference(widget.dbKey, newVal);
-                                    });
-                                  }
-                                  Navigator.pop(context);
-                                },
-                              ),
-                            )
-                            .toList(),
+                  content: RadioGroup(
+                    groupValue: asyncSnapshot.data,
+                    onChanged: (newVal) {
+                      if (newVal != null) {
+                        setState(() {
+                          setPreference(widget.dbKey, newVal);
+                        });
+                      }
+                      Navigator.pop(context);
+                    },
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children:
+                          widget.values.entries
+                              .map(
+                                (element) => RadioListTile.adaptive(
+                                  dense: true,
+                                  title: Text(element.value),
+                                  value: element.key.toString(),
+                                  toggleable: true,
+                                ),
+                              )
+                              .toList(),
+                    ),
                   ),
                 );
               },
@@ -463,9 +465,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text("Provider"),
-          RadioListTile.adaptive(
-            title: const Text('Freshrss'),
-            value: "Freshrss",
+          RadioGroup(
             groupValue: newAccount.provider,
             onChanged: (String? value) {
               if (value != null) {
@@ -474,6 +474,14 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                 });
               }
             },
+            child: Column(
+              children: [
+                RadioListTile.adaptive(
+                  title: const Text('Freshrss'),
+                  value: "Freshrss",
+                ),
+              ],
+            ),
           ),
           // RadioListTile.adaptive(
           //   title: const Text('InoReader'),

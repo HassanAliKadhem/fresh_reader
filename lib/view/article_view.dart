@@ -278,10 +278,7 @@ class _ArticleWebWidgetState extends State<ArticleWebWidget> {
           height: 2,
           child:
               progress < 100
-                  ? LinearProgressIndicator(
-                    value: progress / 100.0,
-                    year2023: false,
-                  )
+                  ? LinearProgressIndicator(value: progress / 100.0)
                   : null,
         ),
         Expanded(

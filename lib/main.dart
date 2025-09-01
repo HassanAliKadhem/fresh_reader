@@ -17,10 +17,19 @@ late Database database;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  clearDiskCachedImages(duration: Duration(days: 7));
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   getDatabase().then((db) {
     database = db;
+    getPreference("read_duration").then((onValue) {
+      debugPrint("read_duration: $onValue");
+      if (onValue != null) {
+        int? val = onValue == "-1" ? null : int.tryParse(onValue);
+        if (val != null) {
+          debugPrint("Clear cache older than $val days.");
+          clearDiskCachedImages(duration: Duration(days: val));
+        }
+      }
+    });
     database.query("Account").then((accounts) {
       Account? acc;
       if (accounts.isNotEmpty) {

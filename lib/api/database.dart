@@ -303,6 +303,8 @@ Future<Map<String, int>> countAllArticles(bool showAll, int accountID) async {
       .then((value) {
         counts["Starred"] = value.first.values.first as int;
       });
+
+  // debugPrint("counts: $counts");
   return counts;
 }
 
@@ -358,8 +360,12 @@ void insertArticles(List<Article> articles) {
   batch.commit(continueOnError: true);
 }
 
-void updateArticleRead(String articleId, bool isRead, int accountID) {
-  database.update(
+Future<void> updateArticleRead(
+  String articleId,
+  bool isRead,
+  int accountID,
+) async {
+  await database.update(
     "Articles",
     {"isRead": isRead ? "true" : "false"},
     where: "articleID = ? and accountID = ?",
@@ -367,7 +373,11 @@ void updateArticleRead(String articleId, bool isRead, int accountID) {
   );
 }
 
-void updateArticleStar(String articleId, bool isStarred, int accountID) {
+Future<void> updateArticleStar(
+  String articleId,
+  bool isStarred,
+  int accountID,
+) async {
   database.update(
     "Articles",
     {"isStarred": isStarred ? "true" : "false"},

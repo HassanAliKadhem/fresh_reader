@@ -49,15 +49,12 @@ class ArticleImage extends StatelessWidget {
         }
         return GestureConfig();
       },
-      // shape: boxShape,
-      //cancelToken: cancellationToken,
       handleLoadingProgress: true,
       loadStateChanged: (state) {
         switch (state.extendedImageLoadState) {
           case LoadState.loading:
             return CircularProgressIndicator.adaptive(
               constraints: BoxConstraints(maxWidth: 16.0, maxHeight: 16.0),
-              year2023: false,
             );
           case LoadState.failed:
             if (onError != null) {

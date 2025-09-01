@@ -595,36 +595,34 @@ class ApiData extends ChangeNotifier {
     if (filteredArticles != null && filteredArticles!.containsKey(id)) {
       filteredArticles![id]!.read = isRead;
       if (!showAll) {
-        counts.update(
-          filteredArticles![id]!.subID,
-          (val) => val + (isRead ? -1 : 1),
-        );
-        // debugPrint(counts[filteredArticles![id]!.subID].toString());
-        if (subscriptions.containsKey(filteredArticles![id]!.subID)) {
+        counts.update(subID, (val) => val + (isRead ? -1 : 1));
+        // debugPrint(counts[subID].toString());
+        if (subscriptions.containsKey(subID)) {
           counts.update(
-            subscriptions[filteredArticles![id]!.subID]!.catID,
+            subscriptions[subID]!.catID,
             (val) => val + (isRead ? -1 : 1),
           );
-          // debugPrint(
-          //   counts[subscriptions[filteredArticles![id]!.subID]!.catID]
-          //       .toString(),
-          // );
+          // debugPrint(counts[subscriptions[subID]!.catID].toString());
         }
       }
     }
     _setServerRead([id], [subID], isRead);
-    updateArticleRead(id, isRead, account!.id);
-    notifyListeners();
+    updateArticleRead(id, isRead, account!.id).then((_) {
+      notifyListeners();
+    });
     return filteredArticles?[id];
   }
 
   void setStarred(String id, String subID, bool isStarred) {
     filteredArticles?[id]?.starred = isStarred;
-    counts.update("Starred", (val) => val + (isStarred ? 1 : -1));
+    if (showAll || filteredArticles?[id]?.read == false) {
+      counts.update("Starred", (val) => val + (isStarred ? 1 : -1));
+    }
     // debugPrint(counts["Starred"].toString());
     _setServerStar([id], [subID], isStarred);
-    updateArticleStar(id, isStarred, account!.id);
-    notifyListeners();
+    updateArticleStar(id, isStarred, account!.id).then((_) {
+      notifyListeners();
+    });
   }
 
   Future<void> getFilteredArticles(
