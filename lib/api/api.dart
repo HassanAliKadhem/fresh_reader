@@ -217,6 +217,58 @@ class ApiData extends ChangeNotifier {
     } else {
       debugPrint("no delayed actions");
     }
+    await getPreference("read_duration").then((duration) {
+      debugPrint("read duration to keep: $duration");
+      int? days = int.tryParse(duration ?? "");
+      if (duration != null && duration != "-1" && days != null) {
+        DateTime now = DateTime.now();
+        double seconds = now.millisecondsSinceEpoch / 1000;
+        database
+            .delete(
+              "articles",
+              where:
+                  "accountID = ? and timeStampPublished < ? and isRead = ? and isStarred = ?",
+              whereArgs: [
+                account!.id,
+                seconds - (days * 86400),
+                "true",
+                "false",
+              ],
+            )
+            .then((count) {
+              debugPrint("delete $count articles");
+            });
+      }
+    });
+    // await getPreference("star_duration").then((count) {
+    //   // get number of starred articles to keep
+    //   debugPrint("starred count to keep: $count");
+    //   if (count != null && count != "-1") {
+    //     // TODO: add code to delete starred articles
+    //     int num = int.parse(count);
+    //     database
+    //         .query(
+    //           "articles",
+    //           columns: ["id"],
+    //           where: "accountID = ? and isRead = ? and isStarred = ?",
+    //           whereArgs: [account!.id, "true", "true"],
+    //         )
+    //         .then((value) {
+    //           if (num > value.length) {
+    //             // database.execute("Delete from articles where rowid IN (?)");
+    //             // database.delete("articles",
+    //             //   where: "id in (?)",
+    //             //   whereArgs: [
+    //             //     value.map((elm) => elm.values.first).join(",")
+    //             //   ],
+    //             // );
+    //             print("to delete: ${value.length - num}");
+    //             print("starred: count {${value.length}}, $value");
+    //             print("starred ids: ${value.map((elm) => elm.values.first).join(",")}");
+    //           }
+    //         });
+    //   }
+    // });
     progress.value = 0.6;
     // _getModifyAuth(auth)
     //     .then((value) => modifyAuth = value.body.replaceAll("\n", "")),
@@ -233,19 +285,6 @@ class ApiData extends ChangeNotifier {
       _getServerStarredArticles(auth),
     ]);
     //https://github.com/FreshRSS/FreshRSS/issues/2566
-
-    await getPreference("read_duration").then((duration) {
-      debugPrint("read duration to keep: $duration");
-      if (duration != null && duration != "-1") {
-        // TODO: add code to delete old articles
-      }
-    });
-    await getPreference("star_duration").then((duration) {
-      debugPrint("starred count to keep: $duration");
-      if (duration != null && duration != "-1") {
-        // TODO: add code to delete starred articles
-      }
-    });
     progress.value = 1.0;
     return true;
   }

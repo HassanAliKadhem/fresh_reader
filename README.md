@@ -22,12 +22,12 @@ An opinionated client for FreshRss (not affiliated) made just for me. but you ca
     - [x] word spacing
     - [x] line height
 - [x] search articles
+- [x] delete old read articles
 
 ## Todo
-- [ ] delete old read articles
 - [ ] limit number of starred articles stored
-- [ ] edit tags
-- [ ] delete tags
+- [ ] edit tags (categories)
+- [ ] delete tags (categories)
 - [ ] Highlight the first half of a word to make it easier to read
 - [ ] add date separator in article list
 

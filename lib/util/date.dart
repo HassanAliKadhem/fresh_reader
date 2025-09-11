@@ -18,7 +18,10 @@ String getRelativeDate(DateTime articleTime) {
   Duration difference = now.difference(articleTime);
   if (difference.inDays > 0) {
     if (difference.inDays < 30) {
-      return "${difference.inDays} ${difference.inDays == 1 ? "Day" : "Days"}";
+      if (difference.inDays < 2) {
+        return difference.inDays == 0 ? "Today" : "Yesterday";
+      }
+      return "${difference.inDays} Days";
     } else if (difference.inDays < 365) {
       int months = (difference.inDays / 30).floor();
       return "$months ${months == 1 ? "Month" : "Months"}";
