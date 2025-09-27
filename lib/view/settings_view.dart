@@ -7,6 +7,8 @@ import '../api/data_types.dart';
 import '../api/database.dart';
 import '../widget/adaptive_text_field.dart';
 
+const version = "1.2.10";
+
 class SettingsDialog extends StatelessWidget {
   const SettingsDialog({super.key});
 
@@ -84,7 +86,7 @@ class _SettingsContentState extends State<SettingsContent> {
         ),
         Divider(),
         AboutListTile(
-          applicationVersion: "1.2.9",
+          applicationVersion: version,
           aboutBoxChildren: [
             const ListTile(
               title: Text("Made By"),
