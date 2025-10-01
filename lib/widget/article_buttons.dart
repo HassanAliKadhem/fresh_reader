@@ -39,10 +39,10 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
                   onPressed: () {
                     if (value != null) {
                       setState(() {
-                        value.read = !isRead;
                         Api.of(
                           context,
                         ).setRead(value.articleID, value.subID, !isRead);
+                        value.read = !isRead;
                       });
                     }
                   },
@@ -220,21 +220,29 @@ class _ArticleWebViewButtonsState extends State<ArticleWebViewButtons> {
                   widget.webViewController.currentUrl().then((url) async {
                     if (url != null) {
                       try {
-                        final box = context.findRenderObject() as RenderBox?;
-                        SharePlus.instance.share(
-                          ShareParams(
-                            uri: Uri.parse(url),
-                            subject:
-                                (await widget.webViewController.getTitle()),
-                            sharePositionOrigin:
-                                box!.localToGlobal(Offset.zero) & box.size,
-                          ),
-                        );
+                        if (context.mounted) {
+                          final box = context.findRenderObject() as RenderBox?;
+                          SharePlus.instance.share(
+                            ShareParams(
+                              uri: Uri.parse(url),
+                              subject:
+                                  (await widget.webViewController.getTitle()),
+                              sharePositionOrigin:
+                                  box!.localToGlobal(Offset.zero) & box.size,
+                            ),
+                          );
+                        } else {
+                          debugPrint("Context not mounted");
+                        }
                       } catch (e) {
                         debugPrint(e.toString());
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(e.toString(), maxLines: 3)),
-                        );
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(e.toString(), maxLines: 3)),
+                          );
+                        } else {
+                          debugPrint("Context not mounted");
+                        }
                       }
                     }
                   });
@@ -315,13 +323,17 @@ class FormattingDialog extends StatelessWidget {
                           .toList(),
                   selected: {Formatting.of(context).font},
                   onSelectionChanged: (Set<String> newSelection) {
-                    Formatting.of(context).setFontFamily(newSelection.first);
+                    if (newSelection.isNotEmpty) {
+                      Formatting.of(context).setFontFamily(newSelection.first);
+                    }
                   },
                   showSelectedIcon: false,
                   multiSelectionEnabled: false,
                 ),
-            Table(
-              columnWidths: {0: FlexColumnWidth(1), 1: FlexColumnWidth(4)},
+            const SizedBox(height: 8.0),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
               children:
                   [
                         [
@@ -374,26 +386,23 @@ class FormattingDialog extends StatelessWidget {
                         ],
                       ]
                       .map(
-                        (entry) => TableRow(
-                          children: [
-                            TableCell(
-                              verticalAlignment:
-                                  TableCellVerticalAlignment.bottom,
-                              child: Padding(
-                                padding: EdgeInsetsGeometry.only(top: 16.0),
+                        (entry) => Padding(
+                          padding: EdgeInsetsGeometry.only(top: 8.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 60.0,
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [entry[0], entry[1]],
                                 ),
                               ),
-                            ),
-                            TableCell(
-                              verticalAlignment:
-                                  TableCellVerticalAlignment.bottom,
-                              child: entry[2],
-                            ),
-                          ],
+                              Expanded(child: entry[2]),
+                            ],
+                          ),
                         ),
                       )
                       .toList(),

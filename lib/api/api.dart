@@ -632,16 +632,26 @@ class ApiData extends ChangeNotifier {
 
   Article? setRead(String id, String subID, bool isRead) {
     if (filteredArticles != null && filteredArticles!.containsKey(id)) {
+      int count() {
+        return filteredArticles!.values
+            .where((a) => a.subID == subID && !a.read)
+            .length;
+      }
+
+      int subCountOld = count();
       filteredArticles![id]!.read = isRead;
       if (!showAll) {
-        counts.update(subID, (val) => val + (isRead ? -1 : 1));
+        int subCount = count();
+        counts.update(subID, (val) => subCount);
         // debugPrint(counts[subID].toString());
         if (subscriptions.containsKey(subID)) {
           counts.update(
             subscriptions[subID]!.catID,
-            (val) => val + (isRead ? -1 : 1),
+            (val) => val - (subCountOld - subCount),
           );
-          // debugPrint(counts[subscriptions[subID]!.catID].toString());
+          // debugPrint("Change: ${(subCountOld - subCount).toString()}");
+          // debugPrint("Subscription: $subCount");
+          // debugPrint("Category: ${counts[subscriptions[subID]!.catID]}");
         }
       }
     }

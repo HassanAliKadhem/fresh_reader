@@ -220,11 +220,13 @@ class _CategoryListState extends State<CategoryList> {
             })
             .catchError((onError) {
               debugPrint(onError.toString());
-              if (mounted) {
+              if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text(onError.toString(), maxLines: 3)),
                 );
                 Api.of(context).progress.value = 1.0;
+              } else {
+                debugPrint("Context not mounted");
               }
             });
       },
@@ -241,7 +243,12 @@ class _CategoryListState extends State<CategoryList> {
                     }
                   }
                   List<Category> categories =
-                      Api.of(context).categories.values.toList();
+                      Api.of(context).categories.values
+                          .where(
+                            (cat) =>
+                                cat.catID != "user/-/state/com.google/starred",
+                          )
+                          .toList();
                   return Scrollbar(
                     child: CustomScrollView(
                       primary: true,

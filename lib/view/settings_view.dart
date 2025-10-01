@@ -65,7 +65,11 @@ class _SettingsContentState extends State<SettingsContent> {
               },
             ).then((onValue) {
               if (onValue != null && onValue is Account) {
-                Api.of(context).changeAccount(onValue);
+                if (context.mounted) {
+                  Api.of(context).changeAccount(onValue);
+                } else {
+                  debugPrint("Context not mounted");
+                }
               }
               setState(() {});
             });
@@ -181,10 +185,13 @@ class _AccountCardState extends State<AccountCard> {
                       return AddAccountDialog(oldAccount: account);
                     },
                   ).then((onValue) {
-                    if (onValue != null &&
-                        onValue is Account &&
-                        onValue.id == Api.of(context).account?.id) {
-                      Api.of(context).changeAccount(onValue);
+                    if (onValue != null && onValue is Account) {
+                      if (context.mounted &&
+                          onValue.id == Api.of(context).account?.id) {
+                        Api.of(context).changeAccount(onValue);
+                      } else {
+                        debugPrint("Context not mounted");
+                      }
                     }
                   });
                 },
@@ -207,9 +214,13 @@ class _AccountCardState extends State<AccountCard> {
                                       account.id) {
                                     getAllAccounts(limit: 1).then((onValue) {
                                       if (onValue.isNotEmpty) {
-                                        Api.of(
-                                          context,
-                                        ).changeAccount(onValue.first);
+                                        if (context.mounted) {
+                                          Api.of(
+                                            context,
+                                          ).changeAccount(onValue.first);
+                                        } else {
+                                          debugPrint("Context not mounted");
+                                        }
                                       }
                                     });
                                   }
@@ -227,7 +238,11 @@ class _AccountCardState extends State<AccountCard> {
                               deleteAccountData(account.id).then((_) {
                                 setState(() {
                                   getAccount(account.id).then((onValue) {
-                                    Api.of(context).changeAccount(onValue);
+                                    if (context.mounted) {
+                                      Api.of(context).changeAccount(onValue);
+                                    } else {
+                                      debugPrint("Context not mounted");
+                                    }
                                   });
                                 });
                               });
@@ -445,7 +460,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
           ? widget.oldAccount!
           : Account(0, "", "Freshrss", "", "", 0, 0);
 
-  Future<int> addAccount(Account accountToAdd) async {
+  Future<int> _addAccount(Account accountToAdd) async {
     int index = -1;
     if (widget.oldAccount != null) {
       await updateAccount(accountToAdd);
@@ -535,8 +550,12 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
         ),
         FilledButton(
           onPressed: () async {
-            int index = await addAccount(newAccount);
-            Navigator.pop(context, newAccount.copyWith(id: index));
+            int index = await _addAccount(newAccount);
+            if (context.mounted) {
+              Navigator.pop(context, newAccount.copyWith(id: index));
+            } else {
+              debugPrint("Context not mounted");
+            }
           },
           child: Text(widget.oldAccount != null ? "Update" : "Add"),
         ),
