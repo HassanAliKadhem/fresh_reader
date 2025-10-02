@@ -32,6 +32,9 @@ An opinionated client for FreshRss (not affiliated) made just for me. but you ca
 - [ ] add date separator in article list
 
 ## Screenshots
-![Home screen with list of feeds](SimulatorHome.png)
+<!-- ![Home screen with list of feeds](SimulatorHome.png)
 ![Article list](SimulatorList.png)
-![Article view](SimulatorArticle.png)
+![Article view](SimulatorArticle.png) -->
+<img src="SimulatorArticle.png" width="400" alt="Home screen with list of feeds" />
+<img src="SimulatorHome.png" width="400" alt="Article list" />
+<img src="SimulatorList.png" width="400" alt="Article reader view" /> 
