@@ -123,13 +123,36 @@ class _ArticleListState extends State<ArticleList> {
                           .toList();
                   return Scrollbar(
                     controller: _scrollController,
-                    child: ListView.builder(
+                    child: ListView.separated(
                       key: const PageStorageKey(0),
                       keyboardDismissBehavior:
                           ScrollViewKeyboardDismissBehavior.onDrag,
-                      itemCount: Api.of(context).searchResults?.length,
+                      itemCount: Api.of(context).searchResults!.length,
                       controller: _scrollController,
                       itemBuilder: (context, index) {
+                        if (index == 0) {
+                          String date =
+                              getFormattedDate(
+                                Api.of(context)
+                                    .filteredArticles![Api.of(
+                                      context,
+                                    ).searchResults![index]]!
+                                    .published,
+                              ).split(", ")[1].split(" ")[0];
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              separator(date),
+                              ArticleTile(
+                                article:
+                                    Api.of(context).filteredArticles![Api.of(
+                                      context,
+                                    ).searchResults![index]]!,
+                                index: index,
+                              ),
+                            ],
+                          );
+                        }
                         return ArticleTile(
                           article:
                               Api.of(context).filteredArticles![Api.of(
@@ -138,10 +161,52 @@ class _ArticleListState extends State<ArticleList> {
                           index: index,
                         );
                       },
+                      separatorBuilder: (context, index) {
+                        int? previous =
+                            Api.of(context)
+                                .filteredArticles![Api.of(
+                                  context,
+                                ).searchResults![index]]
+                                ?.published;
+                        if (previous != null) {
+                          String previousDate =
+                              getFormattedDate(
+                                previous,
+                              ).split(", ")[1].split(" ")[0];
+                          int? next =
+                              Api.of(context)
+                                  .filteredArticles![Api.of(
+                                    context,
+                                  ).searchResults!.elementAtOrNull(index + 1)]
+                                  ?.published;
+                          if (next != null) {
+                            String nextDate =
+                                getFormattedDate(
+                                  next,
+                                ).split(", ")[1].split(" ")[0];
+                            if (nextDate != previousDate) {
+                              return separator(nextDate);
+                            }
+                          }
+                        }
+
+                        return Container();
+                      },
                     ),
                   );
                 },
               ),
+    );
+  }
+
+  Widget separator(String date) {
+    double? height = Theme.of(context).textTheme.bodyLarge?.height;
+    return Text(
+      "  $date",
+      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+        color: Theme.of(context).colorScheme.primary,
+        height: height != null ? height * 1.5 : null,
+      ),
     );
   }
 }

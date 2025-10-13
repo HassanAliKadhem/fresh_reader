@@ -7,7 +7,7 @@ import '../api/data_types.dart';
 import '../api/database.dart';
 import '../widget/adaptive_text_field.dart';
 
-const version = "1.2.10";
+const version = "1.2.11";
 
 class SettingsDialog extends StatelessWidget {
   const SettingsDialog({super.key});
@@ -34,7 +34,10 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("Settings")),
-      body: SingleChildScrollView(child: SettingsContent()),
+      body: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: SettingsContent(),
+      ),
     );
   }
 }
