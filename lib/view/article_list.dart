@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fresh_reader/util/date.dart';
 import 'package:fresh_reader/widget/article_image.dart';
+import 'package:scroll_to_index/scroll_to_index.dart';
 
 import '../api/api.dart';
 import '../api/data_types.dart';
@@ -21,21 +22,20 @@ class ArticleList extends StatefulWidget {
 
 class _ArticleListState extends State<ArticleList> {
   final TextEditingController _searchController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
+  final AutoScrollController _autoScrollController = AutoScrollController();
   int currentIndex = -1; // used to save last scroll position
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (Api.of(context).selectedIndex != null &&
-        _scrollController.hasClients &&
+        _autoScrollController.hasClients &&
         Api.of(context).selectedIndex != currentIndex) {
       currentIndex = Api.of(context).selectedIndex!;
-      double scrollTarget = (Api.of(context).selectedIndex! * 128);
-      _scrollController.animateTo(
-        min(scrollTarget, _scrollController.position.maxScrollExtent),
-        curve: Curves.linear,
-        duration: const Duration(milliseconds: 300),
+      _autoScrollController.scrollToIndex(
+        currentIndex,
+        duration: Duration(milliseconds: 250),
+        preferPosition: AutoScrollPosition.middle,
       );
     }
   }
@@ -122,13 +122,13 @@ class _ArticleListState extends State<ArticleList> {
                           .map((toElement) => toElement.key)
                           .toList();
                   return Scrollbar(
-                    controller: _scrollController,
+                    controller: _autoScrollController,
                     child: ListView.separated(
                       key: const PageStorageKey(0),
                       keyboardDismissBehavior:
                           ScrollViewKeyboardDismissBehavior.onDrag,
                       itemCount: Api.of(context).searchResults!.length,
-                      controller: _scrollController,
+                      controller: _autoScrollController,
                       itemBuilder: (context, index) {
                         if (index == 0) {
                           String date =
@@ -143,22 +143,32 @@ class _ArticleListState extends State<ArticleList> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               separator(date),
-                              ArticleTile(
-                                article:
-                                    Api.of(context).filteredArticles![Api.of(
-                                      context,
-                                    ).searchResults![index]]!,
+                              AutoScrollTag(
                                 index: index,
+                                key: ValueKey("list-$index"),
+                                controller: _autoScrollController,
+                                child: ArticleTile(
+                                  article:
+                                      Api.of(context).filteredArticles![Api.of(
+                                        context,
+                                      ).searchResults![index]]!,
+                                  index: index,
+                                ),
                               ),
                             ],
                           );
                         }
-                        return ArticleTile(
-                          article:
-                              Api.of(context).filteredArticles![Api.of(
-                                context,
-                              ).searchResults![index]]!,
+                        return AutoScrollTag(
                           index: index,
+                          key: ValueKey("list-$index"),
+                          controller: _autoScrollController,
+                          child: ArticleTile(
+                            article:
+                                Api.of(context).filteredArticles![Api.of(
+                                  context,
+                                ).searchResults![index]]!,
+                            index: index,
+                          ),
                         );
                       },
                       separatorBuilder: (context, index) {
