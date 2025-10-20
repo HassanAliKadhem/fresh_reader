@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+// import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
 import 'api.dart';
@@ -73,53 +73,53 @@ Future<Database> getDatabase() async {
         }
       } else if (oldVersion == 3 && newVersion == 4) {
         await db.execute(accTable);
-        final preferences = await SharedPreferences.getInstance();
-        int? accountID;
-        if (preferences.containsKey("server")) {
-          accountID = await db.insert("Account", {
-            "serverUrl": preferences.getString("server"),
-            "username": preferences.getString("userName") ?? "",
-            "password": preferences.getString("password") ?? "",
-            "provider": "freshrss",
-            "updatedArticleTime": preferences.getInt("updatedArticleTime") ?? 0,
-            "updatedStarredTime": preferences.getInt("updatedStarredTime") ?? 0,
-          });
-          debugPrint("added account: $accountID");
-        }
-        if (accountID != null) {
-          await db.execute(artTable);
-          await db.execute(
-            '''INSERT INTO Articles
-             (accountID, articleID, subID, title, isRead, isStarred, img, timeStampPublished, content, url) 
-             SELECT $accountID as accountID, articleID, subID, title, isRead, isStarred, img, timeStampPublished, content, url FROM Article;''',
-          );
-          await db.execute("DROP TABLE Article;");
+        // final preferences = await SharedPreferences.getInstance();
+        // int? accountID;
+        // if (preferences.containsKey("server")) {
+        //   accountID = await db.insert("Account", {
+        //     "serverUrl": preferences.getString("server"),
+        //     "username": preferences.getString("userName") ?? "",
+        //     "password": preferences.getString("password") ?? "",
+        //     "provider": "freshrss",
+        //     "updatedArticleTime": preferences.getInt("updatedArticleTime") ?? 0,
+        //     "updatedStarredTime": preferences.getInt("updatedStarredTime") ?? 0,
+        //   });
+        //   debugPrint("added account: $accountID");
+        // }
+        // if (accountID != null) {
+        //   await db.execute(artTable);
+        //   await db.execute(
+        //     '''INSERT INTO Articles
+        //      (accountID, articleID, subID, title, isRead, isStarred, img, timeStampPublished, content, url)
+        //      SELECT $accountID as accountID, articleID, subID, title, isRead, isStarred, img, timeStampPublished, content, url FROM Article;''',
+        //   );
+        //   await db.execute("DROP TABLE Article;");
 
-          await db.execute(subTable);
-          await db.execute(
-            '''INSERT INTO Subscriptions
-             (accountID, subID, title, url, htmlUrl, iconUrl) 
-             SELECT $accountID as accountID, subID, title, url, htmlUrl, iconUrl FROM Subscription;''',
-          );
-          await db.execute("DROP TABLE Subscription");
+        //   await db.execute(subTable);
+        //   await db.execute(
+        //     '''INSERT INTO Subscriptions
+        //      (accountID, subID, title, url, htmlUrl, iconUrl)
+        //      SELECT $accountID as accountID, subID, title, url, htmlUrl, iconUrl FROM Subscription;''',
+        //   );
+        //   await db.execute("DROP TABLE Subscription");
 
-          await db.execute(catTable);
-          await db.execute(
-            '''INSERT INTO Categories
-             (accountID, catID, subID, name) 
-             SELECT $accountID as accountID, catID, subID, name FROM Category;''',
-          );
-          await db.execute("DROP TABLE Category");
+        //   await db.execute(catTable);
+        //   await db.execute(
+        //     '''INSERT INTO Categories
+        //      (accountID, catID, subID, name)
+        //      SELECT $accountID as accountID, catID, subID, name FROM Category;''',
+        //   );
+        //   await db.execute("DROP TABLE Category");
 
-          await db.execute(delTable);
-          await db.execute(
-            '''INSERT INTO DelayedActions
-             (accountID, articleID, action) 
-             SELECT $accountID as accountID, articleID, action FROM DelayedAction;''',
-          );
-          await db.execute("DROP TABLE DelayedAction");
-        }
-        debugPrint("Finished upgrading db to: version 4");
+        //   await db.execute(delTable);
+        //   await db.execute(
+        //     '''INSERT INTO DelayedActions
+        //      (accountID, articleID, action)
+        //      SELECT $accountID as accountID, articleID, action FROM DelayedAction;''',
+        //   );
+        //   await db.execute("DROP TABLE DelayedAction");
+        // }
+        // debugPrint("Finished upgrading db to: version 4");
       } else if (oldVersion == 4 && newVersion == 5) {
         await db.execute("ALTER TABLE Subscriptions add column catID TEXT");
         debugPrint("Finished upgrading db to: version 5");

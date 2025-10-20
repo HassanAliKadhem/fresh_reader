@@ -23,13 +23,13 @@ An opinionated client for FreshRss (not affiliated) made just for me. but you ca
     - [x] line height
 - [x] search articles
 - [x] delete old read articles
+- [x] date separator in article list
 
 ## Todo
 - [ ] limit number of starred articles stored
 - [ ] edit tags (categories)
 - [ ] delete tags (categories)
 - [ ] Highlight the first half of a word to make it easier to read
-- [ ] add date separator in article list
 
 ## Screenshots
 <!-- ![Home screen with list of feeds](SimulatorHome.png)
