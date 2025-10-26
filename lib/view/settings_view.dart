@@ -79,31 +79,38 @@ class _SettingsContentState extends State<SettingsContent> {
           },
         ),
         AccountDetails(),
-        Divider(),
+        Divider(indent: 8.0, endIndent: 8.0),
         ListTile(title: Text("Other settings"), dense: true),
         const ReadDurationTile(
           title: "Keep read articles",
           dbKey: "read_duration",
           values: durations,
         ),
-        const ReadDurationTile(
-          title: "Keep starred articles",
-          dbKey: "star_duration",
-          values: amounts,
-        ),
-        Divider(),
+        // const ReadDurationTile(
+        //   title: "Keep starred articles",
+        //   dbKey: "star_duration",
+        //   values: amounts,
+        // ),
+        Divider(indent: 8.0, endIndent: 8.0),
         AboutListTile(
           applicationVersion: version,
           aboutBoxChildren: [
             const ListTile(
               title: Text("Made By"),
               subtitle: Text("Hasan Kadhem"),
+              leading: Icon(Icons.person),
+            ),
+            const ListTile(
+              title: Text("Made Using"),
+              subtitle: Text("Flutter"),
+              leading: FlutterLogo(),
             ),
             ListTile(
               title: const Text("Source Code"),
               subtitle: const Text(
                 "https://github.com/HassanAliKadhem/fresh_reader",
               ),
+              leading: Icon(Icons.code),
               trailing: const Icon(Icons.open_in_browser),
               onTap:
                   () => launchUrl(
