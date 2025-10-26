@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'dart:math';
 
+import 'package:anchor_scroll_controller/anchor_scroll_controller.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fresh_reader/util/date.dart';
 import 'package:fresh_reader/widget/article_image.dart';
-import 'package:scroll_to_index/scroll_to_index.dart';
 
 import '../api/api.dart';
 import '../api/data_types.dart';
@@ -22,19 +22,17 @@ class ArticleList extends StatefulWidget {
 
 class _ArticleListState extends State<ArticleList> {
   final TextEditingController _searchController = TextEditingController();
-  final AutoScrollController _autoScrollController = AutoScrollController();
+  final AnchorScrollController _scrollController = AnchorScrollController(
+    anchorOffset: kToolbarHeight * 2.5,
+  );
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (Api.of(context).selectedIndex != null &&
-        _autoScrollController.hasClients) {
-      _autoScrollController.scrollToIndex(
-        Api.of(context).selectedIndex!,
-        duration: Duration(
-          milliseconds: screenSizeOf(context) == ScreenSize.small ? 1 : 250,
-        ),
-        preferPosition: AutoScrollPosition.middle,
+    if (Api.of(context).selectedIndex != null && _scrollController.hasClients) {
+      _scrollController.scrollToIndex(
+        index: Api.of(context).selectedIndex!,
+        scrollSpeed: 0.5,
       );
     }
   }
@@ -116,13 +114,13 @@ class _ArticleListState extends State<ArticleList> {
                           .map((toElement) => toElement.key)
                           .toList();
                   return Scrollbar(
-                    controller: _autoScrollController,
+                    controller: _scrollController,
                     child: ListView.separated(
                       key: const PageStorageKey(0),
                       keyboardDismissBehavior:
                           ScrollViewKeyboardDismissBehavior.onDrag,
                       itemCount: Api.of(context).searchResults!.length,
-                      controller: _autoScrollController,
+                      controller: _scrollController,
                       itemBuilder: (context, index) {
                         if (index == 0) {
                           String date =
@@ -137,10 +135,10 @@ class _ArticleListState extends State<ArticleList> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               separator(date),
-                              AutoScrollTag(
+                              AnchorItemWrapper(
                                 index: index,
                                 key: ValueKey("list-$index"),
-                                controller: _autoScrollController,
+                                controller: _scrollController,
                                 child: ArticleTile(
                                   article:
                                       Api.of(context).filteredArticles![Api.of(
@@ -152,10 +150,10 @@ class _ArticleListState extends State<ArticleList> {
                             ],
                           );
                         }
-                        return AutoScrollTag(
+                        return AnchorItemWrapper(
                           index: index,
                           key: ValueKey("list-$index"),
-                          controller: _autoScrollController,
+                          controller: _scrollController,
                           child: ArticleTile(
                             article:
                                 Api.of(context).filteredArticles![Api.of(
