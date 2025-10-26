@@ -363,8 +363,8 @@ class ArticleTextWidget extends StatelessWidget {
                         : Icons.public_rounded,
                   ),
                   onTap: () {
-                    launchUrl(Uri.parse(link));
                     Navigator.pop(context);
+                    launchUrl(Uri.parse(link));
                   },
                 ),
                 Builder(
@@ -412,8 +412,34 @@ class ArticleTextWidget extends StatelessWidget {
                     title: "Open image in browser",
                     trailing: const Icon(Icons.image_search_rounded),
                     onTap: () {
-                      launchUrl(Uri.parse(imgUrl));
                       Navigator.pop(context);
+                      launchUrl(Uri.parse(imgUrl));
+                    },
+                  ),
+                if (imgUrl != null)
+                  AdaptiveListTile(
+                    title: "Open image link",
+                    trailing: Icon(
+                      (Platform.isIOS || Platform.isMacOS)
+                          ? CupertinoIcons.share
+                          : Icons.share_rounded,
+                    ),
+                    onTap: () {
+                      try {
+                        final box = context.findRenderObject() as RenderBox?;
+                        SharePlus.instance.share(
+                          ShareParams(
+                            uri: Uri.parse(imgUrl),
+                            sharePositionOrigin:
+                                box!.localToGlobal(Offset.zero) & box.size,
+                          ),
+                        );
+                      } catch (e) {
+                        debugPrint(e.toString());
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(e.toString(), maxLines: 3)),
+                        );
+                      }
                     },
                   ),
               ],

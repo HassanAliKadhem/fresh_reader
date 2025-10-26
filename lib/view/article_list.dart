@@ -23,18 +23,17 @@ class ArticleList extends StatefulWidget {
 class _ArticleListState extends State<ArticleList> {
   final TextEditingController _searchController = TextEditingController();
   final AutoScrollController _autoScrollController = AutoScrollController();
-  int currentIndex = -1; // used to save last scroll position
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (Api.of(context).selectedIndex != null &&
-        _autoScrollController.hasClients &&
-        Api.of(context).selectedIndex != currentIndex) {
-      currentIndex = Api.of(context).selectedIndex!;
+        _autoScrollController.hasClients) {
       _autoScrollController.scrollToIndex(
-        currentIndex,
-        duration: Duration(milliseconds: 250),
+        Api.of(context).selectedIndex!,
+        duration: Duration(
+          milliseconds: screenSizeOf(context) == ScreenSize.small ? 1 : 250,
+        ),
         preferPosition: AutoScrollPosition.middle,
       );
     }
@@ -49,11 +48,6 @@ class _ArticleListState extends State<ArticleList> {
       ),
       appBar: AppBar(
         flexibleSpace: const TransparentContainer(hasBorder: false),
-        // title: Text(
-        //   Api.of(context).filteredTitle == null
-        //       ? ""
-        //       : Api.of(context).filteredTitle!.split("/").last,
-        // ),
         title:
             (Platform.isIOS || Platform.isMacOS)
                 ? CupertinoSearchTextField(
@@ -61,11 +55,11 @@ class _ArticleListState extends State<ArticleList> {
                   onChanged: (value) => setState(() {}),
                   padding: const EdgeInsets.all(12.0),
                   placeholder:
-                      "Search ${Api.of(context).filteredTitle == null ? "" : Api.of(context).filteredTitle!.split("/").last}",
+                      "Search ${Api.of(context).filteredTitle?.split("/").last ?? ""}",
                 )
                 : SearchBar(
                   hintText:
-                      "Search ${Api.of(context).filteredTitle == null ? "" : Api.of(context).filteredTitle!.split("/").last}",
+                      "Search ${Api.of(context).filteredTitle?.split("/").last ?? ""}",
                   controller: _searchController,
                   textInputAction: TextInputAction.search,
                   leading: Padding(
