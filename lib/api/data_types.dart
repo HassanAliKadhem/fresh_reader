@@ -267,8 +267,6 @@ class Article {
 
 enum DelayedAction { unread, read, star, unStar }
 
-enum ScreenSize { big, medium, small }
-
 const Utf8Decoder decoder = Utf8Decoder();
 final HtmlUnescape unescape = HtmlUnescape();
 

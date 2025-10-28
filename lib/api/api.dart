@@ -3,42 +3,14 @@ import 'package:flutter/foundation.dart' as foundation;
 import 'package:flutter/material.dart';
 
 import 'package:http/http.dart' as http;
-import 'package:sqflite/sqflite.dart';
 
 import 'data_types.dart';
 import 'database.dart';
-import '../main.dart';
-
-ScreenSize screenSizeOf(BuildContext context) {
-  if (MediaQuery.sizeOf(context).width > 840) {
-    return ScreenSize.big;
-  } else if (MediaQuery.sizeOf(context).width > 640) {
-    return ScreenSize.medium;
-  } else {
-    return ScreenSize.small;
-  }
-}
-
-class Api extends InheritedNotifier<ApiData> {
-  const Api({super.key, required super.child, required super.notifier});
-
-  static ApiData of(BuildContext context) {
-    assert(
-      context.dependOnInheritedWidgetOfExactType<Api>() != null,
-      "Api not found in current context",
-    );
-    return context.dependOnInheritedWidgetOfExactType<Api>()!.notifier!;
-  }
-
-  @override
-  bool updateShouldNotify(covariant InheritedNotifier<ApiData> oldWidget) {
-    return notifier != oldWidget.notifier;
-  }
-}
 
 class ApiData extends ChangeNotifier {
   bool justBooted = true;
   Account? account;
+  DB database;
   String auth = "";
   bool showAll = false;
 
@@ -50,30 +22,42 @@ class ApiData extends ChangeNotifier {
   List<String>? searchResults;
   String? filteredTitle;
   int? selectedIndex;
-  ValueNotifier<double> progress = ValueNotifier<double>(1.0);
 
-  ApiData(this.account) {
-    if (account != null) {
-      loadAllSubs(account!.id).then((subs) {
-        subscriptions = subs;
-        loadAllCategory(account!.id).then((cats) {
-          categories = cats;
-          countAllArticles(showAll, account!.id).then((con) {
-            counts = con;
-            notifyListeners();
+  ApiData(this.database) {
+    database.getAllAccounts().then((accounts) {
+      if (accounts.isNotEmpty) {
+        try {
+          account = accounts.first;
+        } catch (e, stack) {
+          debugPrint(e.toString());
+          debugPrintStack(stackTrace: stack);
+        }
+      } else {
+        debugPrint("No accounts found");
+      }
+
+      if (account != null) {
+        database.loadAllSubs(account!.id).then((subs) {
+          subscriptions = subs;
+          database.loadAllCategory(account!.id).then((cats) {
+            categories = cats;
+            database.countAllArticles(showAll, account!.id).then((con) {
+              counts = con;
+              notifyListeners();
+            });
           });
         });
-      });
-      _getAuth().then((value) {
-        auth = value;
-      });
-    }
+        _getAuth().then((value) {
+          auth = value;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
     super.dispose();
-    database.close();
+    database.database.close();
   }
 
   void clear() {
@@ -83,30 +67,48 @@ class ApiData extends ChangeNotifier {
     searchResults = [];
   }
 
-  void changeAccount(Account acc) {
+  Future<List<Account>> getAccounts() async {
+    return (await database.getAllAccounts());
+  }
+
+  Future<void> changeAccount(Account? acc) async {
     account = acc;
     justBooted = false;
     clear();
-    loadAllSubs(account!.id).then((subs) {
-      notifyListeners();
-      subscriptions = subs;
-    });
+    subscriptions = {};
+    categories = {};
+    counts = {};
     _getAuth().then((value) {
       auth = value;
     });
+    if (acc != null) {
+      await Future.wait([
+        database.loadAllSubs(account!.id).then((subs) {
+          subscriptions = subs;
+        }),
+        database.countAllArticles(showAll, acc.id).then((co) {
+          counts = co;
+        }),
+        database.loadAllCategory(acc.id).then((cats) {
+          categories = cats;
+        }),
+      ]).then((_) {
+        notifyListeners();
+      });
+    }
   }
 
   void setShowAll(bool newValue) {
     showAll = newValue;
     clear();
-    countAllArticles(showAll, account!.id).then((con) {
+    database.countAllArticles(showAll, account!.id).then((con) {
       counts = con;
       notifyListeners();
     });
   }
 
-  Future<bool> serverSync() async {
-    progress.value = 0.0;
+  Stream<double> serverSync() async* {
+    yield 0.0;
     if (auth == "") {
       await _getAuth().then((value) {
         auth = value;
@@ -114,25 +116,24 @@ class ApiData extends ChangeNotifier {
     }
     if (auth == "") {
       debugPrint("Couldn't find auth key");
-      return false;
+      throw "No auth key";
     }
     if (account == null) {
       debugPrint("No account selected");
-      return false;
+      throw "No account selected";
     }
 
-    final delayedActions = await loadDelayedActions(account!.id);
-    progress.value = 0.2;
+    final delayedActions = await database.loadDelayedActions(account!.id);
+    yield 0.1;
     debugPrint("delayed actions: ${delayedActions.length}");
     debugPrint(delayedActions.toString());
     if (delayedActions.isNotEmpty) {
       Map<String, String> articleSub = {};
       for (var element in delayedActions.keys) {
-        await loadArticleSubID(element, account!.id).then((value) {
+        await database.loadArticleSubID(element, account!.id).then((value) {
           if (value != null) {
             articleSub[element] = value;
           }
-          progress.value = 0.4;
         });
       }
       Map<String, String> readIds = {};
@@ -160,7 +161,7 @@ class ApiData extends ChangeNotifier {
           true,
         ).then((done) {
           if (done) {
-            deleteDelayedActions(
+            database.deleteDelayedActions(
               readIds.map((key, value) => MapEntry(key, DelayedAction.read)),
               account!.id,
             );
@@ -174,7 +175,7 @@ class ApiData extends ChangeNotifier {
           false,
         ).then((done) {
           if (done) {
-            deleteDelayedActions(
+            database.deleteDelayedActions(
               unReadIds.map(
                 (key, value) => MapEntry(key, DelayedAction.unread),
               ),
@@ -190,7 +191,7 @@ class ApiData extends ChangeNotifier {
           true,
         ).then((done) {
           if (done) {
-            deleteDelayedActions(
+            database.deleteDelayedActions(
               starIds.map((key, value) => MapEntry(key, DelayedAction.star)),
               account!.id,
             );
@@ -204,7 +205,7 @@ class ApiData extends ChangeNotifier {
           false,
         ).then((done) {
           if (done) {
-            deleteDelayedActions(
+            database.deleteDelayedActions(
               unStarIds.map(
                 (key, value) => MapEntry(key, DelayedAction.unStar),
               ),
@@ -217,13 +218,14 @@ class ApiData extends ChangeNotifier {
     } else {
       debugPrint("no delayed actions");
     }
-    await getPreference("read_duration").then((duration) {
+    yield 0.3;
+    await database.getPreference("read_duration").then((duration) {
       debugPrint("read duration to keep: $duration");
       int? days = int.tryParse(duration ?? "");
       if (duration != null && duration != "-1" && days != null) {
         DateTime now = DateTime.now();
         double seconds = now.millisecondsSinceEpoch / 1000;
-        database
+        database.database
             .delete(
               "articles",
               where:
@@ -240,6 +242,7 @@ class ApiData extends ChangeNotifier {
             });
       }
     });
+    yield 0.4;
     // await getPreference("star_duration").then((count) {
     //   // get number of starred articles to keep
     //   debugPrint("starred count to keep: $count");
@@ -269,24 +272,25 @@ class ApiData extends ChangeNotifier {
     //         });
     //   }
     // });
-    progress.value = 0.6;
+
     // _getModifyAuth(auth)
     //     .then((value) => modifyAuth = value.body.replaceAll("\n", "")),
     await _getServerCategories(auth);
     await _getServerSubscriptions(auth);
+    yield 0.5;
     await _getAllServerArticles(auth, "reading-list");
-    await countAllArticles(showAll, account!.id).then((con) {
+    yield 0.8;
+    await _getServerReadIds(auth);
+    await _getServerStarredIds(auth);
+    await _getServerStarredArticles(auth);
+    yield 0.9;
+    await database.countAllArticles(showAll, account!.id).then((con) {
+      counts.clear();
       counts = con;
     });
-    progress.value = 0.8;
-    await Future.wait([
-      _getServerReadIds(auth),
-      _getServerStarredIds(auth),
-      _getServerStarredArticles(auth),
-    ]);
     //https://github.com/FreshRSS/FreshRSS/issues/2566
-    progress.value = 1.0;
-    return true;
+    notifyListeners();
+    yield 1.0;
   }
 
   Future<String> _getAuth() async {
@@ -333,7 +337,7 @@ class ApiData extends ChangeNotifier {
             subscriptions[sub.subID] = sub;
             count++;
           });
-          saveSubs(subs);
+          database.saveSubs(subs);
           debugPrint("Fetched subscriptions: $count");
           // loadAllSubs(account!.id).then((subs) {
           //   subscriptions = subs;
@@ -359,18 +363,13 @@ class ApiData extends ChangeNotifier {
           },
         )
         .then((value) async {
-          final batch = database.batch();
-          jsonDecode(value.body)["tags"].forEach((element) {
+          List<dynamic> tags = jsonDecode(value.body)["tags"];
+          database.insertNewCategories(tags, account!.id);
+          for (var element in tags) {
             Category cat = Category.fromJson(element, account!.id);
-            batch.insert(
-              "Categories",
-              cat.toMap(),
-              conflictAlgorithm: ConflictAlgorithm.replace,
-            );
             categories[cat.catID] = cat;
             count++;
-          });
-          await batch.commit(continueOnError: true);
+          }
           debugPrint("Fetched categories: $count");
         })
         .catchError((onError) {
@@ -406,7 +405,7 @@ class ApiData extends ChangeNotifier {
               articles.add(article);
               count++;
             });
-            insertArticles(articles);
+            database.insertArticles(articles);
             con = res["continuation"]?.toString() ?? "";
           })
           .catchError((onError) {
@@ -420,7 +419,7 @@ class ApiData extends ChangeNotifier {
     if (updateTime) {
       account?.updatedArticleTime =
           (DateTime.now().millisecondsSinceEpoch / 1000).floor();
-      database.update(
+      database.database.update(
         "Account",
         {"updatedArticleTime": account!.updatedArticleTime},
         where: "id = ?",
@@ -462,7 +461,7 @@ class ApiData extends ChangeNotifier {
         debugPrint(response.body);
       }
     } while (con != "");
-    await syncArticlesRead(syncedArticleIDs, account!.id);
+    await database.syncArticlesRead(syncedArticleIDs, account!.id);
     debugPrint("Fetched readIds: $count");
   }
 
@@ -500,12 +499,12 @@ class ApiData extends ChangeNotifier {
         updateTime = false;
       }
     } while (con != "");
-    await syncArticlesStar(syncedArticleIDs, account!.id);
+    await database.syncArticlesStar(syncedArticleIDs, account!.id);
 
     if (updateTime) {
       account?.updatedStarredTime =
           (DateTime.now().millisecondsSinceEpoch / 1000).floor();
-      database.update(
+      database.database.update(
         "Account",
         {"updatedStarredTime": account!.updatedStarredTime},
         where: "id = ?",
@@ -539,7 +538,7 @@ class ApiData extends ChangeNotifier {
           articles.add(article);
           count++;
         });
-        insertArticles(articles);
+        database.insertArticles(articles);
         con = res["continuation"]?.toString() ?? "";
       } else {
         debugPrint(response.body);
@@ -584,7 +583,7 @@ class ApiData extends ChangeNotifier {
       for (int i = 0; i < ids.length; i++) {
         actions[ids[i]] = isRead ? DelayedAction.read : DelayedAction.unread;
       }
-      saveDelayedActions(actions, account!.id);
+      database.saveDelayedActions(actions, account!.id);
     }
     return done;
   }
@@ -625,7 +624,7 @@ class ApiData extends ChangeNotifier {
       for (int i = 0; i < ids.length; i++) {
         actions[ids[i]] = isStar ? DelayedAction.star : DelayedAction.unStar;
       }
-      saveDelayedActions(actions, account!.id);
+      database.saveDelayedActions(actions, account!.id);
     }
     return done;
   }
@@ -656,7 +655,7 @@ class ApiData extends ChangeNotifier {
       }
     }
     _setServerRead([id], [subID], isRead);
-    updateArticleRead(id, isRead, account!.id).then((_) {
+    database.updateArticleRead(id, isRead, account!.id).then((_) {
       notifyListeners();
     });
     return filteredArticles?[id];
@@ -669,7 +668,7 @@ class ApiData extends ChangeNotifier {
     }
     // debugPrint(counts["Starred"].toString());
     _setServerStar([id], [subID], isStarred);
-    updateArticleStar(id, isStarred, account!.id).then((_) {
+    database.updateArticleStar(id, isStarred, account!.id).then((_) {
       notifyListeners();
     });
   }
@@ -688,28 +687,34 @@ class ApiData extends ChangeNotifier {
     filteredArticles = null;
     selectedIndex = null;
     filteredTitle = null;
-    await loadArticleIDs(
-      showAll: showAll,
-      filterColumn: filterColumn,
-      filterValue: filterValue,
-      accountID: account!.id,
-    ).then((value) {
-      filteredArticleIDs = value.keys.toSet();
-    });
+    await database
+        .loadArticleIDs(
+          showAll: showAll,
+          filterColumn: filterColumn,
+          filterValue: filterValue,
+          accountID: account!.id,
+        )
+        .then((value) {
+          filteredArticleIDs = value.keys.toSet();
+        });
     filteredTitle = title;
-    await loadArticles(filteredArticleIDs!.toList(), account!.id).then((
-      List<Article> arts,
-    ) {
-      filteredArticles = {};
-      searchResults = [];
-      // final Set<String> subIDs = <String>{};
-      for (var article in arts) {
-        filteredArticles![article.articleID] = article;
-        // subIDs.add(article.subID);
-        searchResults!.add(article.articleID);
-      }
-      notifyListeners();
-    });
+    await database.loadArticles(filteredArticleIDs!.toList(), account!.id).then(
+      (List<Article> arts) {
+        filteredArticles = {};
+        searchResults = [];
+        // final Set<String> subIDs = <String>{};
+        for (var article in arts) {
+          filteredArticles![article.articleID] = article;
+          // subIDs.add(article.subID);
+          searchResults!.add(article.articleID);
+        }
+        notifyListeners();
+      },
+    );
+  }
+
+  Future<Article> getArticleWithContent(Article article, int accountID) {
+    return database.loadArticleContent(article, accountID);
   }
 
   String getIconUrl(String url) {

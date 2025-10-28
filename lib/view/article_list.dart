@@ -7,9 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:fresh_reader/util/date.dart';
 import 'package:fresh_reader/widget/article_image.dart';
 
-import '../api/api.dart';
 import '../api/data_types.dart';
+import '../api/provider.dart';
 import '../main.dart';
+import '../util/screen_size.dart';
 import '../widget/transparent_container.dart';
 import 'article_view.dart';
 

@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:fresh_reader/main.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../api/api.dart';
 import '../api/data_types.dart';
-import '../api/database.dart';
+import '../api/provider.dart';
 import '../widget/adaptive_text_field.dart';
 
-const version = "1.2.11";
+const version = "1.2.12";
 
 class SettingsDialog extends StatelessWidget {
   const SettingsDialog({super.key});
@@ -137,7 +135,7 @@ class _AccountDetailsState extends State<AccountDetails> {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(
-      future: getAccountIds(),
+      future: Api.of(context).getAccounts(),
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return CircularProgressIndicator.adaptive();
@@ -145,8 +143,8 @@ class _AccountDetailsState extends State<AccountDetails> {
         return Column(
           mainAxisSize: MainAxisSize.min,
           children:
-              snapshot.data!.map((id) {
-                return AccountCard(id: id);
+              snapshot.data!.map((acc) {
+                return AccountCard(account: acc);
               }).toList(),
         );
       },
@@ -155,8 +153,8 @@ class _AccountDetailsState extends State<AccountDetails> {
 }
 
 class AccountCard extends StatefulWidget {
-  const AccountCard({super.key, required this.id});
-  final int id;
+  const AccountCard({super.key, required this.account});
+  final Account account;
 
   @override
   State<AccountCard> createState() => _AccountCardState();
@@ -165,201 +163,182 @@ class AccountCard extends StatefulWidget {
 class _AccountCardState extends State<AccountCard> {
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: getAccount(widget.id),
-      builder: (context, asyncSnapshot) {
-        if (!asyncSnapshot.hasData) {
-          return Card(
-            child:
-                asyncSnapshot.connectionState == ConnectionState.done
-                    ? Text(asyncSnapshot.error.toString())
-                    : LinearProgressIndicator(),
-          );
-        }
-        Account account = asyncSnapshot.data!;
-        return Card(
-          clipBehavior: Clip.antiAlias,
-          margin: EdgeInsets.all(8.0),
-          child: ExpansionTile(
-            shape: const Border(),
-            title: Text("${account.provider}: ${account.username}"),
-            subtitle: Text(account.serverUrl.toString()),
-            children: [
-              ListTile(
-                title: Text("Edit account"),
-                trailing: Icon(Icons.edit),
-                onTap: () {
-                  showAdaptiveDialog(
-                    context: context,
-                    builder: (context) {
-                      return AddAccountDialog(oldAccount: account);
-                    },
-                  ).then((onValue) {
-                    if (onValue != null && onValue is Account) {
-                      if (context.mounted &&
-                          onValue.id == Api.of(context).account?.id) {
-                        Api.of(context).changeAccount(onValue);
-                      } else {
-                        debugPrint("Context not mounted");
-                      }
-                    }
-                  });
+    Account account = widget.account;
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      margin: EdgeInsets.all(8.0),
+      child: ExpansionTile(
+        shape: const Border(),
+        title: Text("${account.provider}: ${account.username}"),
+        subtitle: Text(account.serverUrl.toString()),
+        children: [
+          ListTile(
+            title: Text("Edit account"),
+            trailing: Icon(Icons.edit),
+            onTap: () {
+              showAdaptiveDialog(
+                context: context,
+                builder: (context) {
+                  return AddAccountDialog(oldAccount: account);
                 },
-              ),
-              ListTile(
-                title: const Text("Delete Data or Account"),
-                trailing: Icon(Icons.delete),
-                onTap: () async {
-                  showAdaptiveDialog(
-                    context: context,
-                    builder: (context) {
-                      return AlertDialog.adaptive(
-                        title: const Text("Are you sure?"),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              deleteAccount(account.id).then((_) {
-                                setState(() {
-                                  if (Api.of(context).account?.id ==
-                                      account.id) {
-                                    getAllAccounts(limit: 1).then((onValue) {
-                                      if (onValue.isNotEmpty) {
-                                        if (context.mounted) {
-                                          Api.of(
-                                            context,
-                                          ).changeAccount(onValue.first);
-                                        } else {
-                                          debugPrint("Context not mounted");
-                                        }
-                                      }
-                                    });
+              ).then((onValue) {
+                if (onValue != null && onValue is Account) {
+                  if (context.mounted &&
+                      onValue.id == Api.of(context).account?.id) {
+                    Api.of(context).changeAccount(onValue);
+                  } else {
+                    debugPrint("Context not mounted");
+                  }
+                }
+              });
+            },
+          ),
+          ListTile(
+            title: const Text("Delete Data or Account"),
+            trailing: Icon(Icons.delete),
+            onTap: () async {
+              showAdaptiveDialog(
+                context: context,
+                builder: (context) {
+                  return AlertDialog.adaptive(
+                    title: const Text("Are you sure?"),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Api.of(context).counts = {};
+                          Api.of(
+                            context,
+                          ).database.deleteAccount(account.id).then((_) {
+                            setState(() {
+                              if (Api.of(context).account?.id == account.id) {
+                                Api.of(context).getAccounts().then((onValue) {
+                                  if (context.mounted) {
+                                    Api.of(
+                                      context,
+                                    ).changeAccount(onValue.firstOrNull);
+                                  } else {
+                                    debugPrint("Context not mounted");
                                   }
                                 });
+                              }
+                            });
+                          });
+                          Navigator.pop(context);
+                        },
+                        child: Text(
+                          "Delete Account",
+                          style: TextStyle(color: Colors.red[300]),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Api.of(context).counts = {};
+                          Api.of(
+                            context,
+                          ).database.deleteAccountData(account.id).then((_) {
+                            setState(() {
+                              Api.of(
+                                context,
+                              ).database.getAccount(account.id).then((onValue) {
+                                if (context.mounted) {
+                                  Api.of(context).changeAccount(onValue);
+                                } else {
+                                  debugPrint("Context not mounted");
+                                }
                               });
-                              Navigator.pop(context);
-                            },
-                            child: Text(
-                              "Delete Account",
-                              style: TextStyle(color: Colors.red[300]),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              deleteAccountData(account.id).then((_) {
-                                setState(() {
-                                  getAccount(account.id).then((onValue) {
-                                    if (context.mounted) {
-                                      Api.of(context).changeAccount(onValue);
-                                    } else {
-                                      debugPrint("Context not mounted");
-                                    }
-                                  });
-                                });
-                              });
-                              Navigator.pop(context);
-                            },
-                            child: Text(
-                              "Delete only data",
-                              style: TextStyle(color: Colors.red[300]),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                            child: const Text("Cancel"),
-                          ),
-                        ],
-                      );
-                    },
+                            });
+                          });
+                          Navigator.pop(context);
+                        },
+                        child: Text(
+                          "Delete only data",
+                          style: TextStyle(color: Colors.red[300]),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: const Text("Cancel"),
+                      ),
+                    ],
                   );
                 },
-              ),
-              FutureBuilder(
-                future: countAllArticles(true, account.id),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState != ConnectionState.done) {
-                    return ListTile(
-                      title: Text("Loading"),
-                      subtitle: LinearProgressIndicator(),
-                    );
-                  }
-                  return ListTile(
-                    title: Text(
-                      "Total articles: ${snapshot.data!.entries.map((entry) => entry.key.startsWith("feed/") ? entry.value : 0).reduce((count, value) => count + value)}",
-                    ),
-                    subtitle: Text(
-                      "categories: ${snapshot.data!.entries.map((entry) => entry.key.startsWith("feed/") ? 0 : 1).reduce((count, value) => count + value)}, subscriptions: ${snapshot.data!.entries.map((entry) => entry.key.startsWith("feed/") ? 1 : 0).reduce((count, value) => count + value)}",
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                title: const Text("Last sync articles time"),
-                subtitle: Text(
-                  DateTime.fromMillisecondsSinceEpoch(
-                    account.updatedArticleTime * 1000,
-                  ).toString(),
-                ),
-                onTap: () {
-                  showDatePicker(
-                    context: context,
-                    firstDate: DateTime(0),
-                    lastDate: DateTime.now(),
-                    initialDate: DateTime.fromMillisecondsSinceEpoch(
-                      account.updatedArticleTime * 1000,
-                    ),
-                  ).then((value) {
-                    if (value != null) {
-                      database.update(
-                        "Account",
-                        {
-                          "updatedArticleTime":
-                              (value.millisecondsSinceEpoch / 1000).floor(),
-                        },
-                        where: "id = ?",
-                        whereArgs: [account.id],
-                      );
-                      setState(() {});
-                    }
-                  });
-                },
-              ),
-              ListTile(
-                title: const Text("Last sync starred time"),
-                subtitle: Text(
-                  DateTime.fromMillisecondsSinceEpoch(
-                    account.updatedStarredTime * 1000,
-                  ).toString(),
-                ),
-                onTap: () {
-                  showDatePicker(
-                    context: context,
-                    firstDate: DateTime(0),
-                    lastDate: DateTime.now(),
-                    initialDate: DateTime.fromMillisecondsSinceEpoch(
-                      account.updatedStarredTime * 1000,
-                    ),
-                  ).then((value) {
-                    if (value != null) {
-                      database.update(
-                        "Account",
-                        {
-                          "updatedStarredTime":
-                              (value.millisecondsSinceEpoch / 1000).floor(),
-                        },
-                        where: "id = ?",
-                        whereArgs: [account.id],
-                      );
-                      setState(() {});
-                    }
-                  });
-                },
-              ),
-            ],
+              );
+            },
           ),
-        );
-      },
+          ListTile(
+            title: Text(
+              "Total articles: ${Api.of(context).counts.entries.map((entry) => entry.key.startsWith("feed/") ? entry.value : 0).fold(0, (count, value) => count + value)}",
+            ),
+            subtitle: Text(
+              "categories: ${Api.of(context).counts.entries.map((entry) => entry.key.startsWith("feed/") ? 0 : 1).fold(0, (count, value) => count + value)}, subscriptions: ${Api.of(context).counts.entries.map((entry) => entry.key.startsWith("feed/") ? 1 : 0).fold(0, (count, value) => count + value)}",
+            ),
+          ),
+          ListTile(
+            title: const Text("Last sync articles time"),
+            subtitle: Text(
+              DateTime.fromMillisecondsSinceEpoch(
+                account.updatedArticleTime * 1000,
+              ).toString(),
+            ),
+            onTap: () {
+              showDatePicker(
+                context: context,
+                firstDate: DateTime(0),
+                lastDate: DateTime.now(),
+                initialDate: DateTime.fromMillisecondsSinceEpoch(
+                  account.updatedArticleTime * 1000,
+                ),
+              ).then((value) {
+                if (value != null) {
+                  Api.of(context).database.database.update(
+                    "Account",
+                    {
+                      "updatedArticleTime":
+                          (value.millisecondsSinceEpoch / 1000).floor(),
+                    },
+                    where: "id = ?",
+                    whereArgs: [account.id],
+                  );
+                  setState(() {});
+                }
+              });
+            },
+          ),
+          ListTile(
+            title: const Text("Last sync starred time"),
+            subtitle: Text(
+              DateTime.fromMillisecondsSinceEpoch(
+                account.updatedStarredTime * 1000,
+              ).toString(),
+            ),
+            onTap: () {
+              showDatePicker(
+                context: context,
+                firstDate: DateTime(0),
+                lastDate: DateTime.now(),
+                initialDate: DateTime.fromMillisecondsSinceEpoch(
+                  account.updatedStarredTime * 1000,
+                ),
+              ).then((value) {
+                if (value != null) {
+                  Api.of(context).database.database.update(
+                    "Account",
+                    {
+                      "updatedStarredTime":
+                          (value.millisecondsSinceEpoch / 1000).floor(),
+                    },
+                    where: "id = ?",
+                    whereArgs: [account.id],
+                  );
+                  setState(() {});
+                }
+              });
+            },
+          ),
+        ],
+      ),
     );
   }
 }
@@ -403,7 +382,7 @@ class _ReadDurationTileState extends State<ReadDurationTile> {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(
-      future: getPreference(widget.dbKey),
+      future: Api.of(context).database.getPreference(widget.dbKey),
       builder: (context, asyncSnapshot) {
         return ListTile(
           title: Text(widget.title),
@@ -426,7 +405,9 @@ class _ReadDurationTileState extends State<ReadDurationTile> {
                     onChanged: (newVal) {
                       if (newVal != null) {
                         setState(() {
-                          setPreference(widget.dbKey, newVal);
+                          Api.of(
+                            context,
+                          ).database.setPreference(widget.dbKey, newVal);
                         });
                       }
                       Navigator.pop(context);
@@ -473,10 +454,10 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
   Future<int> _addAccount(Account accountToAdd) async {
     int index = -1;
     if (widget.oldAccount != null) {
-      await updateAccount(accountToAdd);
+      await Api.of(context).database.updateAccount(accountToAdd);
       index = accountToAdd.id;
     } else {
-      index = await addAccount(accountToAdd);
+      index = await Api.of(context).database.addAccount(accountToAdd);
     }
     return index;
   }
@@ -507,22 +488,13 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                   title: const Text('Freshrss'),
                   value: "Freshrss",
                 ),
+                // RadioListTile.adaptive(
+                //   title: const Text('InoReader'),
+                //   value: "InoReader",
+                // ),
               ],
             ),
           ),
-          // RadioListTile.adaptive(
-          //   title: const Text('InoReader'),
-          //   value: "InoReader",
-          //   groupValue: newAccount.serverUrl.value,
-          //   onChanged: (String? value) {
-          //     if (value != null) {
-          //       setState(() {
-          //         newAccount =
-          //             newAccount.copyWith(serverUrl: drift.Value<String>(value));
-          //       });
-          //     }
-          //   },
-          // ),
           Text("Connection details"),
           AdaptiveTextField(
             label: "Server Url",
@@ -550,7 +522,6 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
           ),
         ],
       ),
-      // actionsAlignment: MainAxisAlignment.spaceBetween,
       actions: [
         TextButton(
           onPressed: () {

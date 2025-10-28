@@ -6,8 +6,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-import '../api/api.dart';
 import '../api/data_types.dart';
+import '../api/provider.dart';
 import '../util/formatting_setting.dart';
 import '../widget/transparent_container.dart';
 

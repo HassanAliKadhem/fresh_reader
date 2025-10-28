@@ -6,13 +6,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:fresh_reader/util/screen_size.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-import '../api/api.dart';
 import '../api/data_types.dart';
-import '../api/database.dart';
+import '../api/provider.dart';
 import '../util/date.dart';
 import '../util/formatting_setting.dart';
 import '../widget/adaptive_list_tile.dart';
@@ -145,7 +145,7 @@ class _ArticleViewPagesState extends State<ArticleViewPages> {
                       Api.of(context).filteredArticles!.containsKey(
                         widget.articleIDs.elementAt(index),
                       )
-                  ? loadArticleContent(
+                  ? Api.of(context).getArticleWithContent(
                     Api.of(context).filteredArticles![widget.articleIDs
                         .elementAt(index)]!,
                     Api.of(context).account!.id,

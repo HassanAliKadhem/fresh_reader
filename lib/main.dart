@@ -2,49 +2,41 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:extended_image/extended_image.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:fresh_reader/api/provider.dart';
 
 import 'api/api.dart';
-import 'api/data_types.dart';
 import 'api/database.dart';
 import 'util/formatting_setting.dart';
+import 'util/screen_size.dart';
 import 'view/settings_view.dart';
 import 'view/article_list.dart';
 import 'view/article_view.dart';
 import 'view/feed_list.dart';
 
-late Database database;
-
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  getDatabase().then((db) {
-    database = db;
-    getPreference("read_duration").then((onValue) {
-      debugPrint("read_duration: $onValue");
-      if (onValue != null) {
-        int? val = onValue == "-1" ? null : int.tryParse(onValue);
-        if (val != null) {
-          debugPrint("Clear cache older than $val days.");
-          clearDiskCachedImages(duration: Duration(days: val));
-        }
-      }
-    });
-    database.query("Account").then((accounts) {
-      Account? acc;
-      if (accounts.isNotEmpty) {
-        try {
-          acc = Account.fromMap(accounts.first);
-        } catch (e, stack) {
-          debugPrint(e.toString());
-          debugPrintStack(stackTrace: stack);
-        }
-      } else {
-        debugPrint("No accounts found");
-      }
-      runApp(MyApp(apiData: ApiData(acc)));
-    });
-  });
+  getDatabase()
+      .then((db) {
+        DB database = DB(db);
+        // delete old image caches
+        database.getPreference("read_duration").then((onValue) {
+          debugPrint("read_duration: $onValue");
+          if (onValue != null) {
+            int? val = onValue == "-1" ? null : int.tryParse(onValue);
+            if (val != null) {
+              debugPrint("Clear cache older than $val days.");
+              clearDiskCachedImages(duration: Duration(days: val));
+            }
+          }
+        });
+        runApp(MyApp(apiData: ApiData(database)));
+      })
+      .catchError((error) {
+        // show error if can't open database
+        debugPrint(error.toString());
+        runApp(MaterialApp(home: Center(child: Text(error.toString()))));
+      });
 }
 
 class MyApp extends StatefulWidget {
@@ -61,7 +53,7 @@ class _MyAppState extends State<MyApp> {
     return Api(
       notifier: widget.apiData,
       child: Formatting(
-        notifier: FormattingSetting(),
+        notifier: FormattingSetting(widget.apiData.database),
         child: MaterialApp(
           title: 'Fresh Reader',
           themeMode: ThemeMode.dark,

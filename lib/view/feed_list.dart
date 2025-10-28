@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../main.dart';
-import '../api/api.dart';
 import '../api/data_types.dart';
+import '../api/provider.dart';
+import '../util/screen_size.dart';
 import '../widget/article_image.dart';
 import '../widget/transparent_container.dart';
 import 'settings_view.dart';
@@ -15,6 +15,8 @@ class FeedList extends StatefulWidget {
 }
 
 class _FeedListState extends State<FeedList> {
+  double? loadingProgress = 1.0;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -60,7 +62,7 @@ class _FeedListState extends State<FeedList> {
             },
           ),
           FutureBuilder(
-            future: database.query("Account"),
+            future: Api.of(context).getAccounts(),
             builder: (context, accountSnapshot) {
               if (!accountSnapshot.hasData) {
                 return CircularProgressIndicator.adaptive();
@@ -84,19 +86,26 @@ class _FeedListState extends State<FeedList> {
                         ]
                         : accountSnapshot.data!
                             .map(
-                              (acc) => MenuItemButton(
+                              (account) => MenuItemButton(
                                 onPressed: () {
-                                  // widget.onSelect(null, null, "");
-                                  Api.of(
-                                    context,
-                                  ).changeAccount(Account.fromMap(acc));
+                                  setState(() {
+                                    loadingProgress = null;
+                                  });
+                                  Api.of(context).changeAccount(account).then((
+                                    _,
+                                  ) {
+                                    setState(() {
+                                      loadingProgress = 1.0;
+                                    });
+                                  });
                                 },
-                                leadingIcon:
-                                    Api.of(context).account?.id == acc["id"]
-                                        ? Icon(Icons.check)
-                                        : null,
+                                leadingIcon: Icon(
+                                  Api.of(context).account?.id == account.id
+                                      ? Icons.check
+                                      : null,
+                                ),
                                 child: Text(
-                                  "${acc["provider"]}: ${acc["username"]}",
+                                  "${account.username}: ${account.provider}",
                                 ),
                               ),
                             )
@@ -144,24 +153,43 @@ class _FeedListState extends State<FeedList> {
           hasBorder: false,
           child: Align(
             alignment: Alignment.bottomCenter,
-            child: ValueListenableBuilder(
-              valueListenable: Api.of(context).progress,
-              builder: (context, value, child) {
-                return SizedBox(
-                  height: 2.0,
-                  child:
-                      value < 1.0
-                          ? LinearProgressIndicator(value: value)
-                          : null,
-                );
-              },
+            child: SizedBox(
+              height: 2.0,
+              child:
+                  (loadingProgress ?? 0.0) < 1.0
+                      ? LinearProgressIndicator(value: loadingProgress)
+                      : null,
             ),
           ),
         ),
       ),
       extendBody: true,
       extendBodyBehindAppBar: true,
-      body: const CategoryList(),
+      body: RefreshIndicator.adaptive(
+        displacement: kToolbarHeight * 2.5,
+        onRefresh: () async {
+          await for (double? progress in Api.of(
+            context,
+          ).serverSync().handleError((onError) {
+            debugPrint(onError.toString());
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(onError.toString(), maxLines: 3)),
+              );
+              setState(() {
+                loadingProgress = 1.0; // reset progress
+              });
+            } else {
+              debugPrint("Context not mounted");
+            }
+          })) {
+            setState(() {
+              loadingProgress = progress;
+            });
+          }
+        },
+        child: const CategoryList(),
+      ),
       bottomNavigationBar: TransparentContainer(
         hasBorder: false,
         child: SizedBox(height: MediaQuery.paddingOf(context).bottom),
@@ -210,214 +238,179 @@ class _CategoryListState extends State<CategoryList> {
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator.adaptive(
-      displacement: kToolbarHeight * 2.5,
-      onRefresh: () async {
-        await Api.of(context)
-            .serverSync()
-            .then((value) {
-              setState(() {});
-            })
-            .catchError((onError) {
-              debugPrint(onError.toString());
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(onError.toString(), maxLines: 3)),
-                );
-                Api.of(context).progress.value = 1.0;
-              } else {
-                debugPrint("Context not mounted");
-              }
-            });
-      },
-      child:
-          Api.of(context).account == null || Api.of(context).account?.id == null
-              ? Center(child: Text("Please add/select an account"))
-              : Builder(
-                builder: (context) {
-                  bool showAll = Api.of(context).showAll;
-                  int allCount = 0;
-                  for (var element in Api.of(context).counts.entries) {
-                    if (element.key.startsWith("feed/")) {
-                      allCount += element.value;
-                    }
-                  }
-                  List<Category> categories =
-                      Api.of(context).categories.values
-                          .where(
-                            (cat) =>
-                                cat.catID != "user/-/state/com.google/starred",
-                          )
-                          .toList();
-                  return Scrollbar(
-                    child: CustomScrollView(
-                      primary: true,
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      slivers: [
-                        SliverPadding(
-                          padding: EdgeInsetsGeometry.only(
-                            top: MediaQuery.paddingOf(context).top,
-                          ),
+    return Api.of(context).account == null ||
+            Api.of(context).account?.id == null
+        ? Center(child: Text("Please add/select an account"))
+        : Builder(
+          builder: (context) {
+            bool showAll = Api.of(context).showAll;
+            List<Category> categories =
+                Api.of(context).categories.values
+                    .where(
+                      (cat) => cat.catID != "user/-/state/com.google/starred",
+                    )
+                    .toList();
+            return Scrollbar(
+              child: CustomScrollView(
+                primary: true,
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverPadding(
+                    padding: EdgeInsetsGeometry.only(
+                      top: MediaQuery.paddingOf(context).top,
+                    ),
+                  ),
+                  SliverList(
+                    delegate: SliverChildListDelegate([
+                      ListTile(
+                        selected:
+                            Api.of(context).filteredTitle == "All Articles",
+                        title: const Text("All Articles"),
+                        trailing: UnreadCount(
+                          Api.of(context).counts.entries
+                              .where((entry) => entry.key.startsWith("feed/"))
+                              .fold<int>(
+                                0,
+                                (value, element) => value + element.value,
+                              ),
                         ),
-                        SliverList(
-                          delegate: SliverChildListDelegate([
+                        onTap:
+                            () => openArticleList(
+                              context,
+                              null,
+                              null,
+                              "All Articles",
+                            ),
+                      ),
+                      ListTile(
+                        selected: Api.of(context).filteredTitle == "Starred",
+                        title: const Text("Starred"),
+                        trailing: UnreadCount(
+                          Api.of(context).counts["Starred"] ?? 0,
+                        ),
+                        onTap:
+                            () => openArticleList(
+                              context,
+                              "isStarred",
+                              "true",
+                              "Starred",
+                            ),
+                      ),
+                    ]),
+                  ),
+                  SliverList.builder(
+                    itemCount: categories.length,
+                    itemBuilder: (context, index) {
+                      Map<String, Subscription> currentSubscriptions = {};
+                      Api.of(context).subscriptions.values.forEach((value) {
+                        if (value.catID == categories[index].catID) {
+                          currentSubscriptions[value.subID] = value;
+                        }
+                      });
+                      bool isExpanded = true;
+                      if (isOpen.containsKey(categories[index].catID)) {
+                        isExpanded = isOpen[categories[index].catID]!;
+                      } else {
+                        isOpen[categories[index].catID] = true;
+                      }
+                      return Card(
+                        clipBehavior: Clip.hardEdge,
+                        margin: const EdgeInsets.all(8.0),
+                        child: ExpansionTile(
+                          title: Text(categories[index].catID.split("/").last),
+                          shape: const Border(),
+                          initiallyExpanded: isExpanded,
+                          onExpansionChanged: (value) {
+                            setState(() {
+                              isOpen[categories[index].catID] = value;
+                            });
+                          },
+                          controlAffinity: ListTileControlAffinity.leading,
+                          // childrenPadding:
+                          //     const EdgeInsets.only(
+                          //       left: 40.0,
+                          //     ),
+                          children: [
                             ListTile(
                               selected:
                                   Api.of(context).filteredTitle ==
-                                  "All Articles",
-                              title: const Text("All Articles"),
-                              trailing: UnreadCount(allCount),
-                              onTap:
-                                  () => openArticleList(
-                                    context,
-                                    null,
-                                    null,
-                                    "All Articles",
-                                  ),
-                            ),
-                            ListTile(
-                              selected:
-                                  Api.of(context).filteredTitle == "Starred",
-                              title: const Text("Starred"),
+                                  categories[index].catID.split("/").last,
+                              title: Text(
+                                "All ${categories[index].catID.split("/").last}",
+                              ),
                               trailing: UnreadCount(
-                                Api.of(context).counts["Starred"] ?? 0,
+                                Api.of(context).counts[categories[index]
+                                        .catID] ??
+                                    0,
                               ),
                               onTap:
                                   () => openArticleList(
                                     context,
-                                    "isStarred",
-                                    "true",
-                                    "Starred",
+                                    "tag",
+                                    categories[index].catID,
+                                    categories[index].catID.split("/").last,
                                   ),
                             ),
-                          ]),
-                        ),
-                        SliverList.builder(
-                          itemCount: categories.length,
-                          itemBuilder: (context, index) {
-                            Map<String, Subscription> currentSubscriptions = {};
-                            Api.of(context).subscriptions.values.forEach((
-                              value,
-                            ) {
-                              if (value.catID == categories[index].catID) {
-                                currentSubscriptions[value.subID] = value;
-                              }
-                            });
-                            bool isExpanded = true;
-                            if (isOpen.containsKey(categories[index].catID)) {
-                              isExpanded = isOpen[categories[index].catID]!;
-                            } else {
-                              isOpen[categories[index].catID] = true;
-                            }
-                            return Card(
-                              clipBehavior: Clip.hardEdge,
-                              margin: const EdgeInsets.all(8.0),
-                              child: ExpansionTile(
-                                title: Text(
-                                  categories[index].catID.split("/").last,
-                                ),
-                                shape: const Border(),
-                                initiallyExpanded: isExpanded,
-                                onExpansionChanged: (value) {
-                                  setState(() {
-                                    isOpen[categories[index].catID] = value;
-                                  });
-                                },
-                                controlAffinity:
-                                    ListTileControlAffinity.leading,
-                                // childrenPadding:
-                                //     const EdgeInsets.only(
-                                //       left: 40.0,
-                                //     ),
-                                children: [
-                                  ListTile(
+                            ...currentSubscriptions.keys
+                                .where(
+                                  (sub) =>
+                                      showAll ||
+                                      (Api.of(context).counts[sub] ?? 0) > 0,
+                                )
+                                .map<Widget>((key) {
+                                  return ListTile(
+                                    // shape: Border(
+                                    //   top: BorderSide(
+                                    //     color:
+                                    //         Theme.of(
+                                    //           context,
+                                    //         ).scaffoldBackgroundColor,
+                                    //     width: 2.0,
+                                    //   ),
+                                    // ),
                                     selected:
                                         Api.of(context).filteredTitle ==
-                                        categories[index].catID.split("/").last,
+                                        currentSubscriptions[key]!.title,
                                     title: Text(
-                                      "All ${categories[index].catID.split("/").last}",
+                                      currentSubscriptions[key]!.title,
                                     ),
                                     trailing: UnreadCount(
-                                      Api.of(context).counts[categories[index]
-                                              .catID] ??
-                                          0,
+                                      Api.of(context).counts[key] ?? 0,
                                     ),
-                                    onTap:
-                                        () => openArticleList(
-                                          context,
-                                          "tag",
-                                          categories[index].catID,
-                                          categories[index].catID
-                                              .split("/")
-                                              .last,
-                                        ),
-                                  ),
-                                  ...currentSubscriptions.keys
-                                      .where(
-                                        (sub) =>
-                                            showAll ||
-                                            (Api.of(context).counts[sub] ?? 0) >
-                                                0,
-                                      )
-                                      .map<Widget>((key) {
-                                        return ListTile(
-                                          // shape: Border(
-                                          //   top: BorderSide(
-                                          //     color:
-                                          //         Theme.of(
-                                          //           context,
-                                          //         ).scaffoldBackgroundColor,
-                                          //     width: 2.0,
-                                          //   ),
-                                          // ),
-                                          selected:
-                                              Api.of(context).filteredTitle ==
-                                              currentSubscriptions[key]!.title,
-                                          title: Text(
-                                            currentSubscriptions[key]!.title,
-                                          ),
-                                          trailing: UnreadCount(
-                                            Api.of(context).counts[key] ?? 0,
-                                          ),
-                                          leading: ArticleImage(
-                                            imageUrl: Api.of(
-                                              context,
-                                            ).getIconUrl(
-                                              currentSubscriptions[key]!
-                                                  .iconUrl,
-                                            ),
-                                            height: 28,
-                                            width: 28,
-                                            onError:
-                                                (error) =>
-                                                    const Icon(Icons.error),
-                                          ),
-                                          onTap: () {
-                                            openArticleList(
-                                              context,
-                                              "subID",
-                                              currentSubscriptions[key]!.subID
-                                                  .toString(),
-                                              currentSubscriptions[key]!.title,
-                                            );
-                                          },
-                                        );
-                                      }),
-                                ],
-                              ),
-                            );
-                          },
+                                    leading: ArticleImage(
+                                      imageUrl: Api.of(context).getIconUrl(
+                                        currentSubscriptions[key]!.iconUrl,
+                                      ),
+                                      height: 28,
+                                      width: 28,
+                                      onError:
+                                          (error) => const Icon(Icons.error),
+                                    ),
+                                    onTap: () {
+                                      openArticleList(
+                                        context,
+                                        "subID",
+                                        currentSubscriptions[key]!.subID
+                                            .toString(),
+                                        currentSubscriptions[key]!.title,
+                                      );
+                                    },
+                                  );
+                                }),
+                          ],
                         ),
-                        SliverPadding(
-                          padding: EdgeInsetsGeometry.only(
-                            bottom: MediaQuery.paddingOf(context).bottom,
-                          ),
-                        ),
-                      ],
+                      );
+                    },
+                  ),
+                  SliverPadding(
+                    padding: EdgeInsetsGeometry.only(
+                      bottom: MediaQuery.paddingOf(context).bottom,
                     ),
-                  );
-                },
+                  ),
+                ],
               ),
-    );
+            );
+          },
+        );
   }
 }

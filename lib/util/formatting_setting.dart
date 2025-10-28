@@ -35,32 +35,40 @@ class FormattingSetting extends ChangeNotifier {
     "Times New Roman",
   ];
   bool isLetterHighlight = false;
+  final DB database;
 
-  FormattingSetting() {
+  FormattingSetting(this.database) {
     load();
   }
 
   void load() async {
     fontSize =
-        double.tryParse(await getPreference("format_fontSize") ?? "") ??
+        double.tryParse(
+          await database.getPreference("format_fontSize") ?? "",
+        ) ??
         fontSize;
     wordSpacing =
-        double.tryParse(await getPreference("format_wordSpacing") ?? "") ??
+        double.tryParse(
+          await database.getPreference("format_wordSpacing") ?? "",
+        ) ??
         wordSpacing;
     lineHeight =
-        double.tryParse(await getPreference("format_lineHeight") ?? "") ??
+        double.tryParse(
+          await database.getPreference("format_lineHeight") ?? "",
+        ) ??
         lineHeight;
-    font = await getPreference("format_font") ?? font;
-    isLetterHighlight = (await getPreference("format_bionic") == "true");
+    font = await database.getPreference("format_font") ?? font;
+    isLetterHighlight =
+        (await database.getPreference("format_bionic") == "true");
     notifyListeners();
   }
 
   void save() async {
-    setPreference("format_fontSize", fontSize.toString());
-    setPreference("format_wordSpacing", wordSpacing.toString());
-    setPreference("format_lineHeight", lineHeight.toString());
-    setPreference("format_font", font);
-    setPreference(
+    database.setPreference("format_fontSize", fontSize.toString());
+    database.setPreference("format_wordSpacing", wordSpacing.toString());
+    database.setPreference("format_lineHeight", lineHeight.toString());
+    database.setPreference("format_font", font);
+    database.setPreference(
       "format_letterHighlight",
       isLetterHighlight ? "true" : "false",
     );
