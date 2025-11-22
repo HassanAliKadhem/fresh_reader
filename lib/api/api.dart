@@ -630,6 +630,7 @@ class ApiData extends ChangeNotifier {
   }
 
   Article? setRead(String id, String subID, bool isRead) {
+    debugPrint("Set article: $id as ${isRead ? "Read" : "Unread"}");
     if (filteredArticles != null && filteredArticles!.containsKey(id)) {
       int count() {
         return filteredArticles!.values
@@ -678,6 +679,7 @@ class ApiData extends ChangeNotifier {
     String? filterColumn,
     String? filterValue,
     String title,
+    int todaySecondsSinceEpoch,
   ) async {
     if (account == null) {
       debugPrint("No Account selected");
@@ -693,6 +695,7 @@ class ApiData extends ChangeNotifier {
           filterColumn: filterColumn,
           filterValue: filterValue,
           accountID: account!.id,
+          todaySecondsSinceEpoch: todaySecondsSinceEpoch,
         )
         .then((value) {
           filteredArticleIDs = value.keys.toSet();

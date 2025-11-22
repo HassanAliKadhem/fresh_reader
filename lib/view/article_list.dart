@@ -10,6 +10,7 @@ import 'package:fresh_reader/widget/article_image.dart';
 import '../api/data_types.dart';
 import '../api/provider.dart';
 import '../main.dart';
+import '../util/formatting_setting.dart';
 import '../util/screen_size.dart';
 import '../widget/transparent_container.dart';
 import 'article_view.dart';
@@ -283,12 +284,16 @@ class _ArticleTileState extends State<ArticleTile> {
           if (Api.of(context).filteredArticles != null &&
               Api.of(context).filteredArticles![widget.article.articleID] !=
                   null) {
+            bool newValue =
+                Preferences.of(context).markReadWhenOpen
+                    ? true
+                    : widget.article.read;
             currentArticleNotifier.value = Api.of(context).setRead(
               widget.article.articleID,
               Api.of(
                 context,
               ).filteredArticles![widget.article.articleID]!.subID,
-              true,
+              newValue,
             );
           }
         },

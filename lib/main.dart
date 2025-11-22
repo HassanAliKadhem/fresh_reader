@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:extended_image/extended_image.dart';
 import 'package:fresh_reader/api/provider.dart';
 
 import 'api/api.dart';
@@ -19,17 +18,6 @@ void main() {
   getDatabase()
       .then((db) {
         DB database = DB(db);
-        // delete old image caches
-        database.getPreference("read_duration").then((onValue) {
-          debugPrint("read_duration: $onValue");
-          if (onValue != null) {
-            int? val = onValue == "-1" ? null : int.tryParse(onValue);
-            if (val != null) {
-              debugPrint("Clear cache older than $val days.");
-              clearDiskCachedImages(duration: Duration(days: val));
-            }
-          }
-        });
         runApp(MyApp(apiData: ApiData(database)));
       })
       .catchError((error) {
@@ -52,8 +40,8 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return Api(
       notifier: widget.apiData,
-      child: Formatting(
-        notifier: FormattingSetting(widget.apiData.database),
+      child: Preferences(
+        notifier: PreferencesData(widget.apiData.database),
         child: MaterialApp(
           title: 'Fresh Reader',
           themeMode: ThemeMode.dark,

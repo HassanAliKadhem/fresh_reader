@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../api/data_types.dart';
 import '../api/provider.dart';
+import '../util/date.dart';
+import '../util/formatting_setting.dart';
 import '../util/screen_size.dart';
 import '../widget/article_image.dart';
 import '../widget/transparent_container.dart';
@@ -231,9 +233,13 @@ class _CategoryListState extends State<CategoryList> {
     String? value,
     String title,
   ) {
-    Api.of(
-      context,
-    ).getFilteredArticles(Api.of(context).showAll, column, value, title);
+    Api.of(context).getFilteredArticles(
+      Api.of(context).showAll,
+      column,
+      value,
+      title,
+      getTodaySecondsSinceEpoch(),
+    );
   }
 
   @override
@@ -280,6 +286,20 @@ class _CategoryListState extends State<CategoryList> {
                               null,
                               null,
                               "All Articles",
+                            ),
+                      ),
+                      ListTile(
+                        selected: Api.of(context).filteredTitle == "Today",
+                        title: const Text("Today"),
+                        trailing: UnreadCount(
+                          Api.of(context).counts["Today"] ?? 0,
+                        ),
+                        onTap:
+                            () => openArticleList(
+                              context,
+                              "timeStampPublished",
+                              null,
+                              "Today",
                             ),
                       ),
                       ListTile(

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:fresh_reader/util/formatting_setting.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api/data_types.dart';
 import '../api/provider.dart';
 import '../widget/adaptive_text_field.dart';
 
-const version = "1.2.12";
+const version = "1.2.13";
 
 class SettingsDialog extends StatelessWidget {
   const SettingsDialog({super.key});
@@ -79,6 +80,15 @@ class _SettingsContentState extends State<SettingsContent> {
         AccountDetails(),
         Divider(indent: 8.0, endIndent: 8.0),
         ListTile(title: Text("Other settings"), dense: true),
+        CheckboxListTile.adaptive(
+          title: Text("Set article as read when open"),
+          value: Preferences.of(context).markReadWhenOpen,
+          onChanged: (val) {
+            if (val != null) {
+              Preferences.of(context).setMarkReadWhenOpen(val);
+            }
+          },
+        ),
         const ReadDurationTile(
           title: "Keep read articles",
           dbKey: "read_duration",
@@ -381,54 +391,54 @@ class ReadDurationTile extends StatefulWidget {
 class _ReadDurationTileState extends State<ReadDurationTile> {
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: Api.of(context).database.getPreference(widget.dbKey),
-      builder: (context, asyncSnapshot) {
-        return ListTile(
-          title: Text(widget.title),
-          subtitle: Text(
-            asyncSnapshot.data != null
-                ? widget.values[int.tryParse(asyncSnapshot.data!)] ??
-                    asyncSnapshot.data!
-                : widget.values.values.first,
-          ),
-          onTap: () {
-            showAdaptiveDialog(
-              context: context,
-              barrierDismissible: true,
-              builder: (context) {
-                return AlertDialog(
-                  scrollable: true,
-                  title: Text(widget.title),
-                  content: RadioGroup(
-                    groupValue: asyncSnapshot.data,
-                    onChanged: (newVal) {
-                      if (newVal != null) {
-                        setState(() {
-                          Api.of(
-                            context,
-                          ).database.setPreference(widget.dbKey, newVal);
-                        });
+    int? value =
+        widget.dbKey == "read_duration"
+            ? Preferences.of(context).readDuration
+            : Preferences.of(context).starDuration;
+    return ListTile(
+      title: Text(widget.title),
+      subtitle: Text(
+        value != null
+            ? widget.values[value] ?? value.toString()
+            : widget.values.values.first,
+      ),
+      onTap: () {
+        showAdaptiveDialog(
+          context: context,
+          barrierDismissible: true,
+          builder: (context) {
+            return AlertDialog(
+              scrollable: true,
+              title: Text(widget.title),
+              content: RadioGroup(
+                groupValue: value,
+                onChanged: (newVal) {
+                  if (newVal != null) {
+                    setState(() {
+                      if (widget.dbKey == "read_duration") {
+                        Preferences.of(context).setReadDuration(newVal);
+                      } else {
+                        Preferences.of(context).setStarDuration(newVal);
                       }
-                      Navigator.pop(context);
-                    },
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children:
-                          widget.values.entries
-                              .map(
-                                (element) => RadioListTile.adaptive(
-                                  dense: true,
-                                  title: Text(element.value),
-                                  value: element.key.toString(),
-                                  toggleable: true,
-                                ),
-                              )
-                              .toList(),
-                    ),
-                  ),
-                );
-              },
+                    });
+                  }
+                  Navigator.pop(context);
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children:
+                      widget.values.entries
+                          .map(
+                            (element) => RadioListTile.adaptive(
+                              dense: true,
+                              title: Text(element.value),
+                              value: element.key,
+                              toggleable: true,
+                            ),
+                          )
+                          .toList(),
+                ),
+              ),
             );
           },
         );

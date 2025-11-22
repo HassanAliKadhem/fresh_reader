@@ -294,14 +294,14 @@ class FormattingDialog extends StatelessWidget {
             ),
             (Platform.isIOS || Platform.isMacOS)
                 ? CupertinoSlidingSegmentedControl(
-                  groupValue: Formatting.of(context).font,
+                  groupValue: Preferences.of(context).font,
                   thumbColor: Theme.of(context).colorScheme.onPrimary,
                   onValueChanged: (value) {
                     if (value != null) {
-                      Formatting.of(context).setFontFamily(value);
+                      Preferences.of(context).setFontFamily(value);
                     }
                   },
-                  children: Formatting.of(context).fonts.asMap().map(
+                  children: Preferences.of(context).fonts.asMap().map(
                     (i, font) => MapEntry(
                       font,
                       Padding(
@@ -313,7 +313,7 @@ class FormattingDialog extends StatelessWidget {
                 )
                 : SegmentedButton<String>(
                   segments:
-                      Formatting.of(context).fonts
+                      Preferences.of(context).fonts
                           .map(
                             (font) => ButtonSegment(
                               value: font,
@@ -321,10 +321,10 @@ class FormattingDialog extends StatelessWidget {
                             ),
                           )
                           .toList(),
-                  selected: {Formatting.of(context).font},
+                  selected: {Preferences.of(context).font},
                   onSelectionChanged: (Set<String> newSelection) {
                     if (newSelection.isNotEmpty) {
-                      Formatting.of(context).setFontFamily(newSelection.first);
+                      Preferences.of(context).setFontFamily(newSelection.first);
                     }
                   },
                   showSelectedIcon: false,
@@ -344,12 +344,12 @@ class FormattingDialog extends StatelessWidget {
                           ),
                           Text("Size"),
                           Slider.adaptive(
-                            value: Formatting.of(context).fontSize,
-                            label: Formatting.of(context).fontSize.toString(),
+                            value: Preferences.of(context).fontSize,
+                            label: Preferences.of(context).fontSize.toString(),
                             min: 10.0,
                             max: 30.0,
                             onChanged: (v) {
-                              Formatting.of(context).setSize(v);
+                              Preferences.of(context).setSize(v);
                             },
                           ),
                         ],
@@ -361,12 +361,12 @@ class FormattingDialog extends StatelessWidget {
                           ),
                           Text("Line"),
                           Slider.adaptive(
-                            value: Formatting.of(context).lineHeight,
-                            label: Formatting.of(context).lineHeight.toString(),
+                            value: Preferences.of(context).lineHeight,
+                            label: Preferences.of(context).lineHeight.toString(),
                             min: 1.0,
                             max: 2.0,
                             onChanged: (v) {
-                              Formatting.of(context).setLineHeight(v);
+                              Preferences.of(context).setLineHeight(v);
                             },
                           ),
                         ],
@@ -374,13 +374,13 @@ class FormattingDialog extends StatelessWidget {
                           Icon(Icons.space_bar),
                           Text("Word"),
                           Slider.adaptive(
-                            value: Formatting.of(context).wordSpacing,
+                            value: Preferences.of(context).wordSpacing,
                             label:
-                                Formatting.of(context).wordSpacing.toString(),
+                                Preferences.of(context).wordSpacing.toString(),
                             min: 0.0,
                             max: 10.0,
                             onChanged: (v) {
-                              Formatting.of(context).setSpacing(v);
+                              Preferences.of(context).setSpacing(v);
                             },
                           ),
                         ],

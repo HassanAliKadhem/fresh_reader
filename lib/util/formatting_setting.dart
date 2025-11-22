@@ -1,29 +1,32 @@
 import 'dart:io';
 
+import 'package:extended_image/extended_image.dart';
 import 'package:flutter/widgets.dart';
 
 import '../api/database.dart';
 
-class Formatting extends InheritedNotifier<FormattingSetting> {
-  const Formatting({super.key, required super.child, required super.notifier});
+class Preferences extends InheritedNotifier<PreferencesData> {
+  const Preferences({super.key, required super.child, required super.notifier});
 
-  static FormattingSetting of(BuildContext context) {
+  static PreferencesData of(BuildContext context) {
     assert(
-      context.dependOnInheritedWidgetOfExactType<Formatting>() != null,
-      "Formatting not found in current context",
+      context.dependOnInheritedWidgetOfExactType<Preferences>() != null,
+      "Preferences not found in current context",
     );
-    return context.dependOnInheritedWidgetOfExactType<Formatting>()!.notifier!;
+    return context.dependOnInheritedWidgetOfExactType<Preferences>()!.notifier!;
   }
 
   @override
   bool updateShouldNotify(
-    covariant InheritedNotifier<FormattingSetting> oldWidget,
+    covariant InheritedNotifier<PreferencesData> oldWidget,
   ) {
     return notifier != oldWidget.notifier;
   }
 }
 
-class FormattingSetting extends ChangeNotifier {
+class PreferencesData extends ChangeNotifier {
+  final DB database;
+
   double fontSize = 14.0;
   double wordSpacing = 0.0;
   double lineHeight = 1.5;
@@ -35,9 +38,11 @@ class FormattingSetting extends ChangeNotifier {
     "Times New Roman",
   ];
   bool isLetterHighlight = false;
-  final DB database;
+  int? readDuration;
+  int? starDuration;
+  bool markReadWhenOpen = true;
 
-  FormattingSetting(this.database) {
+  PreferencesData(this.database) {
     load();
   }
 
@@ -60,6 +65,24 @@ class FormattingSetting extends ChangeNotifier {
     font = await database.getPreference("format_font") ?? font;
     isLetterHighlight =
         (await database.getPreference("format_bionic") == "true");
+    markReadWhenOpen =
+        ((await database.getPreference("read_when_open") ?? "true") == "true");
+    readDuration = int.tryParse(
+      await database.getPreference("read_duration") ?? "",
+    );
+    starDuration = int.tryParse(
+      await database.getPreference("star_duration") ?? "",
+    );
+    // debugPrint("readDuration: $readDuration");
+    if (readDuration != null && readDuration != -1) {
+      // delete old image caches
+      debugPrint("Clear cache older than $readDuration days.");
+      clearDiskCachedImages(duration: Duration(days: readDuration!)).then((
+        done,
+      ) {
+        debugPrint("Clear cache successful: $done");
+      });
+    }
     notifyListeners();
   }
 
@@ -72,12 +95,33 @@ class FormattingSetting extends ChangeNotifier {
       "format_letterHighlight",
       isLetterHighlight ? "true" : "false",
     );
+    database.setPreference(
+      "read_when_open",
+      markReadWhenOpen ? "true" : "false",
+    );
+    database.setPreference("read_duration", readDuration.toString());
+    database.setPreference("star_duration", starDuration.toString());
   }
 
   @override
   void notifyListeners() {
     super.notifyListeners();
     save();
+  }
+
+  void setMarkReadWhenOpen(bool val) {
+    markReadWhenOpen = val;
+    notifyListeners();
+  }
+
+  void setReadDuration(int? duration) {
+    readDuration = duration;
+    notifyListeners();
+  }
+
+  void setStarDuration(int? duration) {
+    starDuration = duration;
+    notifyListeners();
   }
 
   void setSize(double newSize) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fresh_reader/util/date.dart';
 // import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -295,6 +296,19 @@ class DB {
           MapEntry(value["subID"] as String, value["COUNT(id)"] as int)),
     );
 
+    Object? todayCount =
+        (await database.query(
+          "Articles",
+          columns: ["COUNT(id)"],
+          where:
+              "accountID = ? and timeStampPublished > ${getTodaySecondsSinceEpoch()} ${(!showAll ? " and isRead = ?" : "")}",
+          whereArgs: [accountID, if (!showAll) "false"],
+        )).firstOrNull?.values.firstOrNull;
+
+    if (todayCount != null) {
+      counts["Today"] = todayCount as int;
+    }
+
     List<Map<String, Object?>> categories = await database.query(
       "Categories",
       columns: ["catID"],
@@ -332,11 +346,16 @@ class DB {
     String? filterColumn,
     String? filterValue,
     required int accountID,
+    required int todaySecondsSinceEpoch,
   }) async {
     late List<Map<String, Object?>> articles;
     if (filterColumn == "tag") {
       articles = await database.rawQuery(
         "select articleID, subID from Articles where accountID = $accountID and subID in (select subID from Subscriptions where catID = '$filterValue') ${showAll == false ? "and isRead = 'false'" : ""} order by timeStampPublished DESC",
+      );
+    } else if (filterColumn == "timeStampPublished") {
+      articles = await database.rawQuery(
+        "select articleID, subID from Articles where accountID = $accountID and timeStampPublished > $todaySecondsSinceEpoch ${showAll == false ? "and isRead = 'false'" : ""} order by timeStampPublished DESC",
       );
     } else {
       String? where;

@@ -52,16 +52,18 @@ class _ArticleViewState extends State<ArticleView> {
   }
 
   void onPageChanged(int page) {
-    Api.of(context).selectedIndex = page;
-    currentArticleNotifier.value = Api.of(context).setRead(
-      Api.of(
-        context,
-      ).filteredArticles![Api.of(context).searchResults![page]]!.articleID,
-      Api.of(
-        context,
-      ).filteredArticles![Api.of(context).searchResults![page]]!.subID,
-      true,
-    );
+    if (Preferences.of(context).markReadWhenOpen) {
+      Api.of(context).selectedIndex = page;
+      currentArticleNotifier.value = Api.of(context).setRead(
+        Api.of(
+          context,
+        ).filteredArticles![Api.of(context).searchResults![page]]!.articleID,
+        Api.of(
+          context,
+        ).filteredArticles![Api.of(context).searchResults![page]]!.subID,
+        true,
+      );
+    }
   }
 
   @override
@@ -499,11 +501,11 @@ class ArticleTextWidget extends StatelessWidget {
     );
     return AnimatedDefaultTextStyle(
       style: TextStyle(
-        fontFamily: Formatting.of(context).font,
+        fontFamily: Preferences.of(context).font,
         // fontFamilyFallback: [formattingSetting.fonts[0]],
-        fontSize: Formatting.of(context).fontSize,
-        wordSpacing: Formatting.of(context).wordSpacing,
-        height: Formatting.of(context).lineHeight,
+        fontSize: Preferences.of(context).fontSize,
+        wordSpacing: Preferences.of(context).wordSpacing,
+        height: Preferences.of(context).lineHeight,
       ),
       duration: const Duration(milliseconds: 100),
       child: SelectionArea(

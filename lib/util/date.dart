@@ -45,3 +45,9 @@ int getDifferenceInDays(int secondsSinceEpoch) {
   Duration difference = now.difference(articleTime);
   return difference.inDays;
 }
+
+int getTodaySecondsSinceEpoch() {
+  DateTime today = DateTime.now();
+  DateTime startOfDay = DateTime(today.year, today.month, today.day);
+  return (startOfDay.millisecondsSinceEpoch ~/ 1000);
+}
