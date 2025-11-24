@@ -273,12 +273,9 @@ class _CategoryListState extends State<CategoryList> {
                             Api.of(context).filteredTitle == "All Articles",
                         title: const Text("All Articles"),
                         trailing: UnreadCount(
-                          Api.of(context).counts.entries
-                              .where((entry) => entry.key.startsWith("feed/"))
-                              .fold<int>(
-                                0,
-                                (value, element) => value + element.value,
-                              ),
+                          Api.of(context).articlesMetaData.values
+                              .where((a) => showAll || !a.$3)
+                              .length,
                         ),
                         onTap:
                             () => openArticleList(
@@ -292,7 +289,13 @@ class _CategoryListState extends State<CategoryList> {
                         selected: Api.of(context).filteredTitle == "Today",
                         title: const Text("Today"),
                         trailing: UnreadCount(
-                          Api.of(context).counts["Today"] ?? 0,
+                          Api.of(context).articlesMetaData.values
+                              .where(
+                                (a) =>
+                                    a.$1 > getTodaySecondsSinceEpoch() &&
+                                    (showAll || !a.$3),
+                              )
+                              .length,
                         ),
                         onTap:
                             () => openArticleList(
@@ -302,11 +305,47 @@ class _CategoryListState extends State<CategoryList> {
                               "Today",
                             ),
                       ),
+                      if (Preferences.of(context).showLastSync)
+                        FutureBuilder(
+                          future: Api.of(context).database.getLastSyncIDs(
+                            Api.of(context).account!.id,
+                          ),
+                          builder: (context, snapshot) {
+                            int count =
+                                showAll
+                                    ? (snapshot.data?.length ?? 0)
+                                    : snapshot.data
+                                            ?.where(
+                                              (id) =>
+                                                  !(Api.of(context)
+                                                          .articlesMetaData[id]
+                                                          ?.$3 ??
+                                                      true),
+                                            )
+                                            .length ??
+                                        0;
+                            return ListTile(
+                              selected:
+                                  Api.of(context).filteredTitle == "lastSync",
+                              title: const Text("last Sync Articles"),
+                              trailing: UnreadCount(count),
+                              onTap:
+                                  () => openArticleList(
+                                    context,
+                                    null,
+                                    null,
+                                    "lastSync",
+                                  ),
+                            );
+                          },
+                        ),
                       ListTile(
                         selected: Api.of(context).filteredTitle == "Starred",
                         title: const Text("Starred"),
                         trailing: UnreadCount(
-                          Api.of(context).counts["Starred"] ?? 0,
+                          Api.of(context).articlesMetaData.values
+                              .where((a) => a.$4 && (showAll || !a.$3))
+                              .length,
                         ),
                         onTap:
                             () => openArticleList(
@@ -359,9 +398,15 @@ class _CategoryListState extends State<CategoryList> {
                                 "All ${categories[index].catID.split("/").last}",
                               ),
                               trailing: UnreadCount(
-                                Api.of(context).counts[categories[index]
-                                        .catID] ??
-                                    0,
+                                Api.of(context).articlesMetaData.values
+                                    .where(
+                                      (a) =>
+                                          currentSubscriptions.keys.contains(
+                                            a.$2,
+                                          ) &&
+                                          (showAll || !a.$3),
+                                    )
+                                    .length,
                               ),
                               onTap:
                                   () => openArticleList(
@@ -375,7 +420,13 @@ class _CategoryListState extends State<CategoryList> {
                                 .where(
                                   (sub) =>
                                       showAll ||
-                                      (Api.of(context).counts[sub] ?? 0) > 0,
+                                      Api.of(context).articlesMetaData.values
+                                          .where(
+                                            (a) =>
+                                                a.$2 == sub &&
+                                                (showAll || !a.$3),
+                                          )
+                                          .isNotEmpty,
                                 )
                                 .map<Widget>((key) {
                                   return ListTile(
@@ -395,7 +446,13 @@ class _CategoryListState extends State<CategoryList> {
                                       currentSubscriptions[key]!.title,
                                     ),
                                     trailing: UnreadCount(
-                                      Api.of(context).counts[key] ?? 0,
+                                      Api.of(context).articlesMetaData.values
+                                          .where(
+                                            (a) =>
+                                                a.$2 == key &&
+                                                (showAll || !a.$3),
+                                          )
+                                          .length,
                                     ),
                                     leading: ArticleImage(
                                       imageUrl: Api.of(context).getIconUrl(

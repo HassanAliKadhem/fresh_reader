@@ -18,7 +18,15 @@ void main() {
   getDatabase()
       .then((db) {
         DB database = DB(db);
-        runApp(MyApp(apiData: ApiData(database)));
+        runApp(
+          Api(
+            notifier: ApiData(database),
+            child: Preferences(
+              notifier: PreferencesData(database),
+              child: MyApp(),
+            ),
+          ),
+        );
       })
       .catchError((error) {
         // show error if can't open database
@@ -28,8 +36,7 @@ void main() {
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key, required this.apiData});
-  final ApiData apiData;
+  const MyApp({super.key});
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -38,46 +45,42 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
-    return Api(
-      notifier: widget.apiData,
-      child: Preferences(
-        notifier: PreferencesData(widget.apiData.database),
-        child: MaterialApp(
-          title: 'Fresh Reader',
-          themeMode: ThemeMode.dark,
-          darkTheme: ThemeData(
-            cupertinoOverrideTheme: CupertinoThemeData(
-              primaryColor: Colors.deepPurple,
-              brightness: Brightness.dark,
-              textTheme: CupertinoTextThemeData(
-                primaryColor: Colors.grey.shade600,
-              ),
-            ),
-            useMaterial3: true,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: Colors.deepPurple,
-              brightness: Brightness.dark,
-            ),
-            appBarTheme: const AppBarTheme(
-              backgroundColor: Colors.transparent,
-              scrolledUnderElevation: 0,
-              systemOverlayStyle: SystemUiOverlayStyle(
-                statusBarColor: Colors.transparent,
-                systemStatusBarContrastEnforced: false,
-                statusBarIconBrightness: Brightness.light,
-                systemNavigationBarColor: Colors.transparent,
-                systemNavigationBarDividerColor: Colors.transparent,
-                systemNavigationBarContrastEnforced: false,
-                systemNavigationBarIconBrightness: Brightness.light,
-              ),
-            ),
-            listTileTheme: ListTileThemeData(selectedTileColor: Colors.white10),
-            sliderTheme: SliderThemeData(year2023: false),
-            progressIndicatorTheme: ProgressIndicatorThemeData(year2023: false),
-          ),
-          home: const HomeWidget(),
+    return MaterialApp(
+      title: 'Fresh Reader',
+      themeMode: ThemeMode.dark,
+      darkTheme: ThemeData(
+        cupertinoOverrideTheme: CupertinoThemeData(
+          primaryColor: Colors.deepPurple,
+          brightness: Brightness.dark,
+          textTheme: CupertinoTextThemeData(primaryColor: Colors.grey.shade600),
         ),
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
+          brightness: Brightness.dark,
+          surface: [
+            null,
+            Colors.black,
+          ][Preferences.of(context).themeIndex], // for AMOLED black
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.transparent,
+          scrolledUnderElevation: 0,
+          systemOverlayStyle: SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            systemStatusBarContrastEnforced: false,
+            statusBarIconBrightness: Brightness.light,
+            systemNavigationBarColor: Colors.transparent,
+            systemNavigationBarDividerColor: Colors.transparent,
+            systemNavigationBarContrastEnforced: false,
+            systemNavigationBarIconBrightness: Brightness.light,
+          ),
+        ),
+        listTileTheme: ListTileThemeData(selectedTileColor: Colors.white10),
+        sliderTheme: SliderThemeData(year2023: false),
+        progressIndicatorTheme: ProgressIndicatorThemeData(year2023: false),
       ),
+      home: const HomeWidget(),
     );
   }
 }
@@ -115,63 +118,60 @@ class _HomeWidgetState extends State<HomeWidget> {
         pages: [
           MaterialPage(
             name: "/",
-            child:
-                screenSizeOf(context) != ScreenSize.big
-                    ? const FeedList()
-                    : Stack(
-                      alignment: Alignment.centerLeft,
-                      children: [
-                        SizedBox(
-                          width: (MediaQuery.sizeOf(context).width / 4),
-                          child: const FeedList(),
-                        ),
-                        Row(
-                          children: [
-                            ValueListenableBuilder(
-                              valueListenable: isExpanded,
-                              builder: (context, value, child) {
-                                return AnimatedSize(
-                                  duration: Duration(milliseconds: 400),
-                                  alignment: Alignment.centerLeft,
-                                  child: SizedBox(
-                                    width:
-                                        (screenSizeOf(context) ==
-                                                    ScreenSize.big &&
-                                                value)
-                                            ? 0.0
-                                            : (MediaQuery.sizeOf(
-                                                  context,
-                                                ).width /
-                                                4),
-                                  ),
-                                );
-                              },
-                            ),
-                            // VerticalDivider(width: 1.0),
-                            const Expanded(flex: 2, child: ArticleList()),
-                            // VerticalDivider(width: 1.0),
-                            if (screenSizeOf(context) == ScreenSize.big)
-                              Expanded(
-                                flex: 3,
-                                child: ArticleView(
-                                  key: ValueKey(Api.of(context).filteredTitle),
-                                  index: Api.of(context).selectedIndex,
-                                  articleIDs:
-                                      Api.of(context).searchResults?.toSet(),
+            child: screenSizeOf(context) != ScreenSize.big
+                ? const FeedList()
+                : Stack(
+                    alignment: Alignment.centerLeft,
+                    children: [
+                      SizedBox(
+                        width: (MediaQuery.sizeOf(context).width / 4),
+                        child: const FeedList(),
+                      ),
+                      Row(
+                        children: [
+                          ValueListenableBuilder(
+                            valueListenable: isExpanded,
+                            builder: (context, value, child) {
+                              return AnimatedSize(
+                                duration: Duration(milliseconds: 400),
+                                alignment: Alignment.centerLeft,
+                                child: SizedBox(
+                                  width:
+                                      (screenSizeOf(context) ==
+                                              ScreenSize.big &&
+                                          value)
+                                      ? 0.0
+                                      : (MediaQuery.sizeOf(context).width / 4),
                                 ),
+                              );
+                            },
+                          ),
+                          // VerticalDivider(width: 1.0),
+                          const Expanded(flex: 2, child: ArticleList()),
+                          // VerticalDivider(width: 1.0),
+                          if (screenSizeOf(context) == ScreenSize.big)
+                            Expanded(
+                              flex: 3,
+                              child: ArticleView(
+                                key: ValueKey(Api.of(context).filteredTitle),
+                                index: Api.of(context).selectedIndex,
+                                articleIDs: Api.of(
+                                  context,
+                                ).searchResults?.toSet(),
                               ),
-                          ],
-                        ),
-                      ],
-                    ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
           ),
           if (Api.of(context).account == null && Api.of(context).justBooted)
             screenSizeOf(context) == ScreenSize.big
                 ? const MaterialPage(
-                  name: "/settings",
-                  fullscreenDialog: true,
-                  child: SettingsDialog(),
-                )
+                    name: "/settings",
+                    fullscreenDialog: true,
+                    child: SettingsDialog(),
+                  )
                 : const MaterialPage(name: "/settings", child: SettingsPage()),
           if (screenSizeOf(context) == ScreenSize.medium &&
               Api.of(context).filteredArticleIDs != null)

@@ -16,12 +16,18 @@ class ApiData extends ChangeNotifier {
 
   Map<String, Subscription> subscriptions = <String, Subscription>{};
   Map<String, Category> categories = <String, Category>{};
-  Map<String, int> counts = <String, int>{};
+  // Map<String, int> counts = <String, int>{};
   Set<String>? filteredArticleIDs;
   Map<String, Article>? filteredArticles;
+  Map<String, (int, String, bool, bool)> articlesMetaData = {};
   List<String>? searchResults;
   String? filteredTitle;
-  int? selectedIndex;
+  int? _selectedIndex;
+  int? get selectedIndex => _selectedIndex;
+  set selectedIndex(int? i) {
+    _selectedIndex = i;
+    notifyListeners();
+  }
 
   ApiData(this.database) {
     database.getAllAccounts().then((accounts) {
@@ -41,8 +47,8 @@ class ApiData extends ChangeNotifier {
           subscriptions = subs;
           database.loadAllCategory(account!.id).then((cats) {
             categories = cats;
-            database.countAllArticles(showAll, account!.id).then((con) {
-              counts = con;
+            database.loadArticleMetaData(account!.id).then((meta) {
+              articlesMetaData = meta;
               notifyListeners();
             });
           });
@@ -60,11 +66,14 @@ class ApiData extends ChangeNotifier {
     database.database.close();
   }
 
-  void clear() {
+  void clear([bool clearMeta = true]) {
     filteredArticleIDs?.clear();
     selectedIndex = null;
     filteredArticles = {};
     searchResults = [];
+    if (clearMeta) {
+      articlesMetaData = {};
+    }
   }
 
   Future<List<Account>> getAccounts() async {
@@ -77,7 +86,6 @@ class ApiData extends ChangeNotifier {
     clear();
     subscriptions = {};
     categories = {};
-    counts = {};
     _getAuth().then((value) {
       auth = value;
     });
@@ -86,8 +94,8 @@ class ApiData extends ChangeNotifier {
         database.loadAllSubs(account!.id).then((subs) {
           subscriptions = subs;
         }),
-        database.countAllArticles(showAll, acc.id).then((co) {
-          counts = co;
+        database.loadArticleMetaData(acc.id).then((meta) {
+          articlesMetaData = meta;
         }),
         database.loadAllCategory(acc.id).then((cats) {
           categories = cats;
@@ -100,11 +108,8 @@ class ApiData extends ChangeNotifier {
 
   void setShowAll(bool newValue) {
     showAll = newValue;
-    clear();
-    database.countAllArticles(showAll, account!.id).then((con) {
-      counts = con;
-      notifyListeners();
-    });
+    clear(false);
+    notifyListeners();
   }
 
   Stream<double> serverSync() async* {
@@ -284,9 +289,9 @@ class ApiData extends ChangeNotifier {
     await _getServerStarredIds(auth);
     await _getServerStarredArticles(auth);
     yield 0.9;
-    await database.countAllArticles(showAll, account!.id).then((con) {
-      counts.clear();
-      counts = con;
+    articlesMetaData.clear();
+    await database.loadArticleMetaData(account!.id).then((meta) {
+      articlesMetaData = meta;
     });
     //https://github.com/FreshRSS/FreshRSS/issues/2566
     notifyListeners();
@@ -381,6 +386,7 @@ class ApiData extends ChangeNotifier {
   }
 
   Future<void> _getAllServerArticles(String auth, String feed) async {
+    database.clearLastSyncTable(account!.id);
     int count = 0;
     bool updateTime = true;
     String url =
@@ -631,29 +637,9 @@ class ApiData extends ChangeNotifier {
 
   Article? setRead(String id, String subID, bool isRead) {
     debugPrint("Set article: $id as ${isRead ? "Read" : "Unread"}");
+    articlesMetaData.update(id, (val) => (val.$1, val.$2, isRead, val.$4));
     if (filteredArticles != null && filteredArticles!.containsKey(id)) {
-      int count() {
-        return filteredArticles!.values
-            .where((a) => a.subID == subID && !a.read)
-            .length;
-      }
-
-      int subCountOld = count();
       filteredArticles![id]!.read = isRead;
-      if (!showAll) {
-        int subCount = count();
-        counts.update(subID, (val) => subCount);
-        // debugPrint(counts[subID].toString());
-        if (subscriptions.containsKey(subID)) {
-          counts.update(
-            subscriptions[subID]!.catID,
-            (val) => val - (subCountOld - subCount),
-          );
-          // debugPrint("Change: ${(subCountOld - subCount).toString()}");
-          // debugPrint("Subscription: $subCount");
-          // debugPrint("Category: ${counts[subscriptions[subID]!.catID]}");
-        }
-      }
     }
     _setServerRead([id], [subID], isRead);
     database.updateArticleRead(id, isRead, account!.id).then((_) {
@@ -663,10 +649,8 @@ class ApiData extends ChangeNotifier {
   }
 
   void setStarred(String id, String subID, bool isStarred) {
+    articlesMetaData.update(id, (val) => (val.$1, val.$2, val.$3, isStarred));
     filteredArticles?[id]?.starred = isStarred;
-    if (showAll || filteredArticles?[id]?.read == false) {
-      counts.update("Starred", (val) => val + (isStarred ? 1 : -1));
-    }
     // debugPrint(counts["Starred"].toString());
     _setServerStar([id], [subID], isStarred);
     database.updateArticleStar(id, isStarred, account!.id).then((_) {
@@ -689,17 +673,32 @@ class ApiData extends ChangeNotifier {
     filteredArticles = null;
     selectedIndex = null;
     filteredTitle = null;
-    await database
-        .loadArticleIDs(
-          showAll: showAll,
-          filterColumn: filterColumn,
-          filterValue: filterValue,
-          accountID: account!.id,
-          todaySecondsSinceEpoch: todaySecondsSinceEpoch,
-        )
-        .then((value) {
-          filteredArticleIDs = value.keys.toSet();
-        });
+    if (title == "lastSync") {
+      await database.getLastSyncIDs(account!.id).then((value) {
+        if (showAll == true) {
+          filteredArticleIDs = value.toSet();
+        } else {
+          filteredArticleIDs = {};
+          for (var id in value) {
+            if (articlesMetaData[id]?.$3 == false) {
+              filteredArticleIDs!.add(id);
+            }
+          }
+        }
+      });
+    } else {
+      await database
+          .loadArticleIDs(
+            showAll: showAll,
+            filterColumn: filterColumn,
+            filterValue: filterValue,
+            accountID: account!.id,
+            todaySecondsSinceEpoch: todaySecondsSinceEpoch,
+          )
+          .then((value) {
+            filteredArticleIDs = value.keys.toSet();
+          });
+    }
     filteredTitle = title;
     await database.loadArticles(filteredArticleIDs!.toList(), account!.id).then(
       (List<Article> arts) {

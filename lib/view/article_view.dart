@@ -29,8 +29,6 @@ class ArticleView extends StatefulWidget {
   State<ArticleView> createState() => _ArticleViewState();
 }
 
-ValueNotifier<Article?> currentArticleNotifier = ValueNotifier<Article?>(null);
-
 class _ArticleViewState extends State<ArticleView> {
   bool showWebView = false;
   late final PageController pageController = PageController(
@@ -52,9 +50,9 @@ class _ArticleViewState extends State<ArticleView> {
   }
 
   void onPageChanged(int page) {
+    Api.of(context).selectedIndex = page;
     if (Preferences.of(context).markReadWhenOpen) {
-      Api.of(context).selectedIndex = page;
-      currentArticleNotifier.value = Api.of(context).setRead(
+      Api.of(context).setRead(
         Api.of(
           context,
         ).filteredArticles![Api.of(context).searchResults![page]]!.articleID,
@@ -70,10 +68,7 @@ class _ArticleViewState extends State<ArticleView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: ArticleCount(
-          currentArticleNotifier: currentArticleNotifier,
-          articleIDS: widget.articleIDs ?? {},
-        ),
+        title: ArticleCount(articleIDS: widget.articleIDs ?? {}),
         automaticallyImplyLeading: screenSizeOf(context) == ScreenSize.small,
         actions: [
           IconButton(
@@ -97,7 +92,7 @@ class _ArticleViewState extends State<ArticleView> {
       extendBody: !showWebView,
       bottomNavigationBar:
           widget.index != null && widget.articleIDs != null && !showWebView
-              ? ArticleBottomButtons(articleNotifier: currentArticleNotifier)
+              ? ArticleBottomButtons()
               : null,
       body:
           widget.index != null && widget.articleIDs != null
@@ -179,30 +174,20 @@ class _ArticleViewPagesState extends State<ArticleViewPages> {
 }
 
 class ArticleCount extends StatelessWidget {
-  const ArticleCount({
-    super.key,
-    required this.currentArticleNotifier,
-    required this.articleIDS,
-  });
+  const ArticleCount({super.key, required this.articleIDS});
 
-  final ValueNotifier<Article?> currentArticleNotifier;
   final Set<String> articleIDS;
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder(
-      valueListenable: currentArticleNotifier,
-      builder: (context, value, child) {
-        if (value != null) {
-          return Text(
-            "${articleIDS.toList().indexOf(value.articleID) + 1} / ${articleIDS.length}",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          );
-        } else {
-          return const Text("");
-        }
-      },
-    );
+    if (Api.of(context).selectedIndex != null) {
+      return Text(
+        "${Api.of(context).selectedIndex! + 1} / ${articleIDS.length}",
+        style: TextStyle(fontWeight: FontWeight.bold),
+      );
+    } else {
+      return const Text("");
+    }
   }
 }
 
@@ -420,7 +405,7 @@ class ArticleTextWidget extends StatelessWidget {
                   ),
                 if (imgUrl != null)
                   AdaptiveListTile(
-                    title: "Open image link",
+                    title: "Share image link",
                     trailing: Icon(
                       (Platform.isIOS || Platform.isMacOS)
                           ? CupertinoIcons.share

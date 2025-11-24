@@ -12,8 +12,7 @@ import '../util/formatting_setting.dart';
 import '../widget/transparent_container.dart';
 
 class ArticleBottomButtons extends StatefulWidget {
-  const ArticleBottomButtons({super.key, required this.articleNotifier});
-  final ValueNotifier<Article?> articleNotifier;
+  const ArticleBottomButtons({super.key});
 
   @override
   State<ArticleBottomButtons> createState() => _ArticleBottomButtonsState();
@@ -22,56 +21,82 @@ class ArticleBottomButtons extends StatefulWidget {
 class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
   @override
   Widget build(BuildContext context) {
+    Article? article = Api.of(
+      context,
+    ).filteredArticles?.values.elementAt(Api.of(context).selectedIndex!);
+    bool isRead = article?.read ?? false;
+    bool isStarred = article?.starred ?? false;
     return TransparentContainer(
       hasBorder: false,
       child: SafeArea(
         minimum: EdgeInsets.only(top: 8.0),
-        child: ValueListenableBuilder(
-          valueListenable: widget.articleNotifier,
-          builder: (context, value, child) {
-            bool isRead = value?.read ?? false;
-            bool isStarred = value?.starred ?? false;
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                IconButton(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            IconButton(
+              onPressed: () {
+                if (article != null) {
+                  setState(() {
+                    Api.of(
+                      context,
+                    ).setRead(article.articleID, article.subID, !isRead);
+                    article.read = !isRead;
+                  });
+                }
+              },
+              icon: Icon(isRead ? Icons.circle_outlined : Icons.circle),
+              tooltip: "Read",
+            ),
+            IconButton(
+              onPressed: () {
+                if (article != null) {
+                  setState(() {
+                    article.starred = !isStarred;
+                    Api.of(
+                      context,
+                    ).setStarred(article.articleID, article.subID, !isStarred);
+                  });
+                }
+              },
+              icon: Icon(
+                isStarred ? Icons.star_rounded : Icons.star_border_rounded,
+              ),
+              tooltip: "Star",
+            ),
+            IconButton(
+              onPressed: () {
+                if (article != null) {
+                  try {
+                    launchUrl(
+                      Uri.parse(article.url),
+                      mode: LaunchMode.inAppBrowserView,
+                    );
+                  } catch (e) {
+                    debugPrint(e.toString());
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(e.toString(), maxLines: 3)),
+                    );
+                  }
+                }
+              },
+              icon: Icon(Icons.open_in_browser_rounded),
+              tooltip: "Browser",
+            ),
+            Builder(
+              builder: (context) {
+                return IconButton(
                   onPressed: () {
-                    if (value != null) {
-                      setState(() {
-                        Api.of(
-                          context,
-                        ).setRead(value.articleID, value.subID, !isRead);
-                        value.read = !isRead;
-                      });
-                    }
-                  },
-                  icon: Icon(isRead ? Icons.circle_outlined : Icons.circle),
-                  tooltip: "Read",
-                ),
-                IconButton(
-                  onPressed: () {
-                    if (value != null) {
-                      setState(() {
-                        value.starred = !isStarred;
-                        Api.of(
-                          context,
-                        ).setStarred(value.articleID, value.subID, !isStarred);
-                      });
-                    }
-                  },
-                  icon: Icon(
-                    isStarred ? Icons.star_rounded : Icons.star_border_rounded,
-                  ),
-                  tooltip: "Star",
-                ),
-                IconButton(
-                  onPressed: () {
-                    if (widget.articleNotifier.value != null) {
+                    if (article != null) {
                       try {
-                        launchUrl(
-                          Uri.parse(widget.articleNotifier.value!.url),
-                          mode: LaunchMode.inAppBrowserView,
+                        final box = context.findRenderObject() as RenderBox?;
+                        SharePlus.instance.share(
+                          ShareParams(
+                            uri: Uri.parse(article.url),
+                            subject: article.title,
+                            sharePositionOrigin:
+                                box!.localToGlobal(Offset.zero) & box.size,
+                          ),
                         );
                       } catch (e) {
                         debugPrint(e.toString());
@@ -81,69 +106,36 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
                       }
                     }
                   },
-                  icon: Icon(Icons.open_in_browser_rounded),
-                  tooltip: "Browser",
-                ),
-                Builder(
-                  builder: (context) {
-                    return IconButton(
-                      onPressed: () {
-                        if (widget.articleNotifier.value != null) {
-                          try {
-                            final box =
-                                context.findRenderObject() as RenderBox?;
-                            SharePlus.instance.share(
-                              ShareParams(
-                                uri: Uri.parse(
-                                  widget.articleNotifier.value!.url,
-                                ),
-                                subject: widget.articleNotifier.value!.title,
-                                sharePositionOrigin:
-                                    box!.localToGlobal(Offset.zero) & box.size,
-                              ),
-                            );
-                          } catch (e) {
-                            debugPrint(e.toString());
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(e.toString(), maxLines: 3),
-                              ),
-                            );
-                          }
-                        }
-                      },
-                      icon: Icon(
-                        (Platform.isIOS || Platform.isMacOS)
-                            ? CupertinoIcons.share
-                            : Icons.share_rounded,
-                      ),
-                      tooltip: "Share",
-                    );
-                  },
-                ),
-                IconButton(
-                  onPressed: () {
-                    showDialog(
-                      barrierDismissible: true,
-                      barrierColor: Colors.transparent,
-                      context: context,
-                      builder: (context) {
-                        return FormattingDialog();
-                      },
-                    ).then((_) {
-                      setState(() {});
-                    });
-                  },
                   icon: Icon(
                     (Platform.isIOS || Platform.isMacOS)
-                        ? CupertinoIcons.textformat
-                        : Icons.text_format_rounded,
+                        ? CupertinoIcons.share
+                        : Icons.share_rounded,
                   ),
-                  tooltip: "Text formatting",
-                ),
-              ],
-            );
-          },
+                  tooltip: "Share",
+                );
+              },
+            ),
+            IconButton(
+              onPressed: () {
+                showDialog(
+                  barrierDismissible: true,
+                  barrierColor: Colors.transparent,
+                  context: context,
+                  builder: (context) {
+                    return FormattingDialog();
+                  },
+                ).then((_) {
+                  setState(() {});
+                });
+              },
+              icon: Icon(
+                (Platform.isIOS || Platform.isMacOS)
+                    ? CupertinoIcons.textformat
+                    : Icons.text_format_rounded,
+              ),
+              tooltip: "Text formatting",
+            ),
+          ],
         ),
       ),
     );
@@ -362,7 +354,8 @@ class FormattingDialog extends StatelessWidget {
                           Text("Line"),
                           Slider.adaptive(
                             value: Preferences.of(context).lineHeight,
-                            label: Preferences.of(context).lineHeight.toString(),
+                            label:
+                                Preferences.of(context).lineHeight.toString(),
                             min: 1.0,
                             max: 2.0,
                             onChanged: (v) {

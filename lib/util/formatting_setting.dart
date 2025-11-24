@@ -24,6 +24,22 @@ class Preferences extends InheritedNotifier<PreferencesData> {
   }
 }
 
+class DBPreference<T> {
+  DBPreference(this.database, String key, this._value) {
+    database.getPreference(key).then((value) {});
+  }
+
+  DB database;
+
+  T _value;
+  T get value => _value;
+  set value(T newValue) {
+    _value = newValue;
+  }
+}
+
+enum MyTheme { dark, amoled }
+
 class PreferencesData extends ChangeNotifier {
   final DB database;
 
@@ -41,6 +57,8 @@ class PreferencesData extends ChangeNotifier {
   int? readDuration;
   int? starDuration;
   bool markReadWhenOpen = true;
+  bool showLastSync = false;
+  int themeIndex = 0;
 
   PreferencesData(this.database) {
     load();
@@ -67,6 +85,10 @@ class PreferencesData extends ChangeNotifier {
         (await database.getPreference("format_bionic") == "true");
     markReadWhenOpen =
         ((await database.getPreference("read_when_open") ?? "true") == "true");
+    showLastSync =
+        ((await database.getPreference("show_last_sync") ?? "false") == "true");
+    themeIndex =
+        int.tryParse(await database.getPreference("theme_index") ?? "") ?? 0;
     readDuration = int.tryParse(
       await database.getPreference("read_duration") ?? "",
     );
@@ -86,7 +108,7 @@ class PreferencesData extends ChangeNotifier {
     notifyListeners();
   }
 
-  void save() async {
+  void save() {
     database.setPreference("format_fontSize", fontSize.toString());
     database.setPreference("format_wordSpacing", wordSpacing.toString());
     database.setPreference("format_lineHeight", lineHeight.toString());
@@ -99,6 +121,8 @@ class PreferencesData extends ChangeNotifier {
       "read_when_open",
       markReadWhenOpen ? "true" : "false",
     );
+    database.setPreference("show_last_sync", showLastSync ? "true" : "false");
+    database.setPreference("theme_index", themeIndex.toString());
     database.setPreference("read_duration", readDuration.toString());
     database.setPreference("star_duration", starDuration.toString());
   }
@@ -111,6 +135,16 @@ class PreferencesData extends ChangeNotifier {
 
   void setMarkReadWhenOpen(bool val) {
     markReadWhenOpen = val;
+    notifyListeners();
+  }
+
+  void setShowLastSync(bool val) {
+    showLastSync = val;
+    notifyListeners();
+  }
+
+  void setThemeIndex(int index) {
+    themeIndex = index;
     notifyListeners();
   }
 

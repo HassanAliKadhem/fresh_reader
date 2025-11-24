@@ -89,6 +89,38 @@ class _SettingsContentState extends State<SettingsContent> {
             }
           },
         ),
+        CheckboxListTile.adaptive(
+          title: Text("Show last sync article category"),
+          value: Preferences.of(context).showLastSync,
+          onChanged: (val) {
+            if (val != null) {
+              Preferences.of(context).setShowLastSync(val);
+            }
+          },
+        ),
+        ListTile(title: Text("Theme"), dense: true),
+        Card(
+          child: RadioGroup(
+            onChanged: (val) {
+              if (val != null) {
+                Preferences.of(context).setThemeIndex(val);
+              }
+            },
+            groupValue: Preferences.of(context).themeIndex,
+            child: Column(
+              children: MyTheme.values
+                  .map(
+                    (t) => RadioListTile.adaptive(
+                      value: t.index,
+                      title: Text(
+                        "${t.name[0].toUpperCase()}${t.name.substring(1)}",
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        ),
         const ReadDurationTile(
           title: "Keep read articles",
           dbKey: "read_duration",
@@ -120,12 +152,9 @@ class _SettingsContentState extends State<SettingsContent> {
               ),
               leading: Icon(Icons.code),
               trailing: const Icon(Icons.open_in_browser),
-              onTap:
-                  () => launchUrl(
-                    Uri.parse(
-                      "https://github.com/HassanAliKadhem/fresh_reader",
-                    ),
-                  ),
+              onTap: () => launchUrl(
+                Uri.parse("https://github.com/HassanAliKadhem/fresh_reader"),
+              ),
             ),
           ],
         ),
@@ -148,14 +177,13 @@ class _AccountDetailsState extends State<AccountDetails> {
       future: Api.of(context).getAccounts(),
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return CircularProgressIndicator.adaptive();
+          return LinearProgressIndicator();
         }
         return Column(
           mainAxisSize: MainAxisSize.min,
-          children:
-              snapshot.data!.map((acc) {
-                return AccountCard(account: acc);
-              }).toList(),
+          children: snapshot.data!.map((acc) {
+            return AccountCard(account: acc);
+          }).toList(),
         );
       },
     );
@@ -215,7 +243,7 @@ class _AccountCardState extends State<AccountCard> {
                     actions: [
                       TextButton(
                         onPressed: () {
-                          Api.of(context).counts = {};
+                          Api.of(context).clear();
                           Api.of(
                             context,
                           ).database.deleteAccount(account.id).then((_) {
@@ -242,7 +270,7 @@ class _AccountCardState extends State<AccountCard> {
                       ),
                       TextButton(
                         onPressed: () {
-                          Api.of(context).counts = {};
+                          Api.of(context).clear();
                           Api.of(
                             context,
                           ).database.deleteAccountData(account.id).then((_) {
@@ -278,11 +306,24 @@ class _AccountCardState extends State<AccountCard> {
             },
           ),
           ListTile(
-            title: Text(
-              "Total articles: ${Api.of(context).counts.entries.map((entry) => entry.key.startsWith("feed/") ? entry.value : 0).fold(0, (count, value) => count + value)}",
+            title: FutureBuilder(
+              future: Api.of(context).database.loadArticleMetaData(account.id),
+              builder: (context, asyncSnapshot) {
+                return Text(
+                  "Total articles: ${asyncSnapshot.data?.length ?? 0}, Unread: ${asyncSnapshot.data?.values.where((a) => !a.$3).length ?? 0}",
+                );
+              },
             ),
-            subtitle: Text(
-              "categories: ${Api.of(context).counts.entries.map((entry) => entry.key.startsWith("feed/") ? 0 : 1).fold(0, (count, value) => count + value)}, subscriptions: ${Api.of(context).counts.entries.map((entry) => entry.key.startsWith("feed/") ? 1 : 0).fold(0, (count, value) => count + value)}",
+            subtitle: FutureBuilder(
+              future: Future.wait([
+                Api.of(context).database.loadAllCategory(account.id),
+                Api.of(context).database.loadAllSubs(account.id),
+              ]),
+              builder: (context, asyncSnapshot) {
+                return Text(
+                  "categories: ${asyncSnapshot.data?[0].length ?? 0}, subscriptions: ${asyncSnapshot.data?[1].length ?? 0}",
+                );
+              },
             ),
           ),
           ListTile(
@@ -391,10 +432,9 @@ class ReadDurationTile extends StatefulWidget {
 class _ReadDurationTileState extends State<ReadDurationTile> {
   @override
   Widget build(BuildContext context) {
-    int? value =
-        widget.dbKey == "read_duration"
-            ? Preferences.of(context).readDuration
-            : Preferences.of(context).starDuration;
+    int? value = widget.dbKey == "read_duration"
+        ? Preferences.of(context).readDuration
+        : Preferences.of(context).starDuration;
     return ListTile(
       title: Text(widget.title),
       subtitle: Text(
@@ -426,17 +466,16 @@ class _ReadDurationTileState extends State<ReadDurationTile> {
                 },
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  children:
-                      widget.values.entries
-                          .map(
-                            (element) => RadioListTile.adaptive(
-                              dense: true,
-                              title: Text(element.value),
-                              value: element.key,
-                              toggleable: true,
-                            ),
-                          )
-                          .toList(),
+                  children: widget.values.entries
+                      .map(
+                        (element) => RadioListTile.adaptive(
+                          dense: true,
+                          title: Text(element.value),
+                          value: element.key,
+                          toggleable: true,
+                        ),
+                      )
+                      .toList(),
                 ),
               ),
             );
@@ -456,10 +495,9 @@ class AddAccountDialog extends StatefulWidget {
 }
 
 class _AddAccountDialogState extends State<AddAccountDialog> {
-  late var newAccount =
-      widget.oldAccount != null
-          ? widget.oldAccount!
-          : Account(0, "", "Freshrss", "", "", 0, 0);
+  late var newAccount = widget.oldAccount != null
+      ? widget.oldAccount!
+      : Account(0, "", "Freshrss", "", "", 0, 0);
 
   Future<int> _addAccount(Account accountToAdd) async {
     int index = -1;

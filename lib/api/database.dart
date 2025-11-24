@@ -17,6 +17,8 @@ const delTable =
 const accTable =
     "CREATE TABLE Account (id INTEGER PRIMARY KEY, serverUrl TEXT, provider TEXT, username TEXT, password TEXT, updatedArticleTime INTEGER, updatedStarredTime INTEGER)";
 const prefTable = "create table preferences (key TEXT primary key, value TEXT)";
+const lastSyncTable =
+    "create table lastSync (key TEXT primary key, articleID TEXT, accountID INTEGER)";
 
 const _indexes = [
   "CREATE INDEX if not exists idx_article_id ON articles (articleID)",
@@ -27,9 +29,9 @@ const _indexes = [
 Future<Database> getDatabase() async {
   return await openDatabase(
     'my_db.db',
-    version: 8,
+    version: 9,
     onConfigure: (db) {
-      db.execute("PRAGMA journal_mode = WAL;");
+      // db.execute("PRAGMA journal_mode = WAL;");
       db.execute("PRAGMA synchronous = NORMAL;");
     },
     onCreate: (db, version) async {
@@ -39,6 +41,7 @@ Future<Database> getDatabase() async {
       await db.execute(artTable);
       await db.execute(delTable);
       await db.execute(prefTable);
+      await db.execute(lastSyncTable);
 
       // create indexes for articles table
       for (var ind in _indexes) {
@@ -137,6 +140,10 @@ Future<Database> getDatabase() async {
           await db.execute(ind);
         }
         debugPrint("Finished upgrading db to: version 8");
+      } else if (oldVersion == 8 && newVersion == 9) {
+        // create last sync table
+        await db.execute(lastSyncTable);
+        debugPrint("Finished upgrading db to: version 9");
       }
     },
     // singleInstance: true,
@@ -218,6 +225,23 @@ class DB {
       );
     }
     batch.commit(continueOnError: true);
+  }
+
+  Future<Map<String, (int, String, bool, bool)>> loadArticleMetaData(
+    int accountID,
+  ) async {
+    Map<String, (int, String, bool, bool)> res = {};
+    for (var article in (await database.rawQuery(
+      "select articleID, subID, timeStampPublished, isRead, isStarred from Articles where accountID = $accountID order by timeStampPublished desc",
+    ))) {
+      res[article.values.first.toString()] = (
+        article["timeStampPublished"] as int,
+        article["subID"].toString(),
+        article["isRead"] == "true",
+        article["isStarred"] == "true",
+      );
+    }
+    return res;
   }
 
   Future<Article> loadArticle(String articleID, int accountID) async {
@@ -394,8 +418,31 @@ class DB {
         article.toDB(),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
+      if (!article.read) {
+        batch.insert("lastSync", {
+          "articleID": article.articleID,
+          "accountID": article.accountID,
+        }, conflictAlgorithm: ConflictAlgorithm.fail);
+      }
     }
     batch.commit(continueOnError: true);
+  }
+
+  Future<void> clearLastSyncTable(int accountID) async {
+    await database.delete(
+      "lastSync",
+      where: "accountID = ?",
+      whereArgs: [accountID],
+    );
+  }
+
+  Future<List<String>> getLastSyncIDs(int accountID) async {
+    return (await database.query(
+      "lastSync",
+      columns: ["articleID"],
+      where: "accountID = ?",
+      whereArgs: [accountID],
+    )).map((elm) => elm.values.first.toString()).toList();
   }
 
   Future<void> updateArticleRead(

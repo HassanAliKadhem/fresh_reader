@@ -13,7 +13,6 @@ import '../main.dart';
 import '../util/formatting_setting.dart';
 import '../util/screen_size.dart';
 import '../widget/transparent_container.dart';
-import 'article_view.dart';
 
 class ArticleList extends StatefulWidget {
   const ArticleList({super.key});
@@ -288,7 +287,7 @@ class _ArticleTileState extends State<ArticleTile> {
                 Preferences.of(context).markReadWhenOpen
                     ? true
                     : widget.article.read;
-            currentArticleNotifier.value = Api.of(context).setRead(
+            Api.of(context).setRead(
               widget.article.articleID,
               Api.of(
                 context,
