@@ -8,6 +8,7 @@ An opinionated client for FreshRss (not affiliated) made just for me. but you ca
 - [x] sync read articles to server
 - [x] sync starred articles from server
 - [x] change the server link
+- [x] Today category
 - [x] filter by tag
 - [x] filter by unread
 - [x] render article as html
