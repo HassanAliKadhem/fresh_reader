@@ -5,42 +5,9 @@ import 'package:flutter/widgets.dart';
 
 import '../api/database.dart';
 
-class Preferences extends InheritedNotifier<PreferencesData> {
-  const Preferences({super.key, required super.child, required super.notifier});
-
-  static PreferencesData of(BuildContext context) {
-    assert(
-      context.dependOnInheritedWidgetOfExactType<Preferences>() != null,
-      "Preferences not found in current context",
-    );
-    return context.dependOnInheritedWidgetOfExactType<Preferences>()!.notifier!;
-  }
-
-  @override
-  bool updateShouldNotify(
-    covariant InheritedNotifier<PreferencesData> oldWidget,
-  ) {
-    return notifier != oldWidget.notifier;
-  }
-}
-
-class DBPreference<T> {
-  DBPreference(this.database, String key, this._value) {
-    database.getPreference(key).then((value) {});
-  }
-
-  DB database;
-
-  T _value;
-  T get value => _value;
-  set value(T newValue) {
-    _value = newValue;
-  }
-}
-
 enum MyTheme { dark, amoled }
 
-class PreferencesData extends ChangeNotifier {
+class Preferences extends ChangeNotifier {
   final DB database;
 
   double fontSize = 14.0;
@@ -60,7 +27,7 @@ class PreferencesData extends ChangeNotifier {
   bool showLastSync = false;
   int themeIndex = 0;
 
-  PreferencesData(this.database) {
+  Preferences(this.database) {
     load();
   }
 

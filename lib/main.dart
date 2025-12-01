@@ -1,9 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:fresh_reader/api/provider.dart';
+import 'package:provider/provider.dart';
 
 import 'api/api.dart';
+import 'api/data_types.dart';
 import 'api/database.dart';
 import 'util/formatting_setting.dart';
 import 'util/screen_size.dart';
@@ -19,12 +20,14 @@ void main() {
       .then((db) {
         DB database = DB(db);
         runApp(
-          Api(
-            notifier: ApiData(database),
-            child: Preferences(
-              notifier: PreferencesData(database),
-              child: MyApp(),
-            ),
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider<Api>(create: (context) => Api(database)),
+              ChangeNotifierProvider<Preferences>(
+                create: (context) => Preferences(database),
+              ),
+            ],
+            child: MyApp(),
           ),
         );
       })
@@ -58,10 +61,10 @@ class _MyAppState extends State<MyApp> {
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.deepPurple,
           brightness: Brightness.dark,
-          surface: [
-            null,
-            Colors.black,
-          ][Preferences.of(context).themeIndex], // for AMOLED black
+          surface:
+              [null, Colors.black][context.select<Preferences, int>(
+                (a) => a.themeIndex,
+              )], // for AMOLED black
         ),
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.transparent,
@@ -109,10 +112,10 @@ class _HomeWidgetState extends State<HomeWidget> {
         key: _navigatorKey,
         onDidRemovePage: (page) {
           if (page.name == "/article") {
-            Api.of(context).selectedIndex = null;
+            context.read<Api>().selectedIndex = null;
           } else if (page.name == "/list") {
-            Api.of(context).selectedIndex = null;
-            Api.of(context).filteredArticleIDs = null;
+            context.read<Api>().selectedIndex = null;
+            context.read<Api>().filteredArticleIDs = null;
           }
         },
         pages: [
@@ -150,22 +153,14 @@ class _HomeWidgetState extends State<HomeWidget> {
                           const Expanded(flex: 2, child: ArticleList()),
                           // VerticalDivider(width: 1.0),
                           if (screenSizeOf(context) == ScreenSize.big)
-                            Expanded(
-                              flex: 3,
-                              child: ArticleView(
-                                key: ValueKey(Api.of(context).filteredTitle),
-                                index: Api.of(context).selectedIndex,
-                                articleIDs: Api.of(
-                                  context,
-                                ).searchResults?.toSet(),
-                              ),
-                            ),
+                            Expanded(flex: 3, child: articleView()),
                         ],
                       ),
                     ],
                   ),
           ),
-          if (Api.of(context).account == null && Api.of(context).justBooted)
+          if (context.select<Api, Account?>((a) => a.account) == null &&
+              context.select<Api, bool>((a) => a.justBooted))
             screenSizeOf(context) == ScreenSize.big
                 ? const MaterialPage(
                     name: "/settings",
@@ -174,37 +169,36 @@ class _HomeWidgetState extends State<HomeWidget> {
                   )
                 : const MaterialPage(name: "/settings", child: SettingsPage()),
           if (screenSizeOf(context) == ScreenSize.medium &&
-              Api.of(context).filteredArticleIDs != null)
+              context.select<Api, Set<String>?>((a) => a.filteredArticleIDs) !=
+                  null)
             MaterialPage(
               child: Row(
                 children: [
                   const Expanded(flex: 2, child: ArticleList()),
                   // VerticalDivider(width: 1),
-                  Expanded(
-                    flex: 3,
-                    child: ArticleView(
-                      key: ValueKey(Api.of(context).filteredTitle),
-                      index: Api.of(context).selectedIndex,
-                      articleIDs: Api.of(context).searchResults?.toSet(),
-                    ),
-                  ),
+                  Expanded(flex: 3, child: articleView()),
                 ],
               ),
             ),
           if (screenSizeOf(context) == ScreenSize.small &&
-              Api.of(context).filteredArticleIDs != null)
+              context.select<Api, Set<String>?>((a) => a.filteredArticleIDs) !=
+                  null)
             const MaterialPage(name: "/list", child: ArticleList()),
           if (screenSizeOf(context) == ScreenSize.small &&
-              Api.of(context).selectedIndex != null)
-            MaterialPage(
-              name: "/article",
-              child: ArticleView(
-                index: Api.of(context).selectedIndex ?? 0,
-                articleIDs: Api.of(context).searchResults?.toSet(),
-              ),
-            ),
+              context.select<Api, int?>((a) => a.selectedIndex) != null)
+            MaterialPage(name: "/article", child: articleView()),
         ],
       ),
+    );
+  }
+
+  Widget articleView() {
+    return ArticleView(
+      key: ValueKey(context.select<Api, String?>((a) => a.filteredTitle)),
+      index: context.select<Api, int?>((a) => a.selectedIndex),
+      articleIDs: context
+          .select<Api, List<String>?>((a) => a.searchResults)
+          ?.toSet(),
     );
   }
 }

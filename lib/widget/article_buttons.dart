@@ -2,12 +2,13 @@ import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../api/api.dart';
 import '../api/data_types.dart';
-import '../api/provider.dart';
 import '../util/formatting_setting.dart';
 import '../widget/transparent_container.dart';
 
@@ -21,9 +22,13 @@ class ArticleBottomButtons extends StatefulWidget {
 class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
   @override
   Widget build(BuildContext context) {
-    Article? article = Api.of(
-      context,
-    ).filteredArticles?.values.elementAt(Api.of(context).selectedIndex!);
+    int? index = context.select<Api, int?>((a) => a.selectedIndex);
+    if (index == null) {
+      return Container();
+    }
+    Article? article = context.read<Api>().filteredArticles?.values.elementAt(
+      index,
+    );
     bool isRead = article?.read ?? false;
     bool isStarred = article?.starred ?? false;
     return TransparentContainer(
@@ -38,9 +43,11 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
               onPressed: () {
                 if (article != null) {
                   setState(() {
-                    Api.of(
-                      context,
-                    ).setRead(article.articleID, article.subID, !isRead);
+                    context.read<Api>().setRead(
+                      article.articleID,
+                      article.subID,
+                      !isRead,
+                    );
                     article.read = !isRead;
                   });
                 }
@@ -53,9 +60,11 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
                 if (article != null) {
                   setState(() {
                     article.starred = !isStarred;
-                    Api.of(
-                      context,
-                    ).setStarred(article.articleID, article.subID, !isStarred);
+                    context.read<Api>().setStarred(
+                      article.articleID,
+                      article.subID,
+                      !isStarred,
+                    );
                   });
                 }
               },
@@ -163,12 +172,11 @@ class _ArticleWebViewButtonsState extends State<ArticleWebViewButtons> {
             future: widget.webViewController.canGoBack(),
             builder: (context, snapshot) {
               return IconButton(
-                onPressed:
-                    snapshot.data == true
-                        ? () {
-                          widget.webViewController.goBack();
-                        }
-                        : null,
+                onPressed: snapshot.data == true
+                    ? () {
+                        widget.webViewController.goBack();
+                      }
+                    : null,
                 icon: Icon(
                   (Platform.isIOS || Platform.isMacOS)
                       ? CupertinoIcons.back
@@ -181,12 +189,11 @@ class _ArticleWebViewButtonsState extends State<ArticleWebViewButtons> {
             future: widget.webViewController.canGoForward(),
             builder: (context, snapshot) {
               return IconButton(
-                onPressed:
-                    snapshot.data == true
-                        ? () {
-                          widget.webViewController.goForward();
-                        }
-                        : null,
+                onPressed: snapshot.data == true
+                    ? () {
+                        widget.webViewController.goForward();
+                      }
+                    : null,
                 icon: Icon(
                   (Platform.isIOS || Platform.isMacOS)
                       ? CupertinoIcons.forward
@@ -217,8 +224,8 @@ class _ArticleWebViewButtonsState extends State<ArticleWebViewButtons> {
                           SharePlus.instance.share(
                             ShareParams(
                               uri: Uri.parse(url),
-                              subject:
-                                  (await widget.webViewController.getTitle()),
+                              subject: (await widget.webViewController
+                                  .getTitle()),
                               sharePositionOrigin:
                                   box!.localToGlobal(Offset.zero) & box.size,
                             ),
@@ -286,42 +293,49 @@ class FormattingDialog extends StatelessWidget {
             ),
             (Platform.isIOS || Platform.isMacOS)
                 ? CupertinoSlidingSegmentedControl(
-                  groupValue: Preferences.of(context).font,
-                  thumbColor: Theme.of(context).colorScheme.onPrimary,
-                  onValueChanged: (value) {
-                    if (value != null) {
-                      Preferences.of(context).setFontFamily(value);
-                    }
-                  },
-                  children: Preferences.of(context).fonts.asMap().map(
-                    (i, font) => MapEntry(
-                      font,
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text(font.replaceFirst(".", "")),
+                    groupValue: context.select<Preferences, String>(
+                      (a) => a.font,
+                    ),
+                    thumbColor: Theme.of(context).colorScheme.onPrimary,
+                    onValueChanged: (value) {
+                      if (value != null) {
+                        context.read<Preferences>().setFontFamily(value);
+                      }
+                    },
+                    children: context.read<Preferences>().fonts.asMap().map(
+                      (i, font) => MapEntry(
+                        font,
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(font.replaceFirst(".", "")),
+                        ),
                       ),
                     ),
-                  ),
-                )
+                  )
                 : SegmentedButton<String>(
-                  segments:
-                      Preferences.of(context).fonts
-                          .map(
-                            (font) => ButtonSegment(
-                              value: font,
-                              label: Text(font.replaceFirst(".", "")),
-                            ),
-                          )
-                          .toList(),
-                  selected: {Preferences.of(context).font},
-                  onSelectionChanged: (Set<String> newSelection) {
-                    if (newSelection.isNotEmpty) {
-                      Preferences.of(context).setFontFamily(newSelection.first);
-                    }
-                  },
-                  showSelectedIcon: false,
-                  multiSelectionEnabled: false,
-                ),
+                    segments: context
+                        .read<Preferences>()
+                        .fonts
+                        .map(
+                          (font) => ButtonSegment(
+                            value: font,
+                            label: Text(font.replaceFirst(".", "")),
+                          ),
+                        )
+                        .toList(),
+                    selected: {
+                      context.select<Preferences, String>((a) => a.font),
+                    },
+                    onSelectionChanged: (Set<String> newSelection) {
+                      if (newSelection.isNotEmpty) {
+                        context.read<Preferences>().setFontFamily(
+                          newSelection.first,
+                        );
+                      }
+                    },
+                    showSelectedIcon: false,
+                    multiSelectionEnabled: false,
+                  ),
             const SizedBox(height: 8.0),
             Column(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -336,12 +350,16 @@ class FormattingDialog extends StatelessWidget {
                           ),
                           Text("Size"),
                           Slider.adaptive(
-                            value: Preferences.of(context).fontSize,
-                            label: Preferences.of(context).fontSize.toString(),
+                            value: context.select<Preferences, double>(
+                              (a) => a.fontSize,
+                            ),
+                            label: context
+                                .select<Preferences, double>((a) => a.fontSize)
+                                .toString(),
                             min: 10.0,
                             max: 30.0,
                             onChanged: (v) {
-                              Preferences.of(context).setSize(v);
+                              context.read<Preferences>().setSize(v);
                             },
                           ),
                         ],
@@ -353,13 +371,18 @@ class FormattingDialog extends StatelessWidget {
                           ),
                           Text("Line"),
                           Slider.adaptive(
-                            value: Preferences.of(context).lineHeight,
-                            label:
-                                Preferences.of(context).lineHeight.toString(),
+                            value: context.select<Preferences, double>(
+                              (a) => a.lineHeight,
+                            ),
+                            label: context
+                                .select<Preferences, double>(
+                                  (a) => a.lineHeight,
+                                )
+                                .toString(),
                             min: 1.0,
                             max: 2.0,
                             onChanged: (v) {
-                              Preferences.of(context).setLineHeight(v);
+                              context.read<Preferences>().setLineHeight(v);
                             },
                           ),
                         ],
@@ -367,13 +390,18 @@ class FormattingDialog extends StatelessWidget {
                           Icon(Icons.space_bar),
                           Text("Word"),
                           Slider.adaptive(
-                            value: Preferences.of(context).wordSpacing,
-                            label:
-                                Preferences.of(context).wordSpacing.toString(),
+                            value: context.select<Preferences, double>(
+                              (a) => a.wordSpacing,
+                            ),
+                            label: context
+                                .select<Preferences, double>(
+                                  (a) => a.wordSpacing,
+                                )
+                                .toString(),
                             min: 0.0,
                             max: 10.0,
                             onChanged: (v) {
-                              Preferences.of(context).setSpacing(v);
+                              context.read<Preferences>().setSpacing(v);
                             },
                           ),
                         ],

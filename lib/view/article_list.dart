@@ -6,9 +6,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fresh_reader/util/date.dart';
 import 'package:fresh_reader/widget/article_image.dart';
+import 'package:provider/provider.dart';
 
+import '../api/api.dart';
 import '../api/data_types.dart';
-import '../api/provider.dart';
 import '../main.dart';
 import '../util/formatting_setting.dart';
 import '../util/screen_size.dart';
@@ -26,20 +27,43 @@ class _ArticleListState extends State<ArticleList> {
   final AnchorScrollController _scrollController = AnchorScrollController(
     anchorOffset: kToolbarHeight * 2.5,
   );
+  int lastIndex = 0;
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (Api.of(context).selectedIndex != null && _scrollController.hasClients) {
-      _scrollController.scrollToIndex(
-        index: Api.of(context).selectedIndex!,
-        scrollSpeed: 0.5,
-      );
-    }
+  void search(String? text) {
+    setState(() {
+      context.read<Api>().searchResults = text != null
+          ? context
+                .read<Api>()
+                .filteredArticles
+                ?.entries
+                .where(
+                  (entry) => entry.value.title.toLowerCase().contains(
+                    text.toLowerCase(),
+                  ),
+                )
+                .map((toElement) => toElement.key)
+                .toList()
+          : context
+                .read<Api>()
+                .filteredArticles
+                ?.entries
+                .map((toElement) => toElement.key)
+                .toList();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    int? index = context.select<Api, int?>((a) => a.selectedIndex);
+    if (index != null && index != lastIndex && _scrollController.hasClients) {
+      lastIndex = index;
+      _scrollController.scrollToIndex(index: index, scrollSpeed: 0.5);
+    }
+    Map<String, Article>? filteredArticles = context
+        .select<Api, Map<String, Article>?>((a) => a.filteredArticles);
+    List<String>? searchResults = context.select<Api, List<String>?>(
+      (a) => a.searchResults,
+    );
     return Scaffold(
       backgroundColor: Color.alphaBlend(
         Colors.black.withAlpha(24),
@@ -47,52 +71,54 @@ class _ArticleListState extends State<ArticleList> {
       ),
       appBar: AppBar(
         flexibleSpace: const TransparentContainer(hasBorder: false),
-        title:
-            (Platform.isIOS || Platform.isMacOS)
-                ? CupertinoSearchTextField(
-                  controller: _searchController,
-                  onChanged: (value) => setState(() {}),
-                  padding: const EdgeInsets.all(12.0),
-                  placeholder:
-                      "Search ${Api.of(context).filteredTitle?.split("/").last ?? ""}",
-                )
-                : SearchBar(
-                  hintText:
-                      "Search ${Api.of(context).filteredTitle?.split("/").last ?? ""}",
-                  controller: _searchController,
-                  textInputAction: TextInputAction.search,
-                  leading: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Icon(Icons.search),
-                  ),
-                  constraints: BoxConstraints(minHeight: 42.0),
-                  elevation: WidgetStatePropertyAll(0.0),
-                  trailing:
-                      _searchController.text != ""
-                          ? [
-                            IconButton(
-                              onPressed: () {
-                                setState(() {
-                                  _searchController.clear();
-                                });
-                              },
-                              icon: const Icon(Icons.clear),
-                            ),
-                          ]
-                          : null,
-                  onChanged: (value) {
-                    setState(() {});
-                  },
+        title: (Platform.isIOS || Platform.isMacOS)
+            ? CupertinoSearchTextField(
+                controller: _searchController,
+                onChanged: (value) {
+                  search(value);
+                },
+                onSuffixTap: () {
+                  _searchController.clear();
+                  search(null);
+                },
+                padding: const EdgeInsets.all(12.0),
+                placeholder:
+                    "Search ${context.select<Api, String?>((value) => value.filteredTitle)?.split("/").last ?? ""}",
+              )
+            : SearchBar(
+                hintText:
+                    "Search ${context.select<Api, String?>((value) => value.filteredTitle)?.split("/").last ?? ""}",
+                controller: _searchController,
+                textInputAction: TextInputAction.search,
+                leading: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Icon(Icons.search),
                 ),
-        leading:
-            screenSizeOf(context) == ScreenSize.big
-                ? IconButton(
-                  onPressed: () {
-                    isExpanded.value = !isExpanded.value;
-                  },
-                  icon: Icon(CupertinoIcons.fullscreen),
-                )
-                : null,
+                constraints: BoxConstraints(minHeight: 42.0),
+                elevation: WidgetStatePropertyAll(0.0),
+                trailing: _searchController.text != ""
+                    ? [
+                        IconButton(
+                          onPressed: () {
+                            _searchController.clear();
+                            search(null);
+                          },
+                          icon: const Icon(Icons.clear),
+                        ),
+                      ]
+                    : null,
+                onChanged: (value) {
+                  search(value);
+                },
+              ),
+        leading: screenSizeOf(context) == ScreenSize.big
+            ? IconButton(
+                onPressed: () {
+                  isExpanded.value = !isExpanded.value;
+                },
+                icon: Icon(CupertinoIcons.fullscreen),
+              )
+            : null,
       ),
       extendBody: true,
       extendBodyBehindAppBar: true,
@@ -101,104 +127,76 @@ class _ArticleListState extends State<ArticleList> {
         child: SizedBox(height: MediaQuery.paddingOf(context).bottom),
       ),
       body:
-          Api.of(context).filteredArticles == null
-              ? const SizedBox()
-              : Builder(
-                builder: (context) {
-                  Api.of(context).searchResults =
-                      Api.of(context).filteredArticles?.entries
-                          .where(
-                            (entry) => entry.value.title.toLowerCase().contains(
-                              _searchController.value.text.toLowerCase(),
-                            ),
-                          )
-                          .map((toElement) => toElement.key)
-                          .toList();
-                  return Scrollbar(
-                    controller: _scrollController,
-                    child: ListView.separated(
-                      key: const PageStorageKey(0),
-                      keyboardDismissBehavior:
-                          ScrollViewKeyboardDismissBehavior.onDrag,
-                      itemCount: Api.of(context).searchResults!.length,
-                      controller: _scrollController,
-                      itemBuilder: (context, index) {
-                        if (index == 0) {
-                          String date =
-                              getFormattedDate(
-                                Api.of(context)
-                                    .filteredArticles![Api.of(
-                                      context,
-                                    ).searchResults![index]]!
-                                    .published,
-                              ).split(", ")[1].split(" ")[0];
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              separator(date),
-                              AnchorItemWrapper(
-                                index: index,
-                                key: ValueKey("list-$index"),
-                                controller: _scrollController,
-                                child: ArticleTile(
-                                  article:
-                                      Api.of(context).filteredArticles![Api.of(
-                                        context,
-                                      ).searchResults![index]]!,
-                                  index: index,
-                                ),
-                              ),
-                            ],
-                          );
-                        }
-                        return AnchorItemWrapper(
+          context.select<Api, String?>((value) => value.filteredTitle) ==
+                  null ||
+              filteredArticles == null ||
+              searchResults == null
+          ? const SizedBox()
+          : Scrollbar(
+              controller: _scrollController,
+              child: ListView.separated(
+                key: const PageStorageKey(0),
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                itemCount: searchResults.length,
+                controller: _scrollController,
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    String date = getFormattedDate(
+                      filteredArticles[searchResults[index]]!.published,
+                    ).split(", ")[1].split(" ")[0];
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        separator(date),
+                        AnchorItemWrapper(
                           index: index,
                           key: ValueKey("list-$index"),
                           controller: _scrollController,
                           child: ArticleTile(
-                            article:
-                                Api.of(context).filteredArticles![Api.of(
-                                  context,
-                                ).searchResults![index]]!,
+                            article: filteredArticles[searchResults[index]]!,
                             index: index,
                           ),
-                        );
-                      },
-                      separatorBuilder: (context, index) {
-                        int? previous =
-                            Api.of(context)
-                                .filteredArticles![Api.of(
-                                  context,
-                                ).searchResults![index]]
-                                ?.published;
-                        if (previous != null) {
-                          String previousDate =
-                              getFormattedDate(
-                                previous,
-                              ).split(", ")[1].split(" ")[0];
-                          int? next =
-                              Api.of(context)
-                                  .filteredArticles![Api.of(
-                                    context,
-                                  ).searchResults!.elementAtOrNull(index + 1)]
-                                  ?.published;
-                          if (next != null) {
-                            String nextDate =
-                                getFormattedDate(
-                                  next,
-                                ).split(", ")[1].split(" ")[0];
-                            if (nextDate != previousDate) {
-                              return separator(nextDate);
-                            }
-                          }
-                        }
-
-                        return Container();
-                      },
+                        ),
+                      ],
+                    );
+                  }
+                  return AnchorItemWrapper(
+                    index: index,
+                    key: ValueKey("list-$index"),
+                    controller: _scrollController,
+                    child: ArticleTile(
+                      article: filteredArticles[searchResults[index]]!,
+                      index: index,
                     ),
                   );
                 },
+                separatorBuilder: (context, index) {
+                  int? previous =
+                      filteredArticles[searchResults[index]]?.published;
+                  if (previous != null) {
+                    String previousDate = getFormattedDate(
+                      previous,
+                    ).split(", ")[1].split(" ")[0];
+                    int? next =
+                        filteredArticles[searchResults.elementAtOrNull(
+                              index + 1,
+                            )]
+                            ?.published;
+                    if (next != null) {
+                      String nextDate = getFormattedDate(
+                        next,
+                      ).split(", ")[1].split(" ")[0];
+                      if (nextDate != previousDate) {
+                        return separator(nextDate);
+                      }
+                    }
+                  }
+
+                  return Container();
+                },
               ),
+            ),
     );
   }
 
@@ -231,13 +229,13 @@ class _ArticleTileState extends State<ArticleTile> {
       direction: DismissDirection.horizontal,
       confirmDismiss: (direction) async {
         if (direction == DismissDirection.endToStart) {
-          Api.of(context).setRead(
+          context.read<Api>().setRead(
             widget.article.articleID,
             widget.article.subID,
             !widget.article.read,
           );
         } else {
-          Api.of(context).setStarred(
+          context.read<Api>().setStarred(
             widget.article.articleID,
             widget.article.subID,
             !widget.article.starred,
@@ -275,23 +273,30 @@ class _ArticleTileState extends State<ArticleTile> {
       child: ArticleWidget(
         article: widget.article,
         subIcon:
-            Api.of(context).subscriptions[widget.article.subID]?.iconUrl ?? "",
+            context.select<Api, String?>(
+              (a) => a.subscriptions[widget.article.subID]?.iconUrl,
+            ) ??
+            "",
         subTitle:
-            Api.of(context).subscriptions[widget.article.subID]?.title ?? "",
+            context.select<Api, String?>(
+              (a) => a.subscriptions[widget.article.subID]?.title,
+            ) ??
+            "",
         onSelect: () {
-          Api.of(context).selectedIndex = widget.index;
-          if (Api.of(context).filteredArticles != null &&
-              Api.of(context).filteredArticles![widget.article.articleID] !=
+          context.read<Api>().selectedIndex = widget.index;
+          if (context.read<Api>().filteredArticles != null &&
+              context.read<Api>().filteredArticles![widget.article.articleID] !=
                   null) {
             bool newValue =
-                Preferences.of(context).markReadWhenOpen
-                    ? true
-                    : widget.article.read;
-            Api.of(context).setRead(
+                context.select<Preferences, bool>((a) => a.markReadWhenOpen)
+                ? true
+                : widget.article.read;
+            context.read<Api>().setRead(
               widget.article.articleID,
-              Api.of(
-                context,
-              ).filteredArticles![widget.article.articleID]!.subID,
+              context
+                  .read<Api>()
+                  .filteredArticles![widget.article.articleID]!
+                  .subID,
               newValue,
             );
           }
@@ -316,6 +321,11 @@ class ArticleWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    String? selectedID = context.select<Api, String?>(
+      (a) => a.selectedIndex != null
+          ? a.filteredArticleIDs?.elementAt(a.selectedIndex!)
+          : null,
+    );
     return LayoutBuilder(
       builder: (context, constraints) {
         return InkWell(
@@ -324,15 +334,9 @@ class ArticleWidget extends StatelessWidget {
           child: Container(
             height: 128.0,
             decoration: BoxDecoration(
-              color:
-                  Api.of(context).filteredArticleIDs != null &&
-                          Api.of(context).selectedIndex != null &&
-                          Api.of(context).filteredArticleIDs!.elementAt(
-                                Api.of(context).selectedIndex!,
-                              ) ==
-                              article.articleID
-                      ? Theme.of(context).listTileTheme.selectedTileColor
-                      : null,
+              color: selectedID == article.articleID
+                  ? Theme.of(context).listTileTheme.selectedTileColor
+                  : null,
               // borderRadius: BorderRadius.circular(8.0),
             ),
             padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
@@ -372,13 +376,14 @@ class ArticleWidget extends StatelessWidget {
                             children: [
                               WidgetSpan(
                                 child: ArticleImage(
-                                  imageUrl: Api.of(context).getIconUrl(subIcon),
+                                  imageUrl: context.read<Api>().getIconUrl(
+                                    subIcon,
+                                  ),
                                   fit: BoxFit.contain,
                                   width: 16.0,
                                   height: 16.0,
-                                  onError:
-                                      (error) =>
-                                          const Icon(Icons.error, size: 16.0),
+                                  onError: (error) =>
+                                      const Icon(Icons.error, size: 16.0),
                                 ),
                               ),
                               TextSpan(text: " $subTitle"),

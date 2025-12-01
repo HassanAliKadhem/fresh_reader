@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:fresh_reader/util/formatting_setting.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../api/api.dart';
 import '../api/data_types.dart';
-import '../api/provider.dart';
 import '../widget/adaptive_text_field.dart';
 
-const version = "1.2.13";
+const version = "1.2.14";
 
 class SettingsDialog extends StatelessWidget {
   const SettingsDialog({super.key});
@@ -68,7 +69,7 @@ class _SettingsContentState extends State<SettingsContent> {
             ).then((onValue) {
               if (onValue != null && onValue is Account) {
                 if (context.mounted) {
-                  Api.of(context).changeAccount(onValue);
+                  context.read<Api>().changeAccount(onValue);
                 } else {
                   debugPrint("Context not mounted");
                 }
@@ -82,31 +83,31 @@ class _SettingsContentState extends State<SettingsContent> {
         ListTile(title: Text("Other settings"), dense: true),
         CheckboxListTile.adaptive(
           title: Text("Set article as read when open"),
-          value: Preferences.of(context).markReadWhenOpen,
+          value: context.select<Preferences, bool>((a) => a.markReadWhenOpen),
           onChanged: (val) {
             if (val != null) {
-              Preferences.of(context).setMarkReadWhenOpen(val);
+              context.read<Preferences>().setMarkReadWhenOpen(val);
             }
           },
         ),
         CheckboxListTile.adaptive(
           title: Text("Show last sync article category"),
-          value: Preferences.of(context).showLastSync,
+          value: context.select<Preferences, bool>((a) => a.showLastSync),
           onChanged: (val) {
             if (val != null) {
-              Preferences.of(context).setShowLastSync(val);
+              context.read<Preferences>().setShowLastSync(val);
             }
           },
         ),
         ListTile(title: Text("Theme"), dense: true),
         Card(
-          child: RadioGroup(
+          child: RadioGroup<int>(
             onChanged: (val) {
               if (val != null) {
-                Preferences.of(context).setThemeIndex(val);
+                context.read<Preferences>().setThemeIndex(val);
               }
             },
-            groupValue: Preferences.of(context).themeIndex,
+            groupValue: context.select<Preferences, int>((a) => a.themeIndex),
             child: Column(
               children: MyTheme.values
                   .map(
@@ -174,7 +175,7 @@ class _AccountDetailsState extends State<AccountDetails> {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(
-      future: Api.of(context).getAccounts(),
+      future: context.watch<Api>().getAccounts(),
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return LinearProgressIndicator();
@@ -199,13 +200,15 @@ class AccountCard extends StatefulWidget {
 }
 
 class _AccountCardState extends State<AccountCard> {
+  late Account account = widget.account;
+
   @override
   Widget build(BuildContext context) {
-    Account account = widget.account;
     return Card(
       clipBehavior: Clip.antiAlias,
       margin: EdgeInsets.all(8.0),
       child: ExpansionTile(
+        key: PageStorageKey('accountTile_${account.id}'),
         shape: const Border(),
         title: Text("${account.provider}: ${account.username}"),
         subtitle: Text(account.serverUrl.toString()),
@@ -222,10 +225,13 @@ class _AccountCardState extends State<AccountCard> {
               ).then((onValue) {
                 if (onValue != null && onValue is Account) {
                   if (context.mounted &&
-                      onValue.id == Api.of(context).account?.id) {
-                    Api.of(context).changeAccount(onValue);
+                      onValue.id == context.read<Api>().account?.id) {
+                    context.read<Api>().changeAccount(onValue);
                   } else {
                     debugPrint("Context not mounted");
+                    setState(() {
+                      account = onValue;
+                    });
                   }
                 }
               });
@@ -243,25 +249,32 @@ class _AccountCardState extends State<AccountCard> {
                     actions: [
                       TextButton(
                         onPressed: () {
-                          Api.of(context).clear();
-                          Api.of(
-                            context,
-                          ).database.deleteAccount(account.id).then((_) {
-                            setState(() {
-                              if (Api.of(context).account?.id == account.id) {
-                                Api.of(context).getAccounts().then((onValue) {
-                                  if (context.mounted) {
-                                    Api.of(
-                                      context,
-                                    ).changeAccount(onValue.firstOrNull);
-                                  } else {
-                                    debugPrint("Context not mounted");
-                                  }
-                                });
-                              }
-                            });
-                          });
                           Navigator.pop(context);
+                          if (context.read<Api>().account?.id == account.id) {
+                            context.read<Api>().clear();
+                          }
+                          context
+                              .read<Api>()
+                              .database
+                              .deleteAccount(account.id)
+                              .then((_) {
+                                if (context.read<Api>().account?.id ==
+                                    account.id) {
+                                  context.read<Api>().getAccounts().then((
+                                    onValue,
+                                  ) {
+                                    context.read<Api>().changeAccount(
+                                      onValue.firstOrNull,
+                                    );
+                                    setState(() {});
+                                  });
+                                } else {
+                                  context.read<Api>().changeAccount(
+                                    context.read<Api>().account,
+                                  );
+                                  setState(() {});
+                                }
+                              });
                         },
                         child: Text(
                           "Delete Account",
@@ -270,23 +283,26 @@ class _AccountCardState extends State<AccountCard> {
                       ),
                       TextButton(
                         onPressed: () {
-                          Api.of(context).clear();
-                          Api.of(
-                            context,
-                          ).database.deleteAccountData(account.id).then((_) {
-                            setState(() {
-                              Api.of(
-                                context,
-                              ).database.getAccount(account.id).then((onValue) {
-                                if (context.mounted) {
-                                  Api.of(context).changeAccount(onValue);
-                                } else {
-                                  debugPrint("Context not mounted");
-                                }
-                              });
-                            });
-                          });
                           Navigator.pop(context);
+                          if (context.read<Api>().account?.id == account.id) {
+                            context.read<Api>().clear();
+                          }
+                          context
+                              .read<Api>()
+                              .database
+                              .deleteAccountData(account.id)
+                              .then((_) {
+                                context
+                                    .read<Api>()
+                                    .database
+                                    .getAccount(account.id)
+                                    .then((onValue) {
+                                      context.read<Api>().changeAccount(
+                                        onValue,
+                                      );
+                                      setState(() {});
+                                    });
+                              });
                         },
                         child: Text(
                           "Delete only data",
@@ -307,7 +323,9 @@ class _AccountCardState extends State<AccountCard> {
           ),
           ListTile(
             title: FutureBuilder(
-              future: Api.of(context).database.loadArticleMetaData(account.id),
+              future: context.read<Api>().database.loadArticleMetaData(
+                account.id,
+              ),
               builder: (context, asyncSnapshot) {
                 return Text(
                   "Total articles: ${asyncSnapshot.data?.length ?? 0}, Unread: ${asyncSnapshot.data?.values.where((a) => !a.$3).length ?? 0}",
@@ -316,8 +334,8 @@ class _AccountCardState extends State<AccountCard> {
             ),
             subtitle: FutureBuilder(
               future: Future.wait([
-                Api.of(context).database.loadAllCategory(account.id),
-                Api.of(context).database.loadAllSubs(account.id),
+                context.read<Api>().database.loadAllCategory(account.id),
+                context.read<Api>().database.loadAllSubs(account.id),
               ]),
               builder: (context, asyncSnapshot) {
                 return Text(
@@ -343,16 +361,16 @@ class _AccountCardState extends State<AccountCard> {
                 ),
               ).then((value) {
                 if (value != null) {
-                  Api.of(context).database.database.update(
+                  int newTime = (value.millisecondsSinceEpoch / 1000).floor();
+                  context.read<Api>().database.database.update(
                     "Account",
-                    {
-                      "updatedArticleTime":
-                          (value.millisecondsSinceEpoch / 1000).floor(),
-                    },
+                    {"updatedArticleTime": newTime},
                     where: "id = ?",
                     whereArgs: [account.id],
                   );
-                  setState(() {});
+                  setState(() {
+                    account.updatedArticleTime = newTime;
+                  });
                 }
               });
             },
@@ -374,16 +392,16 @@ class _AccountCardState extends State<AccountCard> {
                 ),
               ).then((value) {
                 if (value != null) {
-                  Api.of(context).database.database.update(
+                  int newTime = (value.millisecondsSinceEpoch / 1000).floor();
+                  context.read<Api>().database.database.update(
                     "Account",
-                    {
-                      "updatedStarredTime":
-                          (value.millisecondsSinceEpoch / 1000).floor(),
-                    },
+                    {"updatedStarredTime": newTime},
                     where: "id = ?",
                     whereArgs: [account.id],
                   );
-                  setState(() {});
+                  setState(() {
+                    account.updatedStarredTime = newTime;
+                  });
                 }
               });
             },
@@ -433,8 +451,8 @@ class _ReadDurationTileState extends State<ReadDurationTile> {
   @override
   Widget build(BuildContext context) {
     int? value = widget.dbKey == "read_duration"
-        ? Preferences.of(context).readDuration
-        : Preferences.of(context).starDuration;
+        ? context.select<Preferences, int?>((a) => a.readDuration)
+        : context.select<Preferences, int?>((a) => a.starDuration);
     return ListTile(
       title: Text(widget.title),
       subtitle: Text(
@@ -456,9 +474,9 @@ class _ReadDurationTileState extends State<ReadDurationTile> {
                   if (newVal != null) {
                     setState(() {
                       if (widget.dbKey == "read_duration") {
-                        Preferences.of(context).setReadDuration(newVal);
+                        context.read<Preferences>().setReadDuration(newVal);
                       } else {
-                        Preferences.of(context).setStarDuration(newVal);
+                        context.read<Preferences>().setStarDuration(newVal);
                       }
                     });
                   }
@@ -502,10 +520,10 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
   Future<int> _addAccount(Account accountToAdd) async {
     int index = -1;
     if (widget.oldAccount != null) {
-      await Api.of(context).database.updateAccount(accountToAdd);
+      await context.read<Api>().database.updateAccount(accountToAdd);
       index = accountToAdd.id;
     } else {
-      index = await Api.of(context).database.addAccount(accountToAdd);
+      index = await context.read<Api>().database.addAccount(accountToAdd);
     }
     return index;
   }

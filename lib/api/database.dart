@@ -272,10 +272,9 @@ class DB {
       whereArgs: [article.articleID, accountID],
       limit: 1,
     );
-    article.content =
-        (res.first.values.first != null
-            ? res.first.values.first as String
-            : "");
+    article.content = (res.first.values.first != null
+        ? res.first.values.first as String
+        : "");
     return article;
   }
 
@@ -320,14 +319,13 @@ class DB {
           MapEntry(value["subID"] as String, value["COUNT(id)"] as int)),
     );
 
-    Object? todayCount =
-        (await database.query(
-          "Articles",
-          columns: ["COUNT(id)"],
-          where:
-              "accountID = ? and timeStampPublished > ${getTodaySecondsSinceEpoch()} ${(!showAll ? " and isRead = ?" : "")}",
-          whereArgs: [accountID, if (!showAll) "false"],
-        )).firstOrNull?.values.firstOrNull;
+    Object? todayCount = (await database.query(
+      "Articles",
+      columns: ["COUNT(id)"],
+      where:
+          "accountID = ? and timeStampPublished > ${getTodaySecondsSinceEpoch()} ${(!showAll ? " and isRead = ?" : "")}",
+      whereArgs: [accountID, if (!showAll) "false"],
+    )).firstOrNull?.values.firstOrNull;
 
     if (todayCount != null) {
       counts["Today"] = todayCount as int;
@@ -558,7 +556,12 @@ class DB {
   }
 
   Future<void> updateAccount(Account accountToAdd) async {
-    await database.update("Account", accountToAdd.toMap());
+    await database.update(
+      "Account",
+      accountToAdd.toMap(),
+      where: "id = ?",
+      whereArgs: [accountToAdd.id],
+    );
   }
 
   Future<void> deleteAccount(int accountID) async {

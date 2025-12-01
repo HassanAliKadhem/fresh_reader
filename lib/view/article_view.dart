@@ -7,12 +7,13 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:fresh_reader/util/screen_size.dart';
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../api/api.dart';
 import '../api/data_types.dart';
-import '../api/provider.dart';
 import '../util/date.dart';
 import '../util/formatting_setting.dart';
 import '../widget/adaptive_list_tile.dart';
@@ -36,36 +37,16 @@ class _ArticleViewState extends State<ArticleView> {
   );
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (Api.of(context).selectedIndex != null &&
+  Widget build(BuildContext context) {
+    int? index = context.select<Api, int?>((a) => a.selectedIndex);
+    if (index != null &&
         pageController.hasClients &&
-        Api.of(context).selectedIndex != pageController.page!.toInt() &&
-        pageController.page!.toInt() == pageController.page) {
-      final int index = Api.of(context).selectedIndex!;
+        index != pageController.page?.round() &&
+        pageController.page?.round() == pageController.page) {
       Future.microtask(() {
         pageController.jumpToPage(index);
       });
     }
-  }
-
-  void onPageChanged(int page) {
-    Api.of(context).selectedIndex = page;
-    if (Preferences.of(context).markReadWhenOpen) {
-      Api.of(context).setRead(
-        Api.of(
-          context,
-        ).filteredArticles![Api.of(context).searchResults![page]]!.articleID,
-        Api.of(
-          context,
-        ).filteredArticles![Api.of(context).searchResults![page]]!.subID,
-        true,
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: ArticleCount(articleIDS: widget.articleIDs ?? {}),
@@ -90,83 +71,64 @@ class _ArticleViewState extends State<ArticleView> {
       ),
       extendBodyBehindAppBar: !showWebView,
       extendBody: !showWebView,
-      bottomNavigationBar:
-          widget.index != null && widget.articleIDs != null && !showWebView
-              ? ArticleBottomButtons()
-              : null,
-      body:
-          widget.index != null && widget.articleIDs != null
-              ? ArticleViewPages(
-                articleIDs: widget.articleIDs ?? {},
-                pageController: pageController,
-                onPageChanged: (page) => onPageChanged(page),
-                initialIndex: widget.index,
-                showWebView: showWebView,
-              )
-              : const Center(child: Text("Please select an article")),
+      bottomNavigationBar: widget.index != null && widget.articleIDs != null
+          ? ArticleBottomButtons()
+          : null,
+      body: widget.index != null && widget.articleIDs != null
+          ? ArticleViewPages(
+              key: ValueKey("ArticleViewPages"),
+              articleIDs: widget.articleIDs ?? {},
+              pageController: pageController,
+              initialIndex: widget.index,
+              showWebView: showWebView,
+            )
+          : const Center(child: Text("Please select an article")),
     );
   }
 }
 
-class ArticleViewPages extends StatefulWidget {
+class ArticleViewPages extends StatelessWidget {
   const ArticleViewPages({
     super.key,
     required this.articleIDs,
     required this.showWebView,
-    required this.onPageChanged,
     required this.pageController,
     required this.initialIndex,
   });
   final Set<String> articleIDs;
   final bool showWebView;
-  final Function(int) onPageChanged;
   final PageController pageController;
   final int? initialIndex;
 
   @override
-  State<ArticleViewPages> createState() => _ArticleViewPagesState();
-}
-
-class _ArticleViewPagesState extends State<ArticleViewPages> {
-  @override
   Widget build(BuildContext context) {
     return PageView.builder(
       allowImplicitScrolling: true,
-      controller: widget.pageController,
-      onPageChanged: (value) => widget.onPageChanged(value),
-      itemCount: widget.articleIDs.length,
+      controller: pageController,
+      onPageChanged: (page) {
+        if (context.read<Preferences>().markReadWhenOpen) {
+          context.read<Api>().selectedIndex = page;
+          context.read<Api>().setRead(
+            context
+                .read<Api>()
+                .filteredArticles![context.read<Api>().searchResults![page
+                    .round()]]!
+                .articleID,
+            context
+                .read<Api>()
+                .filteredArticles![context.read<Api>().searchResults![page
+                    .round()]]!
+                .subID,
+            true,
+          );
+        }
+      },
+      itemCount: articleIDs.length,
       itemBuilder: (context, index) {
-        return FutureBuilder<Article>(
-          future:
-              Api.of(context).filteredArticles != null &&
-                      Api.of(context).filteredArticles!.containsKey(
-                        widget.articleIDs.elementAt(index),
-                      )
-                  ? Api.of(context).getArticleWithContent(
-                    Api.of(context).filteredArticles![widget.articleIDs
-                        .elementAt(index)]!,
-                    Api.of(context).account!.id,
-                  )
-                  : null,
-          builder: (context, snapshot) {
-            if (snapshot.data != null) {
-              return ArticlePage(
-                key: ValueKey("${snapshot.data}${widget.showWebView}"),
-                subscription:
-                    Api.of(context).subscriptions[snapshot.data!.subID]!,
-                article: snapshot.data!,
-                showWebView: widget.showWebView,
-              );
-            } else {
-              return const Center(
-                child: SizedBox(
-                  height: 48,
-                  width: 48,
-                  child: FittedBox(child: CircularProgressIndicator.adaptive()),
-                ),
-              );
-            }
-          },
+        return ArticlePage(
+          key: ValueKey(articleIDs.elementAt(index)),
+          articleID: articleIDs.elementAt(index),
+          showWebView: showWebView,
         );
       },
     );
@@ -180,9 +142,9 @@ class ArticleCount extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (Api.of(context).selectedIndex != null) {
+    if (context.read<Api>().selectedIndex != null) {
       return Text(
-        "${Api.of(context).selectedIndex! + 1} / ${articleIDS.length}",
+        "${context.read<Api>().selectedIndex! + 1} / ${articleIDS.length}",
         style: TextStyle(fontWeight: FontWeight.bold),
       );
     } else {
@@ -194,13 +156,11 @@ class ArticleCount extends StatelessWidget {
 class ArticlePage extends StatefulWidget {
   const ArticlePage({
     super.key,
-    required this.article,
-    required this.subscription,
+    required this.articleID,
     required this.showWebView,
   });
 
-  final Article article;
-  final Subscription subscription;
+  final String articleID;
   final bool showWebView;
 
   @override
@@ -208,25 +168,55 @@ class ArticlePage extends StatefulWidget {
 }
 
 class _ArticlePageState extends State<ArticlePage> {
+  late final Future<Article>? article = context
+      .read<Api>()
+      .getArticleWithContent(
+        context.read<Api>().filteredArticles![widget.articleID]!,
+        context.read<Api>().account!.id,
+      );
   @override
   Widget build(BuildContext context) {
-    if (widget.showWebView) {
-      return ArticleWebWidget(
-        key: ValueKey(widget.article.url),
-        url: widget.article.url,
-      );
-    } else {
-      return ArticleTextWidget(
-        key: ValueKey("text_${widget.article.url}"),
-        url: widget.article.url,
-        title: widget.article.title,
-        content: widget.article.content,
-        feedTitle: Api.of(context).filteredTitle,
-        timePublished: widget.article.published,
-        subName: widget.subscription.title,
-        iconUrl: Api.of(context).getIconUrl(widget.subscription.iconUrl),
-      );
-    }
+    return FutureBuilder<Article>(
+      key: ValueKey("${widget.articleID}${widget.showWebView}"),
+      future: article,
+      builder: (context, snapshot) {
+        if (snapshot.data != null) {
+          if (widget.showWebView) {
+            return ArticleWebWidget(
+              key: ValueKey(snapshot.data!.url),
+              url: snapshot.data!.url,
+            );
+          } else {
+            return ArticleTextWidget(
+              key: ValueKey("text_${snapshot.data!.url}"),
+              url: snapshot.data!.url,
+              title: snapshot.data!.title,
+              content: snapshot.data!.content,
+              feedTitle: context.read<Api>().filteredTitle,
+              timePublished: snapshot.data!.published,
+              subName: context
+                  .read<Api>()
+                  .subscriptions[snapshot.data!.subID]!
+                  .title,
+              iconUrl: context.read<Api>().getIconUrl(
+                context
+                    .read<Api>()
+                    .subscriptions[snapshot.data!.subID]!
+                    .iconUrl,
+              ),
+            );
+          }
+        } else {
+          return const Center(
+            child: SizedBox(
+              height: 48,
+              width: 48,
+              child: FittedBox(child: CircularProgressIndicator.adaptive()),
+            ),
+          );
+        }
+      },
+    );
   }
 }
 
@@ -239,21 +229,20 @@ class ArticleWebWidget extends StatefulWidget {
 }
 
 class _ArticleWebWidgetState extends State<ArticleWebWidget> {
-  late final WebViewController webViewController =
-      WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..loadRequest(Uri.parse(widget.url))
-        ..setNavigationDelegate(
-          NavigationDelegate(
-            onProgress: (newProgress) {
-              if (mounted) {
-                setState(() {
-                  progress = newProgress;
-                });
-              }
-            },
-          ),
-        );
+  late final WebViewController webViewController = WebViewController()
+    ..setJavaScriptMode(JavaScriptMode.unrestricted)
+    ..loadRequest(Uri.parse(widget.url))
+    ..setNavigationDelegate(
+      NavigationDelegate(
+        onProgress: (newProgress) {
+          if (mounted) {
+            setState(() {
+              progress = newProgress;
+            });
+          }
+        },
+      ),
+    );
 
   int progress = 0;
 
@@ -263,10 +252,9 @@ class _ArticleWebWidgetState extends State<ArticleWebWidget> {
       children: [
         SizedBox(
           height: 2,
-          child:
-              progress < 100
-                  ? LinearProgressIndicator(value: progress / 100.0)
-                  : null,
+          child: progress < 100
+              ? LinearProgressIndicator(value: progress / 100.0)
+              : null,
         ),
         Expanded(
           child: WebViewWidget(
@@ -486,11 +474,11 @@ class ArticleTextWidget extends StatelessWidget {
     );
     return AnimatedDefaultTextStyle(
       style: TextStyle(
-        fontFamily: Preferences.of(context).font,
+        fontFamily: context.select<Preferences, String>((a) => a.font),
         // fontFamilyFallback: [formattingSetting.fonts[0]],
-        fontSize: Preferences.of(context).fontSize,
-        wordSpacing: Preferences.of(context).wordSpacing,
-        height: Preferences.of(context).lineHeight,
+        fontSize: context.select<Preferences, double>((a) => a.fontSize),
+        wordSpacing: context.select<Preferences, double>((a) => a.wordSpacing),
+        height: context.select<Preferences, double>((a) => a.lineHeight),
       ),
       duration: const Duration(milliseconds: 100),
       child: SelectionArea(
@@ -512,14 +500,15 @@ class ArticleTextWidget extends StatelessWidget {
                             alignment: PlaceholderAlignment.middle,
                             child: Builder(
                               builder: (context) {
-                                double? size =
-                                    DefaultTextStyle.of(context).style.fontSize;
+                                double? size = DefaultTextStyle.of(
+                                  context,
+                                ).style.fontSize;
                                 return ArticleImage(
                                   imageUrl: iconUrl ?? "",
                                   height: size,
                                   width: size,
-                                  onError:
-                                      (error) => Icon(Icons.error, size: size),
+                                  onError: (error) =>
+                                      Icon(Icons.error, size: size),
                                 );
                               },
                             ),

@@ -10,17 +10,16 @@ class TransparentContainer extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).canvasColor.withAlpha(235),
-        border:
-            !hasBorder
-                ? null
-                : Border(
-                  bottom: BorderSide(
-                    color: Theme.of(context).dividerColor.withAlpha(32),
-                  ),
-                  top: BorderSide(
-                    color: Theme.of(context).dividerColor.withAlpha(32),
-                  ),
+        border: !hasBorder
+            ? null
+            : Border(
+                bottom: BorderSide(
+                  color: Theme.of(context).dividerColor.withAlpha(32),
                 ),
+                top: BorderSide(
+                  color: Theme.of(context).dividerColor.withAlpha(32),
+                ),
+              ),
       ),
       child: child,
     );

@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 import 'data_types.dart';
 import 'database.dart';
 
-class ApiData extends ChangeNotifier {
+class Api extends ChangeNotifier {
   bool justBooted = true;
   Account? account;
   DB database;
@@ -29,7 +29,7 @@ class ApiData extends ChangeNotifier {
     notifyListeners();
   }
 
-  ApiData(this.database) {
+  Api(this.database) {
     database.getAllAccounts().then((accounts) {
       if (accounts.isNotEmpty) {
         try {

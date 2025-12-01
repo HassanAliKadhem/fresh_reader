@@ -246,8 +246,9 @@ class Article {
       read = element["isRead"] == "true",
       starred = element["isStarred"] == "true",
       published = element["timeStampPublished"] as int,
-      content =
-          element.containsKey("content") ? element["content"] as String : "",
+      content = element.containsKey("content")
+          ? element["content"] as String
+          : "",
       url = element["url"] as String,
       image = (element["img"] ?? "") as String;
 
