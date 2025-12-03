@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:anchor_scroll_controller/anchor_scroll_controller.dart';
 import 'package:flutter/foundation.dart' as foundation;
 import 'package:flutter/material.dart';
 
@@ -16,7 +17,7 @@ class Api extends ChangeNotifier {
 
   Map<String, Subscription> subscriptions = <String, Subscription>{};
   Map<String, Category> categories = <String, Category>{};
-  // Map<String, int> counts = <String, int>{};
+  List<String> lastSyncIDs = [];
   Set<String>? filteredArticleIDs;
   Map<String, Article>? filteredArticles;
   Map<String, (int, String, bool, bool)> articlesMetaData = {};
@@ -24,10 +25,25 @@ class Api extends ChangeNotifier {
   String? filteredTitle;
   int? _selectedIndex;
   int? get selectedIndex => _selectedIndex;
-  set selectedIndex(int? i) {
+
+  void setSelectedIndex(int? i, bool? fromArticleView, [bool notify = true]) {
     _selectedIndex = i;
-    notifyListeners();
+    if (fromArticleView == false &&
+        i != null &&
+        pageController?.hasClients == true) {
+      pageController?.jumpToPage(i);
+    } else if (fromArticleView == true &&
+        i != null &&
+        listController?.hasClients == true) {
+      listController?.scrollToIndex(index: i, scrollSpeed: 0.5);
+    }
+    if (notify) {
+      notifyListeners();
+    }
   }
+
+  PageController? pageController;
+  AnchorScrollController? listController;
 
   Api(this.database) {
     database.getAllAccounts().then((accounts) {
@@ -49,7 +65,10 @@ class Api extends ChangeNotifier {
             categories = cats;
             database.loadArticleMetaData(account!.id).then((meta) {
               articlesMetaData = meta;
-              notifyListeners();
+              database.getLastSyncIDs(account!.id).then((lastIds) {
+                lastSyncIDs = lastIds;
+                notifyListeners();
+              });
             });
           });
         });
@@ -68,7 +87,7 @@ class Api extends ChangeNotifier {
 
   void clear([bool clearMeta = true]) {
     filteredArticleIDs?.clear();
-    selectedIndex = null;
+    setSelectedIndex(null, null);
     filteredArticles = {};
     searchResults = [];
     if (clearMeta) {
@@ -86,12 +105,12 @@ class Api extends ChangeNotifier {
     clear();
     subscriptions = {};
     categories = {};
-    _getAuth().then((value) {
-      auth = value;
-    });
     if (acc != null) {
+      _getAuth().then((value) {
+        auth = value;
+      });
       await Future.wait([
-        database.loadAllSubs(account!.id).then((subs) {
+        database.loadAllSubs(acc.id).then((subs) {
           subscriptions = subs;
         }),
         database.loadArticleMetaData(acc.id).then((meta) {
@@ -99,6 +118,9 @@ class Api extends ChangeNotifier {
         }),
         database.loadAllCategory(acc.id).then((cats) {
           categories = cats;
+        }),
+        database.getLastSyncIDs(acc.id).then((lastIds) {
+          lastSyncIDs = lastIds;
         }),
       ]).then((_) {
         notifyListeners();
@@ -387,6 +409,7 @@ class Api extends ChangeNotifier {
 
   Future<void> _getAllServerArticles(String auth, String feed) async {
     database.clearLastSyncTable(account!.id);
+    lastSyncIDs = [];
     int count = 0;
     bool updateTime = true;
     String url =
@@ -409,6 +432,9 @@ class Api extends ChangeNotifier {
             res["items"].forEach((json) {
               Article article = Article.fromCloudJson(json, account!.id);
               articles.add(article);
+              if (!article.read) {
+                lastSyncIDs.add(article.articleID);
+              }
               count++;
             });
             database.insertArticles(articles);
@@ -575,10 +601,10 @@ class Api extends ChangeNotifier {
         )
         .then((value) {
           if (value.body == "OK") {
-            debugPrint("Set server read: $ids");
             done = true;
-          } else {
-            debugPrint(value.body);
+            //   debugPrint("Set server read: $ids");
+            // } else {
+            //   debugPrint(value.body);
           }
         })
         .catchError((onError) {
@@ -617,9 +643,9 @@ class Api extends ChangeNotifier {
         .then((value) {
           if (value.body == "OK") {
             done = true;
-            debugPrint("Set server star: $ids");
-          } else {
-            debugPrint(value.body);
+            // debugPrint("Set server star: $ids");
+            // } else {
+            //   debugPrint(value.body);
           }
         })
         .catchError((onError) {
@@ -636,15 +662,14 @@ class Api extends ChangeNotifier {
   }
 
   Article? setRead(String id, String subID, bool isRead) {
-    debugPrint("Set article: $id as ${isRead ? "Read" : "Unread"}");
+    // debugPrint("Set article: $id as ${isRead ? "Read" : "Unread"}");
     articlesMetaData.update(id, (val) => (val.$1, val.$2, isRead, val.$4));
     if (filteredArticles != null && filteredArticles!.containsKey(id)) {
       filteredArticles![id]!.read = isRead;
     }
     _setServerRead([id], [subID], isRead);
-    database.updateArticleRead(id, isRead, account!.id).then((_) {
-      notifyListeners();
-    });
+    database.updateArticleRead(id, isRead, account!.id);
+    notifyListeners();
     return filteredArticles?[id];
   }
 
@@ -653,9 +678,8 @@ class Api extends ChangeNotifier {
     filteredArticles?[id]?.starred = isStarred;
     // debugPrint(counts["Starred"].toString());
     _setServerStar([id], [subID], isStarred);
-    database.updateArticleStar(id, isStarred, account!.id).then((_) {
-      notifyListeners();
-    });
+    database.updateArticleStar(id, isStarred, account!.id);
+    notifyListeners();
   }
 
   Future<void> getFilteredArticles(
@@ -671,7 +695,7 @@ class Api extends ChangeNotifier {
     }
     filteredArticleIDs = null;
     filteredArticles = null;
-    selectedIndex = null;
+    setSelectedIndex(null, null);
     filteredTitle = null;
     if (title == "lastSync") {
       await database.getLastSyncIDs(account!.id).then((value) {
@@ -711,6 +735,9 @@ class Api extends ChangeNotifier {
           searchResults!.add(article.articleID);
         }
         notifyListeners();
+        if (listController?.hasClients == true) {
+          listController?.jumpTo(0);
+        }
       },
     );
   }

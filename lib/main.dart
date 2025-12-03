@@ -4,11 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'api/api.dart';
-import 'api/data_types.dart';
 import 'api/database.dart';
 import 'util/formatting_setting.dart';
 import 'util/screen_size.dart';
-import 'view/settings_view.dart';
 import 'view/article_list.dart';
 import 'view/article_view.dart';
 import 'view/feed_list.dart';
@@ -112,9 +110,9 @@ class _HomeWidgetState extends State<HomeWidget> {
         key: _navigatorKey,
         onDidRemovePage: (page) {
           if (page.name == "/article") {
-            context.read<Api>().selectedIndex = null;
+            context.read<Api>().setSelectedIndex(null, null, true);
           } else if (page.name == "/list") {
-            context.read<Api>().selectedIndex = null;
+            context.read<Api>().setSelectedIndex(null, null, true);
             context.read<Api>().filteredArticleIDs = null;
           }
         },
@@ -153,21 +151,24 @@ class _HomeWidgetState extends State<HomeWidget> {
                           const Expanded(flex: 2, child: ArticleList()),
                           // VerticalDivider(width: 1.0),
                           if (screenSizeOf(context) == ScreenSize.big)
-                            Expanded(flex: 3, child: articleView()),
+                            Expanded(
+                              flex: 3,
+                              child:
+                                  context.select<Api, bool>(
+                                    (a) => a.selectedIndex != null,
+                                  )
+                                  ? articleView()
+                                  : Scaffold(
+                                      body: Center(
+                                        child: Text("Please select an article"),
+                                      ),
+                                    ),
+                            ),
                         ],
                       ),
                     ],
                   ),
           ),
-          if (context.select<Api, Account?>((a) => a.account) == null &&
-              context.select<Api, bool>((a) => a.justBooted))
-            screenSizeOf(context) == ScreenSize.big
-                ? const MaterialPage(
-                    name: "/settings",
-                    fullscreenDialog: true,
-                    child: SettingsDialog(),
-                  )
-                : const MaterialPage(name: "/settings", child: SettingsPage()),
           if (screenSizeOf(context) == ScreenSize.medium &&
               context.select<Api, Set<String>?>((a) => a.filteredArticleIDs) !=
                   null)
@@ -175,8 +176,21 @@ class _HomeWidgetState extends State<HomeWidget> {
               child: Row(
                 children: [
                   const Expanded(flex: 2, child: ArticleList()),
+
                   // VerticalDivider(width: 1),
-                  Expanded(flex: 3, child: articleView()),
+                  Expanded(
+                    flex: 3,
+                    child:
+                        context.select<Api, bool>(
+                          (a) => a.selectedIndex != null,
+                        )
+                        ? articleView()
+                        : Scaffold(
+                            body: Center(
+                              child: Text("Please select an article"),
+                            ),
+                          ),
+                  ),
                 ],
               ),
             ),
@@ -185,7 +199,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   null)
             const MaterialPage(name: "/list", child: ArticleList()),
           if (screenSizeOf(context) == ScreenSize.small &&
-              context.select<Api, int?>((a) => a.selectedIndex) != null)
+              context.select<Api, bool>((a) => a.selectedIndex != null))
             MaterialPage(name: "/article", child: articleView()),
         ],
       ),
@@ -195,7 +209,7 @@ class _HomeWidgetState extends State<HomeWidget> {
   Widget articleView() {
     return ArticleView(
       key: ValueKey(context.select<Api, String?>((a) => a.filteredTitle)),
-      index: context.select<Api, int?>((a) => a.selectedIndex),
+      index: context.read<Api>().selectedIndex,
       articleIDs: context
           .select<Api, List<String>?>((a) => a.searchResults)
           ?.toSet(),

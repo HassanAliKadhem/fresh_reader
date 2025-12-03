@@ -37,16 +37,19 @@ class _ArticleViewState extends State<ArticleView> {
   );
 
   @override
+  void initState() {
+    super.initState();
+    context.read<Api>().pageController = pageController;
+  }
+
+  @override
+  void dispose() {
+    context.read<Api>().pageController = null;
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    int? index = context.select<Api, int?>((a) => a.selectedIndex);
-    if (index != null &&
-        pageController.hasClients &&
-        index != pageController.page?.round() &&
-        pageController.page?.round() == pageController.page) {
-      Future.microtask(() {
-        pageController.jumpToPage(index);
-      });
-    }
     return Scaffold(
       appBar: AppBar(
         title: ArticleCount(articleIDS: widget.articleIDs ?? {}),
@@ -106,8 +109,12 @@ class ArticleViewPages extends StatelessWidget {
       allowImplicitScrolling: true,
       controller: pageController,
       onPageChanged: (page) {
+        context.read<Api>().setSelectedIndex(
+          page,
+          true,
+          !context.read<Preferences>().markReadWhenOpen,
+        );
         if (context.read<Preferences>().markReadWhenOpen) {
-          context.read<Api>().selectedIndex = page;
           context.read<Api>().setRead(
             context
                 .read<Api>()
@@ -144,7 +151,7 @@ class ArticleCount extends StatelessWidget {
   Widget build(BuildContext context) {
     if (context.read<Api>().selectedIndex != null) {
       return Text(
-        "${context.read<Api>().selectedIndex! + 1} / ${articleIDS.length}",
+        "${context.select<Api, int>((a) => a.selectedIndex ?? -1) + 1} / ${articleIDS.length}",
         style: TextStyle(fontWeight: FontWeight.bold),
       );
     } else {
@@ -174,6 +181,7 @@ class _ArticlePageState extends State<ArticlePage> {
         context.read<Api>().filteredArticles![widget.articleID]!,
         context.read<Api>().account!.id,
       );
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<Article>(

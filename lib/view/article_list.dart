@@ -53,12 +53,19 @@ class _ArticleListState extends State<ArticleList> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    context.read<Api>().listController = _scrollController;
+  }
+
+  @override
+  void dispose() {
+    context.read<Api>().listController = null;
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    int? index = context.select<Api, int?>((a) => a.selectedIndex);
-    if (index != null && index != lastIndex && _scrollController.hasClients) {
-      lastIndex = index;
-      _scrollController.scrollToIndex(index: index, scrollSpeed: 0.5);
-    }
     Map<String, Article>? filteredArticles = context
         .select<Api, Map<String, Article>?>((a) => a.filteredArticles);
     List<String>? searchResults = context.select<Api, List<String>?>(
@@ -283,12 +290,11 @@ class _ArticleTileState extends State<ArticleTile> {
             ) ??
             "",
         onSelect: () {
-          context.read<Api>().selectedIndex = widget.index;
+          context.read<Api>().setSelectedIndex(widget.index, false, true);
           if (context.read<Api>().filteredArticles != null &&
               context.read<Api>().filteredArticles![widget.article.articleID] !=
                   null) {
-            bool newValue =
-                context.select<Preferences, bool>((a) => a.markReadWhenOpen)
+            bool newValue = context.read<Preferences>().markReadWhenOpen
                 ? true
                 : widget.article.read;
             context.read<Api>().setRead(
@@ -325,6 +331,12 @@ class ArticleWidget extends StatelessWidget {
       (a) => a.selectedIndex != null
           ? a.filteredArticleIDs?.elementAt(a.selectedIndex!)
           : null,
+    );
+    bool isRead = context.select<Api, bool>(
+      (a) => a.articlesMetaData[article.articleID]!.$3,
+    );
+    bool isStarred = context.select<Api, bool>(
+      (a) => a.articlesMetaData[article.articleID]!.$4,
     );
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -397,7 +409,7 @@ class ArticleWidget extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          "${article.read ? "" : "⚪️ "}${article.starred ? "⭐️ " : ""}${getFormattedDate(article.published)}",
+                          "${isRead ? "" : "⚪️ "}${isStarred ? "⭐️ " : ""}${getFormattedDate(article.published)}",
                           // style: TextStyle(color: Colors.grey.shade500),
                           style: Theme.of(context).textTheme.bodySmall,
                           maxLines: 1,

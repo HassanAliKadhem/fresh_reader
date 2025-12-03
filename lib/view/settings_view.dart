@@ -5,9 +5,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api.dart';
 import '../api/data_types.dart';
+import '../util/theme.dart';
 import '../widget/adaptive_text_field.dart';
 
-const version = "1.2.14";
+const version = "1.2.15";
 
 class SettingsDialog extends StatelessWidget {
   const SettingsDialog({super.key});
@@ -34,10 +35,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("Settings")),
-      body: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: SettingsContent(),
-      ),
+      body: SingleChildScrollView(child: SettingsContent()),
     );
   }
 }
@@ -69,7 +67,13 @@ class _SettingsContentState extends State<SettingsContent> {
             ).then((onValue) {
               if (onValue != null && onValue is Account) {
                 if (context.mounted) {
-                  context.read<Api>().changeAccount(onValue);
+                  try {
+                    context.read<Api>().changeAccount(onValue);
+                  } catch (e) {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(e.toString())));
+                  }
                 } else {
                   debugPrint("Context not mounted");
                 }
@@ -78,50 +82,13 @@ class _SettingsContentState extends State<SettingsContent> {
             });
           },
         ),
-        AccountDetails(),
-        Divider(indent: 8.0, endIndent: 8.0),
-        ListTile(title: Text("Other settings"), dense: true),
-        CheckboxListTile.adaptive(
-          title: Text("Set article as read when open"),
-          value: context.select<Preferences, bool>((a) => a.markReadWhenOpen),
-          onChanged: (val) {
-            if (val != null) {
-              context.read<Preferences>().setMarkReadWhenOpen(val);
-            }
-          },
-        ),
-        CheckboxListTile.adaptive(
-          title: Text("Show last sync article category"),
-          value: context.select<Preferences, bool>((a) => a.showLastSync),
-          onChanged: (val) {
-            if (val != null) {
-              context.read<Preferences>().setShowLastSync(val);
-            }
-          },
-        ),
-        ListTile(title: Text("Theme"), dense: true),
-        Card(
-          child: RadioGroup<int>(
-            onChanged: (val) {
-              if (val != null) {
-                context.read<Preferences>().setThemeIndex(val);
-              }
-            },
-            groupValue: context.select<Preferences, int>((a) => a.themeIndex),
-            child: Column(
-              children: MyTheme.values
-                  .map(
-                    (t) => RadioListTile.adaptive(
-                      value: t.index,
-                      title: Text(
-                        "${t.name[0].toUpperCase()}${t.name.substring(1)}",
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
-        ),
+        const AccountDetails(),
+        const Divider(indent: 8.0, endIndent: 8.0),
+        const ListTile(title: Text("Other settings"), dense: true),
+        const ReadWhenOpenCheckTile(),
+        const ShowLastSyncCheckTile(),
+        const ListTile(title: Text("Theme"), dense: true),
+        const ThemeSwitcherCard(),
         const ReadDurationTile(
           title: "Keep read articles",
           dbKey: "read_duration",
@@ -132,7 +99,7 @@ class _SettingsContentState extends State<SettingsContent> {
         //   dbKey: "star_duration",
         //   values: amounts,
         // ),
-        Divider(indent: 8.0, endIndent: 8.0),
+        const Divider(indent: 8.0, endIndent: 8.0),
         AboutListTile(
           applicationVersion: version,
           aboutBoxChildren: [
@@ -151,7 +118,7 @@ class _SettingsContentState extends State<SettingsContent> {
               subtitle: const Text(
                 "https://github.com/HassanAliKadhem/fresh_reader",
               ),
-              leading: Icon(Icons.code),
+              leading: const Icon(Icons.code),
               trailing: const Icon(Icons.open_in_browser),
               onTap: () => launchUrl(
                 Uri.parse("https://github.com/HassanAliKadhem/fresh_reader"),
@@ -164,14 +131,69 @@ class _SettingsContentState extends State<SettingsContent> {
   }
 }
 
-class AccountDetails extends StatefulWidget {
-  const AccountDetails({super.key});
+class ShowLastSyncCheckTile extends StatelessWidget {
+  const ShowLastSyncCheckTile({super.key});
 
   @override
-  State<AccountDetails> createState() => _AccountDetailsState();
+  Widget build(BuildContext context) {
+    return CheckboxListTile.adaptive(
+      title: Text("Show last sync article category"),
+      value: context.select<Preferences, bool>((a) => a.showLastSync),
+      onChanged: (val) {
+        if (val != null) {
+          context.read<Preferences>().setShowLastSync(val);
+        }
+      },
+    );
+  }
 }
 
-class _AccountDetailsState extends State<AccountDetails> {
+class ReadWhenOpenCheckTile extends StatelessWidget {
+  const ReadWhenOpenCheckTile({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return CheckboxListTile.adaptive(
+      title: Text("Set article as read when open"),
+      value: context.select<Preferences, bool>((a) => a.markReadWhenOpen),
+      onChanged: (val) {
+        if (val != null) {
+          context.read<Preferences>().setMarkReadWhenOpen(val);
+        }
+      },
+    );
+  }
+}
+
+class ThemeSwitcherCard extends StatelessWidget {
+  const ThemeSwitcherCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: RadioGroup<int>(
+        onChanged: (val) {
+          if (val != null) {
+            context.read<Preferences>().setThemeIndex(val);
+          }
+        },
+        groupValue: context.select<Preferences, int>((a) => a.themeIndex),
+        child: Column(
+          children: themes.entries
+              .map(
+                (t) =>
+                    RadioListTile.adaptive(value: t.value, title: Text(t.key)),
+              )
+              .toList(),
+        ),
+      ),
+    );
+  }
+}
+
+class AccountDetails extends StatelessWidget {
+  const AccountDetails({super.key});
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(

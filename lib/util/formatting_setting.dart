@@ -5,8 +5,6 @@ import 'package:flutter/widgets.dart';
 
 import '../api/database.dart';
 
-enum MyTheme { dark, amoled }
-
 class Preferences extends ChangeNotifier {
   final DB database;
 
