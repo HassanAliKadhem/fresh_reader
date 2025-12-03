@@ -11,10 +11,11 @@ class Preferences extends ChangeNotifier {
   double fontSize = 14.0;
   double wordSpacing = 0.0;
   double lineHeight = 1.5;
-  String font = (Platform.isIOS || Platform.isMacOS) ? ".SF UI Text" : "Roboto";
+  late String font = fonts.first;
   List<String> fonts = [
-    (Platform.isIOS || Platform.isMacOS) ? ".SF UI Text" : "Roboto",
-    if (Platform.isIOS || Platform.isMacOS) "Arial",
+    ...(Platform.isIOS || Platform.isMacOS)
+        ? [".SF UI Text", "Arial"]
+        : ["Roboto"],
     "Courier",
     "Times New Roman",
   ];
@@ -25,11 +26,9 @@ class Preferences extends ChangeNotifier {
   bool showLastSync = false;
   int themeIndex = 0;
 
-  Preferences(this.database) {
-    load();
-  }
+  Preferences(this.database);
 
-  void load() async {
+  Future<void> load() async {
     fontSize =
         double.tryParse(
           await database.getPreference("format_fontSize") ?? "",
@@ -70,7 +69,6 @@ class Preferences extends ChangeNotifier {
         debugPrint("Clear cache successful: $done");
       });
     }
-    notifyListeners();
   }
 
   void save() {

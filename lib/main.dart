@@ -15,15 +15,15 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   getDatabase()
-      .then((db) {
+      .then((db) async {
         DB database = DB(db);
+        Preferences pref = Preferences(database);
+        await pref.load();
         runApp(
           MultiProvider(
             providers: [
               ChangeNotifierProvider<Api>(create: (context) => Api(database)),
-              ChangeNotifierProvider<Preferences>(
-                create: (context) => Preferences(database),
-              ),
+              ChangeNotifierProvider<Preferences>(create: (context) => pref),
             ],
             child: MyApp(),
           ),
@@ -170,13 +170,11 @@ class _HomeWidgetState extends State<HomeWidget> {
                   ),
           ),
           if (screenSizeOf(context) == ScreenSize.medium &&
-              context.select<Api, Set<String>?>((a) => a.filteredArticleIDs) !=
-                  null)
+              context.select<Api, String?>((a) => a.filteredTitle) != null)
             MaterialPage(
               child: Row(
                 children: [
                   const Expanded(flex: 2, child: ArticleList()),
-
                   // VerticalDivider(width: 1),
                   Expanded(
                     flex: 3,
@@ -195,8 +193,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               ),
             ),
           if (screenSizeOf(context) == ScreenSize.small &&
-              context.select<Api, Set<String>?>((a) => a.filteredArticleIDs) !=
-                  null)
+              context.select<Api, String?>((a) => a.filteredTitle) != null)
             const MaterialPage(name: "/list", child: ArticleList()),
           if (screenSizeOf(context) == ScreenSize.small &&
               context.select<Api, bool>((a) => a.selectedIndex != null))
@@ -208,11 +205,11 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   Widget articleView() {
     return ArticleView(
-      key: ValueKey(context.select<Api, String?>((a) => a.filteredTitle)),
       index: context.read<Api>().selectedIndex,
-      articleIDs: context
-          .select<Api, List<String>?>((a) => a.searchResults)
-          ?.toSet(),
+      articleIDs: context.read<Api>().searchResults?.toSet(),
+      // articleIDs: context
+      //     .select<Api, List<String>?>((a) => a.searchResults)
+      //     ?.toSet(),
     );
   }
 }

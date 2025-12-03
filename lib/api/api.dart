@@ -128,6 +128,26 @@ class Api extends ChangeNotifier {
     }
   }
 
+  Future<void> deleteAccount(int id) async {
+    await database.deleteAccount(id);
+    if (account?.id == id) {
+      clear();
+      await changeAccount((await getAccounts()).firstOrNull);
+    } else {
+      await changeAccount(account);
+    }
+  }
+
+  Future<void> deleteAccountData(int id) async {
+    await database.deleteAccountData(id);
+    if (account?.id == id) {
+      clear();
+      await changeAccount((await database.getAccount(account!.id)));
+    } else {
+      await changeAccount(account);
+    }
+  }
+
   void setShowAll(bool newValue) {
     showAll = newValue;
     clear(false);
@@ -662,24 +682,22 @@ class Api extends ChangeNotifier {
   }
 
   Article? setRead(String id, String subID, bool isRead) {
-    // debugPrint("Set article: $id as ${isRead ? "Read" : "Unread"}");
     articlesMetaData.update(id, (val) => (val.$1, val.$2, isRead, val.$4));
-    if (filteredArticles != null && filteredArticles!.containsKey(id)) {
-      filteredArticles![id]!.read = isRead;
-    }
+    filteredArticles?[id]?.read = isRead;
+    notifyListeners();
+
     _setServerRead([id], [subID], isRead);
     database.updateArticleRead(id, isRead, account!.id);
-    notifyListeners();
     return filteredArticles?[id];
   }
 
   void setStarred(String id, String subID, bool isStarred) {
     articlesMetaData.update(id, (val) => (val.$1, val.$2, val.$3, isStarred));
     filteredArticles?[id]?.starred = isStarred;
-    // debugPrint(counts["Starred"].toString());
+    notifyListeners();
+
     _setServerStar([id], [subID], isStarred);
     database.updateArticleStar(id, isStarred, account!.id);
-    notifyListeners();
   }
 
   Future<void> getFilteredArticles(

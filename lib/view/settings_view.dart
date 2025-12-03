@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:fresh_reader/util/formatting_setting.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api.dart';
 import '../api/data_types.dart';
+import '../util/formatting_setting.dart';
 import '../util/theme.dart';
 import '../widget/adaptive_text_field.dart';
 
@@ -272,31 +272,11 @@ class _AccountCardState extends State<AccountCard> {
                       TextButton(
                         onPressed: () {
                           Navigator.pop(context);
-                          if (context.read<Api>().account?.id == account.id) {
-                            context.read<Api>().clear();
-                          }
-                          context
-                              .read<Api>()
-                              .database
-                              .deleteAccount(account.id)
-                              .then((_) {
-                                if (context.read<Api>().account?.id ==
-                                    account.id) {
-                                  context.read<Api>().getAccounts().then((
-                                    onValue,
-                                  ) {
-                                    context.read<Api>().changeAccount(
-                                      onValue.firstOrNull,
-                                    );
-                                    setState(() {});
-                                  });
-                                } else {
-                                  context.read<Api>().changeAccount(
-                                    context.read<Api>().account,
-                                  );
-                                  setState(() {});
-                                }
-                              });
+                          context.read<Api>().deleteAccount(account.id).then((
+                            _,
+                          ) {
+                            setState(() {});
+                          });
                         },
                         child: Text(
                           "Delete Account",
@@ -306,24 +286,11 @@ class _AccountCardState extends State<AccountCard> {
                       TextButton(
                         onPressed: () {
                           Navigator.pop(context);
-                          if (context.read<Api>().account?.id == account.id) {
-                            context.read<Api>().clear();
-                          }
                           context
                               .read<Api>()
-                              .database
                               .deleteAccountData(account.id)
                               .then((_) {
-                                context
-                                    .read<Api>()
-                                    .database
-                                    .getAccount(account.id)
-                                    .then((onValue) {
-                                      context.read<Api>().changeAccount(
-                                        onValue,
-                                      );
-                                      setState(() {});
-                                    });
+                                setState(() {});
                               });
                         },
                         child: Text(

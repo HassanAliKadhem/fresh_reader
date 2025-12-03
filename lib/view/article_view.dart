@@ -52,7 +52,7 @@ class _ArticleViewState extends State<ArticleView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: ArticleCount(articleIDS: widget.articleIDs ?? {}),
+        title: ArticleCount(length: widget.articleIDs?.length ?? 0),
         automaticallyImplyLeading: screenSizeOf(context) == ScreenSize.small,
         actions: [
           IconButton(
@@ -79,7 +79,6 @@ class _ArticleViewState extends State<ArticleView> {
           : null,
       body: widget.index != null && widget.articleIDs != null
           ? ArticleViewPages(
-              key: ValueKey("ArticleViewPages"),
               articleIDs: widget.articleIDs ?? {},
               pageController: pageController,
               initialIndex: widget.index,
@@ -116,15 +115,10 @@ class ArticleViewPages extends StatelessWidget {
         );
         if (context.read<Preferences>().markReadWhenOpen) {
           context.read<Api>().setRead(
+            articleIDs.elementAt(page),
             context
                 .read<Api>()
-                .filteredArticles![context.read<Api>().searchResults![page
-                    .round()]]!
-                .articleID,
-            context
-                .read<Api>()
-                .filteredArticles![context.read<Api>().searchResults![page
-                    .round()]]!
+                .filteredArticles![context.read<Api>().searchResults![page]]!
                 .subID,
             true,
           );
@@ -133,7 +127,6 @@ class ArticleViewPages extends StatelessWidget {
       itemCount: articleIDs.length,
       itemBuilder: (context, index) {
         return ArticlePage(
-          key: ValueKey(articleIDs.elementAt(index)),
           articleID: articleIDs.elementAt(index),
           showWebView: showWebView,
         );
@@ -143,17 +136,14 @@ class ArticleViewPages extends StatelessWidget {
 }
 
 class ArticleCount extends StatelessWidget {
-  const ArticleCount({super.key, required this.articleIDS});
-
-  final Set<String> articleIDS;
+  const ArticleCount({super.key, required this.length});
+  final int length;
 
   @override
   Widget build(BuildContext context) {
-    if (context.read<Api>().selectedIndex != null) {
-      return Text(
-        "${context.select<Api, int>((a) => a.selectedIndex ?? -1) + 1} / ${articleIDS.length}",
-        style: TextStyle(fontWeight: FontWeight.bold),
-      );
+    int? page = context.select<Api, int?>((a) => a.selectedIndex);
+    if (page != null) {
+      return Text("${page + 1} / $length");
     } else {
       return const Text("");
     }
@@ -166,7 +156,6 @@ class ArticlePage extends StatefulWidget {
     required this.articleID,
     required this.showWebView,
   });
-
   final String articleID;
   final bool showWebView;
 
@@ -175,32 +164,31 @@ class ArticlePage extends StatefulWidget {
 }
 
 class _ArticlePageState extends State<ArticlePage> {
-  late final Future<Article>? article = context
-      .read<Api>()
-      .getArticleWithContent(
-        context.read<Api>().filteredArticles![widget.articleID]!,
-        context.read<Api>().account!.id,
-      );
+  Future<Article>? article;
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Article>(
-      key: ValueKey("${widget.articleID}${widget.showWebView}"),
-      future: article,
-      builder: (context, snapshot) {
-        if (snapshot.data != null) {
-          if (widget.showWebView) {
-            return ArticleWebWidget(
-              key: ValueKey(snapshot.data!.url),
-              url: snapshot.data!.url,
-            );
-          } else {
+    if (widget.showWebView) {
+      return ArticleWebWidget(
+        key: ValueKey(
+          context.read<Api>().filteredArticles![widget.articleID]!.url,
+        ),
+        url: context.read<Api>().filteredArticles![widget.articleID]!.url,
+      );
+    } else {
+      article ??= context.read<Api>().getArticleWithContent(
+        context.read<Api>().filteredArticles![widget.articleID]!,
+        context.read<Api>().account!.id,
+      );
+      return FutureBuilder<Article>(
+        future: article,
+        builder: (context, snapshot) {
+          if (snapshot.data != null) {
             return ArticleTextWidget(
-              key: ValueKey("text_${snapshot.data!.url}"),
+              key: ValueKey("text_${snapshot.data!.articleID}"),
               url: snapshot.data!.url,
               title: snapshot.data!.title,
               content: snapshot.data!.content,
-              feedTitle: context.read<Api>().filteredTitle,
               timePublished: snapshot.data!.published,
               subName: context
                   .read<Api>()
@@ -213,18 +201,18 @@ class _ArticlePageState extends State<ArticlePage> {
                     .iconUrl,
               ),
             );
+          } else {
+            return const Center(
+              child: SizedBox(
+                height: 48,
+                width: 48,
+                child: FittedBox(child: CircularProgressIndicator.adaptive()),
+              ),
+            );
           }
-        } else {
-          return const Center(
-            child: SizedBox(
-              height: 48,
-              width: 48,
-              child: FittedBox(child: CircularProgressIndicator.adaptive()),
-            ),
-          );
-        }
-      },
-    );
+        },
+      );
+    }
   }
 }
 
@@ -303,7 +291,6 @@ class ArticleTextWidget extends StatelessWidget {
     required this.content,
     this.iconUrl,
     required this.subName,
-    this.feedTitle,
     required this.timePublished,
   });
   final String url;
@@ -311,7 +298,6 @@ class ArticleTextWidget extends StatelessWidget {
   final String content;
   final String? iconUrl;
   final String subName;
-  final String? feedTitle;
   final int timePublished;
   final ScrollController scrollController = ScrollController();
 
