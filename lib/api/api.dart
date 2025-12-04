@@ -26,22 +26,6 @@ class Api extends ChangeNotifier {
   int? _selectedIndex;
   int? get selectedIndex => _selectedIndex;
 
-  void setSelectedIndex(int? i, bool? fromArticleView, [bool notify = true]) {
-    _selectedIndex = i;
-    if (fromArticleView == false &&
-        i != null &&
-        pageController?.hasClients == true) {
-      pageController?.jumpToPage(i);
-    } else if (fromArticleView == true &&
-        i != null &&
-        listController?.hasClients == true) {
-      listController?.scrollToIndex(index: i, scrollSpeed: 0.5);
-    }
-    if (notify) {
-      notifyListeners();
-    }
-  }
-
   PageController? pageController;
   AnchorScrollController? listController;
 
@@ -83,6 +67,29 @@ class Api extends ChangeNotifier {
   void dispose() {
     super.dispose();
     database.database.close();
+  }
+
+  void setSelectedIndex(int? i, bool? fromArticleView, [bool notify = true]) {
+    _selectedIndex = i;
+    if (fromArticleView == false &&
+        i != null &&
+        pageController?.hasClients == true) {
+      pageController?.jumpToPage(i);
+    } else if (fromArticleView == true &&
+        i != null &&
+        listController?.hasClients == true) {
+      listController?.scrollToIndex(index: i, scrollSpeed: 0.5);
+    }
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
+  void clearFiltered() {
+    filteredArticles = null;
+    filteredArticleIDs = null;
+    filteredTitle = null;
+    notifyListeners();
   }
 
   void clear([bool clearMeta = true]) {

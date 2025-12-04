@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../api/api.dart';
 import '../api/data_types.dart';
-import '../view/feed_list.dart';
 import 'article_image.dart';
+import 'unread_count.dart';
 
 class CategoryCard extends StatelessWidget {
   const CategoryCard({

@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
-import 'package:fresh_reader/util/screen_size.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -16,6 +15,7 @@ import '../api/api.dart';
 import '../api/data_types.dart';
 import '../util/date.dart';
 import '../util/formatting_setting.dart';
+import '../util/screen_size.dart';
 import '../widget/adaptive_list_tile.dart';
 import '../widget/article_buttons.dart';
 import '../widget/article_image.dart';
@@ -105,6 +105,7 @@ class ArticleViewPages extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PageView.builder(
+      key: const Key("articlePageView"),
       allowImplicitScrolling: true,
       controller: pageController,
       onPageChanged: (page) {
@@ -181,6 +182,7 @@ class _ArticlePageState extends State<ArticlePage> {
         context.read<Api>().account!.id,
       );
       return FutureBuilder<Article>(
+        key: ValueKey("future_${widget.articleID}"),
         future: article,
         builder: (context, snapshot) {
           if (snapshot.data != null) {
@@ -462,7 +464,7 @@ class ArticleTextWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final TextStyle urlStyle = TextStyle(
+    TextStyle urlStyle = TextStyle(
       color: Theme.of(context).colorScheme.primary,
       decoration: TextDecoration.underline,
     );

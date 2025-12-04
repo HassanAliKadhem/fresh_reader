@@ -113,7 +113,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             context.read<Api>().setSelectedIndex(null, null, true);
           } else if (page.name == "/list") {
             context.read<Api>().setSelectedIndex(null, null, true);
-            context.read<Api>().filteredArticleIDs = null;
+            context.read<Api>().clearFiltered();
           }
         },
         pages: [
