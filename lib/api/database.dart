@@ -130,9 +130,7 @@ Future<Database> getDatabase() async {
         try {
           await db.execute("drop table preferences");
         } catch (_) {}
-        await db.execute(
-          "create table preferences (key TEXT primary key, value TEXT)",
-        );
+        await db.execute(prefTable);
         debugPrint("Finished upgrading db to: version 7");
       } else if (oldVersion == 7 && newVersion == 8) {
         // create indexes for articles table
