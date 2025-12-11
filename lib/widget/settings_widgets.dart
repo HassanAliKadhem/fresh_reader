@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../util/formatting_setting.dart';
+import '../api/preferences.dart';
 import '../util/theme.dart';
 
 const Map<int, String> durations = {

@@ -7,7 +7,7 @@ class AboutTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AboutListTile(
-      applicationVersion: "1.2.16",
+      applicationVersion: "1.2.17",
       aboutBoxChildren: [
         const ListTile(
           title: Text("Made By"),

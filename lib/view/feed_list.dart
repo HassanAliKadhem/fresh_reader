@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../api/api.dart';
 import '../api/data_types.dart';
 import '../util/date.dart';
-import '../util/formatting_setting.dart';
+import '../api/preferences.dart';
 import '../util/screen_size.dart';
 import '../widget/account_switcher.dart';
 import '../widget/category_card.dart';

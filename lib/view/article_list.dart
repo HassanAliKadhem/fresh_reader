@@ -28,26 +28,7 @@ class _ArticleListState extends State<ArticleList> {
   int lastIndex = 0;
 
   void search(String? text) {
-    setState(() {
-      context.read<Api>().searchResults = text != null
-          ? context
-                .read<Api>()
-                .filteredArticles
-                ?.entries
-                .where(
-                  (entry) => entry.value.title.toLowerCase().contains(
-                    text.toLowerCase(),
-                  ),
-                )
-                .map((toElement) => toElement.key)
-                .toList()
-          : context
-                .read<Api>()
-                .filteredArticles
-                ?.entries
-                .map((toElement) => toElement.key)
-                .toList();
-    });
+    context.read<Api>().searchFilteredArticles(text);
   }
 
   @override
@@ -57,15 +38,7 @@ class _ArticleListState extends State<ArticleList> {
   }
 
   @override
-  void dispose() {
-    context.read<Api>().listController = null;
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    Map<String, Article>? filteredArticles = context
-        .select<Api, Map<String, Article>?>((a) => a.filteredArticles);
     List<String>? searchResults = context.select<Api, List<String>?>(
       (a) => a.searchResults,
     );
@@ -134,7 +107,6 @@ class _ArticleListState extends State<ArticleList> {
       body:
           context.select<Api, String?>((value) => value.filteredTitle) ==
                   null ||
-              filteredArticles == null ||
               searchResults == null
           ? const SizedBox()
           : Scrollbar(
@@ -148,7 +120,10 @@ class _ArticleListState extends State<ArticleList> {
                 itemBuilder: (context, index) {
                   if (index == 0) {
                     String date = getFormattedDate(
-                      filteredArticles[searchResults[index]]!.published,
+                      context
+                          .read<Api>()
+                          .articlesMetaData[searchResults[index]]!
+                          .$1,
                     ).split(", ")[1].split(" ")[0];
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -159,7 +134,7 @@ class _ArticleListState extends State<ArticleList> {
                           key: ValueKey("list-$index"),
                           controller: _scrollController,
                           child: ArticleTile(
-                            article: filteredArticles[searchResults[index]]!,
+                            articleID: searchResults[index],
                             index: index,
                           ),
                         ),
@@ -171,23 +146,26 @@ class _ArticleListState extends State<ArticleList> {
                     key: ValueKey("list-$index"),
                     controller: _scrollController,
                     child: ArticleTile(
-                      article: filteredArticles[searchResults[index]]!,
+                      articleID: searchResults[index],
                       index: index,
                     ),
                   );
                 },
                 separatorBuilder: (context, index) {
-                  int? previous =
-                      filteredArticles[searchResults[index]]?.published;
+                  int? previous = context
+                      .read<Api>()
+                      .articlesMetaData[searchResults[index]]
+                      ?.$1;
                   if (previous != null) {
                     String previousDate = getFormattedDate(
                       previous,
                     ).split(", ")[1].split(" ")[0];
-                    int? next =
-                        filteredArticles[searchResults.elementAtOrNull(
-                              index + 1,
-                            )]
-                            ?.published;
+                    int? next = context
+                        .read<Api>()
+                        .articlesMetaData[searchResults.elementAtOrNull(
+                          index + 1,
+                        )]
+                        ?.$1;
                     if (next != null) {
                       String nextDate = getFormattedDate(
                         next,

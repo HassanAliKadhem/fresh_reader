@@ -48,11 +48,11 @@ Future<Database> getDatabase() async {
         await db.execute(ind);
       }
     },
-    // onOpen: (db) async {
-    //   if ((await db.getVersion()) < 8) {
-    //     await db.execute(prefTable);
-    //   }
-    // },
+    onOpen: (db) async {
+      db.getVersion().then(
+        (value) => debugPrint("load Database, version: $value"),
+      );
+    },
     onUpgrade: (db, oldVersion, newVersion) async {
       if (oldVersion == 1 && newVersion == 2) {
         await db.execute('ALTER TABLE Article add column isStarred TEXT');
@@ -162,7 +162,7 @@ class DB {
     return res.isEmpty ? null : res.first["value"] as String;
   }
 
-  void setPreference(String key, String value) async {
+  Future<void> setPreference(String key, String value) async {
     await database.insert("preferences", {
       "key": key,
       "value": value,
@@ -262,18 +262,14 @@ class DB {
     )).map((article) => Article.fromDB(article)).toList();
   }
 
-  Future<Article> loadArticleContent(Article article, int accountID) async {
+  Future<Article> loadArticleContent(String articleID, int accountID) async {
     var res = await database.query(
       "Articles",
-      columns: ["content"],
       where: "articleID = ? and accountID = ?",
-      whereArgs: [article.articleID, accountID],
+      whereArgs: [articleID, accountID],
       limit: 1,
     );
-    article.content = (res.first.values.first != null
-        ? res.first.values.first as String
-        : "");
-    return article;
+    return Article.fromDB(res.first);
   }
 
   Future<String?> loadArticleSubID(String articleID, int accountID) async {

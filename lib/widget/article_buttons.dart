@@ -8,8 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../api/api.dart';
-import '../api/data_types.dart';
-import '../util/formatting_setting.dart';
+import '../api/preferences.dart';
 import '../widget/transparent_container.dart';
 
 class ArticleBottomButtons extends StatefulWidget {
@@ -20,17 +19,34 @@ class ArticleBottomButtons extends StatefulWidget {
 }
 
 class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
+  Future<(String, String)> getUrlTitle(String articleID) async {
+    var res = await context.read<Api>().database.database.query(
+      "Articles",
+      columns: ["title, url"],
+      where: "articleID = ? and AccountID = ?",
+      whereArgs: [articleID, context.read<Api>().account!.id],
+    );
+    return (res.first["title"].toString(), res.first["url"].toString());
+  }
+
   @override
   Widget build(BuildContext context) {
     int? index = context.select<Api, int?>((a) => a.selectedIndex);
-    if (index == null) {
+    if (index == null || context.read<Api>().searchResults == null) {
       return Container();
     }
-    Article? article = context.read<Api>().filteredArticles?.values.elementAt(
+    String? articleID = context.read<Api>().searchResults?.elementAtOrNull(
       index,
     );
-    bool isRead = article?.read ?? false;
-    bool isStarred = article?.starred ?? false;
+    if (!context.select<Api, bool>(
+      (a) => a.articlesMetaData.containsKey(articleID),
+    )) {
+      return Container();
+    }
+    var (_, subID, isRead, isStarred) = context
+        .select<Api, (int, String, bool, bool)>(
+          (a) => a.articlesMetaData[articleID]!,
+        );
     return TransparentContainer(
       hasBorder: false,
       child: SafeArea(
@@ -41,15 +57,8 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
           children: [
             IconButton(
               onPressed: () {
-                if (article != null) {
-                  setState(() {
-                    context.read<Api>().setRead(
-                      article.articleID,
-                      article.subID,
-                      !isRead,
-                    );
-                    article.read = !isRead;
-                  });
+                if (articleID != null) {
+                  context.read<Api>().setRead(articleID, subID, !isRead);
                 }
               },
               icon: Icon(isRead ? Icons.circle_outlined : Icons.circle),
@@ -57,15 +66,8 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
             ),
             IconButton(
               onPressed: () {
-                if (article != null) {
-                  setState(() {
-                    article.starred = !isStarred;
-                    context.read<Api>().setStarred(
-                      article.articleID,
-                      article.subID,
-                      !isStarred,
-                    );
-                  });
+                if (articleID != null) {
+                  context.read<Api>().setStarred(articleID, subID, !isStarred);
                 }
               },
               icon: Icon(
@@ -75,12 +77,14 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
             ),
             IconButton(
               onPressed: () {
-                if (article != null) {
+                if (articleID != null) {
                   try {
-                    launchUrl(
-                      Uri.parse(article.url),
-                      mode: LaunchMode.inAppBrowserView,
-                    );
+                    getUrlTitle(articleID).then((res) {
+                      launchUrl(
+                        Uri.parse(res.$2),
+                        mode: LaunchMode.inAppBrowserView,
+                      );
+                    });
                   } catch (e) {
                     debugPrint(e.toString());
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -96,17 +100,19 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
               builder: (context) {
                 return IconButton(
                   onPressed: () {
-                    if (article != null) {
+                    if (articleID != null) {
                       try {
                         final box = context.findRenderObject() as RenderBox?;
-                        SharePlus.instance.share(
-                          ShareParams(
-                            uri: Uri.parse(article.url),
-                            subject: article.title,
-                            sharePositionOrigin:
-                                box!.localToGlobal(Offset.zero) & box.size,
-                          ),
-                        );
+                        getUrlTitle(articleID).then((res) {
+                          SharePlus.instance.share(
+                            ShareParams(
+                              uri: Uri.parse(res.$2),
+                              subject: res.$1,
+                              sharePositionOrigin:
+                                  box!.localToGlobal(Offset.zero) & box.size,
+                            ),
+                          );
+                        });
                       } catch (e) {
                         debugPrint(e.toString());
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -160,102 +166,134 @@ class ArticleWebViewButtons extends StatefulWidget {
 }
 
 class _ArticleWebViewButtonsState extends State<ArticleWebViewButtons> {
+  int progress = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.webViewController.setNavigationDelegate(
+      NavigationDelegate(
+        onProgress: (newProgress) {
+          if (mounted) {
+            setState(() {
+              progress = newProgress;
+            });
+          }
+        },
+        onNavigationRequest: (request) {
+          setState(() {});
+          return NavigationDecision.navigate;
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      minimum: EdgeInsets.only(top: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          FutureBuilder(
-            future: widget.webViewController.canGoBack(),
-            builder: (context, snapshot) {
-              return IconButton(
-                onPressed: snapshot.data == true
-                    ? () {
-                        widget.webViewController.goBack();
-                      }
-                    : null,
-                icon: Icon(
-                  (Platform.isIOS || Platform.isMacOS)
-                      ? CupertinoIcons.back
-                      : Icons.arrow_back,
-                ),
-              );
-            },
-          ),
-          FutureBuilder(
-            future: widget.webViewController.canGoForward(),
-            builder: (context, snapshot) {
-              return IconButton(
-                onPressed: snapshot.data == true
-                    ? () {
-                        widget.webViewController.goForward();
-                      }
-                    : null,
-                icon: Icon(
-                  (Platform.isIOS || Platform.isMacOS)
-                      ? CupertinoIcons.forward
-                      : Icons.arrow_forward,
-                ),
-              );
-            },
-          ),
-          IconButton(
-            onPressed: () {
-              widget.webViewController.reload();
-            },
-            icon: Icon(
-              (Platform.isIOS || Platform.isMacOS)
-                  ? CupertinoIcons.refresh
-                  : Icons.refresh,
+    return Column(
+      children: [
+        SizedBox(
+          height: 2,
+          child: progress == 100
+              ? LinearProgressIndicator(value: progress / 100.0)
+              : null,
+        ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            FutureBuilder(
+              future: widget.webViewController.canGoBack(),
+              builder: (context, snapshot) {
+                return IconButton(
+                  onPressed: snapshot.data == true
+                      ? () {
+                          widget.webViewController.goBack();
+                        }
+                      : null,
+                  icon: Icon(
+                    (Platform.isIOS || Platform.isMacOS)
+                        ? CupertinoIcons.back
+                        : Icons.arrow_back,
+                  ),
+                );
+              },
             ),
-          ),
-          Builder(
-            builder: (context) {
-              return IconButton(
-                onPressed: () {
-                  widget.webViewController.currentUrl().then((url) async {
-                    if (url != null) {
-                      try {
-                        if (context.mounted) {
-                          final box = context.findRenderObject() as RenderBox?;
-                          SharePlus.instance.share(
-                            ShareParams(
-                              uri: Uri.parse(url),
-                              subject: (await widget.webViewController
-                                  .getTitle()),
-                              sharePositionOrigin:
-                                  box!.localToGlobal(Offset.zero) & box.size,
-                            ),
-                          );
-                        } else {
-                          debugPrint("Context not mounted");
+            FutureBuilder(
+              future: widget.webViewController.canGoForward(),
+              builder: (context, snapshot) {
+                return IconButton(
+                  onPressed: snapshot.data == true
+                      ? () {
+                          widget.webViewController.goForward();
                         }
-                      } catch (e) {
-                        debugPrint(e.toString());
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(e.toString(), maxLines: 3)),
-                          );
-                        } else {
-                          debugPrint("Context not mounted");
+                      : null,
+                  icon: Icon(
+                    (Platform.isIOS || Platform.isMacOS)
+                        ? CupertinoIcons.forward
+                        : Icons.arrow_forward,
+                  ),
+                );
+              },
+            ),
+            IconButton(
+              onPressed: () {
+                widget.webViewController.reload();
+              },
+              icon: Icon(
+                (Platform.isIOS || Platform.isMacOS)
+                    ? CupertinoIcons.refresh
+                    : Icons.refresh,
+              ),
+            ),
+            Builder(
+              builder: (context) {
+                return IconButton(
+                  onPressed: () {
+                    widget.webViewController.currentUrl().then((url) async {
+                      if (url != null) {
+                        try {
+                          if (context.mounted) {
+                            final box =
+                                context.findRenderObject() as RenderBox?;
+                            SharePlus.instance.share(
+                              ShareParams(
+                                uri: Uri.parse(url),
+                                subject: (await widget.webViewController
+                                    .getTitle()),
+                                sharePositionOrigin:
+                                    box!.localToGlobal(Offset.zero) & box.size,
+                              ),
+                            );
+                          } else {
+                            debugPrint("Context not mounted");
+                          }
+                        } catch (e) {
+                          debugPrint(e.toString());
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(e.toString(), maxLines: 3),
+                              ),
+                            );
+                          } else {
+                            debugPrint("Context not mounted");
+                          }
                         }
                       }
-                    }
-                  });
-                },
-                icon: Icon(
-                  (Platform.isIOS || Platform.isMacOS)
-                      ? CupertinoIcons.share
-                      : Icons.share,
-                ),
-              );
-            },
-          ),
-        ],
-      ),
+                    });
+                  },
+                  icon: Icon(
+                    (Platform.isIOS || Platform.isMacOS)
+                        ? CupertinoIcons.share_solid
+                        : Icons.share_outlined,
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

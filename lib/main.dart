@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 
 import 'api/api.dart';
 import 'api/database.dart';
-import 'util/formatting_setting.dart';
+import 'api/preferences.dart';
 import 'util/screen_size.dart';
 import 'view/article_list.dart';
 import 'view/article_view.dart';
@@ -32,7 +32,11 @@ void main() {
       .catchError((error) {
         // show error if can't open database
         debugPrint(error.toString());
-        runApp(MaterialApp(home: Center(child: Text(error.toString()))));
+        runApp(
+          MaterialApp(
+            home: Scaffold(body: Center(child: Text(error.toString()))),
+          ),
+        );
       });
 }
 
@@ -206,10 +210,9 @@ class _HomeWidgetState extends State<HomeWidget> {
   Widget articleView() {
     return ArticleView(
       index: context.read<Api>().selectedIndex,
-      articleIDs: context.read<Api>().searchResults?.toSet(),
-      // articleIDs: context
-      //     .select<Api, List<String>?>((a) => a.searchResults)
-      //     ?.toSet(),
+      articleIDs: context
+          .select<Api, List<String>?>((a) => a.searchResults)
+          ?.toSet(),
     );
   }
 }

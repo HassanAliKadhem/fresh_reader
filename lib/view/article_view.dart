@@ -14,7 +14,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../api/api.dart';
 import '../api/data_types.dart';
 import '../util/date.dart';
-import '../util/formatting_setting.dart';
+import '../api/preferences.dart';
 import '../util/screen_size.dart';
 import '../widget/adaptive_list_tile.dart';
 import '../widget/article_buttons.dart';
@@ -40,12 +40,6 @@ class _ArticleViewState extends State<ArticleView> {
   void initState() {
     super.initState();
     context.read<Api>().pageController = pageController;
-  }
-
-  @override
-  void dispose() {
-    context.read<Api>().pageController = null;
-    super.dispose();
   }
 
   @override
@@ -119,8 +113,8 @@ class ArticleViewPages extends StatelessWidget {
             articleIDs.elementAt(page),
             context
                 .read<Api>()
-                .filteredArticles![context.read<Api>().searchResults![page]]!
-                .subID,
+                .articlesMetaData[context.read<Api>().searchResults![page]]!
+                .$2,
             true,
           );
         }
@@ -128,6 +122,7 @@ class ArticleViewPages extends StatelessWidget {
       itemCount: articleIDs.length,
       itemBuilder: (context, index) {
         return ArticlePage(
+          key: ValueKey("page_${articleIDs.elementAt(index)}"),
           articleID: articleIDs.elementAt(index),
           showWebView: showWebView,
         );
@@ -169,23 +164,21 @@ class _ArticlePageState extends State<ArticlePage> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.showWebView) {
-      return ArticleWebWidget(
-        key: ValueKey(
-          context.read<Api>().filteredArticles![widget.articleID]!.url,
-        ),
-        url: context.read<Api>().filteredArticles![widget.articleID]!.url,
-      );
-    } else {
-      article ??= context.read<Api>().getArticleWithContent(
-        context.read<Api>().filteredArticles![widget.articleID]!,
-        context.read<Api>().account!.id,
-      );
-      return FutureBuilder<Article>(
-        key: ValueKey("future_${widget.articleID}"),
-        future: article,
-        builder: (context, snapshot) {
-          if (snapshot.data != null) {
+    article ??= context.read<Api>().getArticleWithContent(
+      widget.articleID,
+      context.read<Api>().account!.id,
+    );
+    return FutureBuilder<Article>(
+      key: ValueKey("future_${widget.articleID}"),
+      future: article,
+      builder: (context, snapshot) {
+        if (snapshot.data != null) {
+          if (widget.showWebView) {
+            return ArticleWebWidget(
+              key: ValueKey(snapshot.data!.url),
+              url: snapshot.data!.url,
+            );
+          } else {
             return ArticleTextWidget(
               key: ValueKey("text_${snapshot.data!.articleID}"),
               url: snapshot.data!.url,
@@ -203,18 +196,12 @@ class _ArticlePageState extends State<ArticlePage> {
                     .iconUrl,
               ),
             );
-          } else {
-            return const Center(
-              child: SizedBox(
-                height: 48,
-                width: 48,
-                child: FittedBox(child: CircularProgressIndicator.adaptive()),
-              ),
-            );
           }
-        },
-      );
-    }
+        } else {
+          return const Center(child: CircularProgressIndicator.adaptive());
+        }
+      },
+    );
   }
 }
 
@@ -229,31 +216,12 @@ class ArticleWebWidget extends StatefulWidget {
 class _ArticleWebWidgetState extends State<ArticleWebWidget> {
   late final WebViewController webViewController = WebViewController()
     ..setJavaScriptMode(JavaScriptMode.unrestricted)
-    ..loadRequest(Uri.parse(widget.url))
-    ..setNavigationDelegate(
-      NavigationDelegate(
-        onProgress: (newProgress) {
-          if (mounted) {
-            setState(() {
-              progress = newProgress;
-            });
-          }
-        },
-      ),
-    );
-
-  int progress = 0;
+    ..loadRequest(Uri.parse(widget.url));
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        SizedBox(
-          height: 2,
-          child: progress < 100
-              ? LinearProgressIndicator(value: progress / 100.0)
-              : null,
-        ),
         Expanded(
           child: WebViewWidget(
             controller: webViewController,

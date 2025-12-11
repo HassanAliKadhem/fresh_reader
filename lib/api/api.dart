@@ -19,7 +19,6 @@ class Api extends ChangeNotifier {
   Map<String, Category> categories = <String, Category>{};
   List<String> lastSyncIDs = [];
   Set<String>? filteredArticleIDs;
-  Map<String, Article>? filteredArticles;
   Map<String, (int, String, bool, bool)> articlesMetaData = {};
   List<String>? searchResults;
   String? filteredTitle;
@@ -86,7 +85,6 @@ class Api extends ChangeNotifier {
   }
 
   void clearFiltered() {
-    filteredArticles = null;
     filteredArticleIDs = null;
     filteredTitle = null;
     notifyListeners();
@@ -95,7 +93,6 @@ class Api extends ChangeNotifier {
   void clear([bool clearMeta = true]) {
     filteredArticleIDs?.clear();
     setSelectedIndex(null, null);
-    filteredArticles = {};
     searchResults = [];
     if (clearMeta) {
       articlesMetaData = {};
@@ -163,6 +160,10 @@ class Api extends ChangeNotifier {
 
   Stream<double> serverSync() async* {
     yield 0.0;
+    if (account == null) {
+      debugPrint("No account selected");
+      throw "No account selected";
+    }
     if (auth == "") {
       await _getAuth().then((value) {
         auth = value;
@@ -171,10 +172,6 @@ class Api extends ChangeNotifier {
     if (auth == "") {
       debugPrint("Couldn't find auth key");
       throw "No auth key";
-    }
-    if (account == null) {
-      debugPrint("No account selected");
-      throw "No account selected";
     }
 
     final delayedActions = await database.loadDelayedActions(account!.id);
@@ -688,23 +685,33 @@ class Api extends ChangeNotifier {
     return done;
   }
 
-  Article? setRead(String id, String subID, bool isRead) {
+  void setRead(String id, String subID, bool isRead) {
     articlesMetaData.update(id, (val) => (val.$1, val.$2, isRead, val.$4));
-    filteredArticles?[id]?.read = isRead;
     notifyListeners();
 
     _setServerRead([id], [subID], isRead);
     database.updateArticleRead(id, isRead, account!.id);
-    return filteredArticles?[id];
   }
 
   void setStarred(String id, String subID, bool isStarred) {
     articlesMetaData.update(id, (val) => (val.$1, val.$2, val.$3, isStarred));
-    filteredArticles?[id]?.starred = isStarred;
     notifyListeners();
 
     _setServerStar([id], [subID], isStarred);
     database.updateArticleStar(id, isStarred, account!.id);
+  }
+
+  Future<void> searchFilteredArticles(String? searchTerm) async {
+    if (searchTerm == null || searchTerm.isEmpty) {
+      searchResults = filteredArticleIDs?.toList();
+      notifyListeners();
+      return;
+    }
+    var res = (await database.database.rawQuery(
+      "select articleID from Articles where articleID in ('${filteredArticleIDs?.join("','")}') and accountID = ${account!.id} and (LOWER(title) like '%' || '${searchTerm.toLowerCase()}' || '%' or LOWER(content) like '%' || '${searchTerm.toLowerCase()}' || '%') order by timeStampPublished desc",
+    ));
+    searchResults = res.map((res) => res.values.first.toString()).toList();
+    notifyListeners();
   }
 
   Future<void> getFilteredArticles(
@@ -719,7 +726,6 @@ class Api extends ChangeNotifier {
       return;
     }
     filteredArticleIDs = null;
-    filteredArticles = null;
     setSelectedIndex(null, null);
     filteredTitle = null;
     if (title == "lastSync") {
@@ -749,26 +755,15 @@ class Api extends ChangeNotifier {
           });
     }
     filteredTitle = title;
-    await database.loadArticles(filteredArticleIDs!.toList(), account!.id).then(
-      (List<Article> arts) {
-        filteredArticles = {};
-        searchResults = [];
-        // final Set<String> subIDs = <String>{};
-        for (var article in arts) {
-          filteredArticles![article.articleID] = article;
-          // subIDs.add(article.subID);
-          searchResults!.add(article.articleID);
-        }
-        notifyListeners();
-        if (listController?.hasClients == true) {
-          listController?.jumpTo(0);
-        }
-      },
-    );
+    searchResults = filteredArticleIDs?.toList();
+    notifyListeners();
+    if (listController?.hasClients == true) {
+      listController?.jumpTo(0);
+    }
   }
 
-  Future<Article> getArticleWithContent(Article article, int accountID) {
-    return database.loadArticleContent(article, accountID);
+  Future<Article> getArticleWithContent(String articleID, int accountID) {
+    return database.loadArticleContent(articleID, accountID);
   }
 
   String getIconUrl(String url) {
