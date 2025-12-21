@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../api/api.dart';
+import '../api/data.dart';
 import '../api/data_types.dart';
 import '../widget/about_tile.dart';
 import '../widget/settings_account_widgets.dart';
@@ -76,7 +76,7 @@ class _SettingsContentState extends State<SettingsContent> {
               if (onValue != null && onValue is Account) {
                 if (context.mounted) {
                   try {
-                    context.read<Api>().changeAccount(onValue);
+                    context.read<DataProvider>().changeAccount(onValue);
                   } catch (e) {
                     ScaffoldMessenger.of(
                       context,

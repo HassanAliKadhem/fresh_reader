@@ -7,7 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-import '../api/api.dart';
+import '../api/data.dart';
 import '../api/preferences.dart';
 import '../widget/transparent_container.dart';
 
@@ -20,31 +20,29 @@ class ArticleBottomButtons extends StatefulWidget {
 
 class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
   Future<(String, String)> getUrlTitle(String articleID) async {
-    var res = await context.read<Api>().database.database.query(
-      "Articles",
-      columns: ["title, url"],
-      where: "articleID = ? and AccountID = ?",
-      whereArgs: [articleID, context.read<Api>().account!.id],
+    var res = await context.read<DataProvider>().getArticleWithContent(
+      articleID,
     );
-    return (res.first["title"].toString(), res.first["url"].toString());
+    return (res.title, res.url);
   }
 
   @override
   Widget build(BuildContext context) {
-    int? index = context.select<Api, int?>((a) => a.selectedIndex);
-    if (index == null || context.read<Api>().searchResults == null) {
+    int? index = context.select<DataProvider, int?>((a) => a.selectedIndex);
+    if (index == null || context.read<DataProvider>().searchResults == null) {
       return Container();
     }
-    String? articleID = context.read<Api>().searchResults?.elementAtOrNull(
-      index,
-    );
-    if (!context.select<Api, bool>(
+    String? articleID = context
+        .read<DataProvider>()
+        .searchResults
+        ?.elementAtOrNull(index);
+    if (!context.select<DataProvider, bool>(
       (a) => a.articlesMetaData.containsKey(articleID),
     )) {
       return Container();
     }
     var (_, subID, isRead, isStarred) = context
-        .select<Api, (int, String, bool, bool)>(
+        .select<DataProvider, (int, String, bool, bool)>(
           (a) => a.articlesMetaData[articleID]!,
         );
     return TransparentContainer(
@@ -58,7 +56,11 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
             IconButton(
               onPressed: () {
                 if (articleID != null) {
-                  context.read<Api>().setRead(articleID, subID, !isRead);
+                  context.read<DataProvider>().setRead(
+                    articleID,
+                    subID,
+                    !isRead,
+                  );
                 }
               },
               icon: Icon(isRead ? Icons.circle_outlined : Icons.circle),
@@ -67,7 +69,11 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
             IconButton(
               onPressed: () {
                 if (articleID != null) {
-                  context.read<Api>().setStarred(articleID, subID, !isStarred);
+                  context.read<DataProvider>().setStarred(
+                    articleID,
+                    subID,
+                    !isStarred,
+                  );
                 }
               },
               icon: Icon(
@@ -309,6 +315,7 @@ class FormattingDialog extends StatelessWidget {
       contentPadding: EdgeInsets.all(12.0),
       insetPadding: EdgeInsets.only(
         bottom: MediaQuery.paddingOf(context).bottom,
+        top: 16.0,
         right: 16.0,
         left: 16.0,
       ),
@@ -321,13 +328,17 @@ class FormattingDialog extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ListTile(
-              leading: Icon(Icons.font_download),
-              title: Text("Font"),
+              title: Text("Formatting Settings"),
               trailing: IconButton(
                 onPressed: () => Navigator.pop(context),
                 icon: Icon(Icons.close),
               ),
               contentPadding: EdgeInsetsDirectional.only(start: 16.0),
+            ),
+            ListTile(
+              leading: Icon(Icons.font_download),
+              title: Text("Font"),
+              dense: true,
             ),
             (Platform.isIOS || Platform.isMacOS)
                 ? CupertinoSlidingSegmentedControl(
@@ -345,10 +356,14 @@ class FormattingDialog extends StatelessWidget {
                         font,
                         Padding(
                           padding: const EdgeInsets.all(8.0),
-                          child: Text(font.replaceFirst(".", "")),
+                          child: Text(
+                            font.replaceFirst(".", ""),
+                            style: TextStyle(fontFamily: font),
+                          ),
                         ),
                       ),
                     ),
+                    proportionalWidth: true,
                   )
                 : SegmentedButton<String>(
                     segments: context
@@ -357,7 +372,10 @@ class FormattingDialog extends StatelessWidget {
                         .map(
                           (font) => ButtonSegment(
                             value: font,
-                            label: Text(font.replaceFirst(".", "")),
+                            label: Text(
+                              font.replaceFirst(".", ""),
+                              style: TextStyle(fontFamily: font),
+                            ),
                           ),
                         )
                         .toList(),

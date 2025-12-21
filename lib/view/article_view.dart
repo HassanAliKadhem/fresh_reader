@@ -11,7 +11,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-import '../api/api.dart';
+import '../api/data.dart';
 import '../api/data_types.dart';
 import '../util/date.dart';
 import '../api/preferences.dart';
@@ -39,7 +39,7 @@ class _ArticleViewState extends State<ArticleView> {
   @override
   void initState() {
     super.initState();
-    context.read<Api>().pageController = pageController;
+    context.read<DataProvider>().pageController = pageController;
   }
 
   @override
@@ -103,17 +103,19 @@ class ArticleViewPages extends StatelessWidget {
       allowImplicitScrolling: true,
       controller: pageController,
       onPageChanged: (page) {
-        context.read<Api>().setSelectedIndex(
+        context.read<DataProvider>().setSelectedIndex(
           page,
           true,
           !context.read<Preferences>().markReadWhenOpen,
         );
         if (context.read<Preferences>().markReadWhenOpen) {
-          context.read<Api>().setRead(
+          context.read<DataProvider>().setRead(
             articleIDs.elementAt(page),
             context
-                .read<Api>()
-                .articlesMetaData[context.read<Api>().searchResults![page]]!
+                .read<DataProvider>()
+                .articlesMetaData[context
+                    .read<DataProvider>()
+                    .searchResults![page]]!
                 .$2,
             true,
           );
@@ -122,7 +124,6 @@ class ArticleViewPages extends StatelessWidget {
       itemCount: articleIDs.length,
       itemBuilder: (context, index) {
         return ArticlePage(
-          key: ValueKey("page_${articleIDs.elementAt(index)}"),
           articleID: articleIDs.elementAt(index),
           showWebView: showWebView,
         );
@@ -137,7 +138,7 @@ class ArticleCount extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    int? page = context.select<Api, int?>((a) => a.selectedIndex);
+    int? page = context.select<DataProvider, int?>((a) => a.selectedIndex);
     if (page != null) {
       return Text("${page + 1} / $length");
     } else {
@@ -164,9 +165,8 @@ class _ArticlePageState extends State<ArticlePage> {
 
   @override
   Widget build(BuildContext context) {
-    article ??= context.read<Api>().getArticleWithContent(
+    article ??= context.read<DataProvider>().getArticleWithContent(
       widget.articleID,
-      context.read<Api>().account!.id,
     );
     return FutureBuilder<Article>(
       key: ValueKey("future_${widget.articleID}"),
@@ -186,12 +186,12 @@ class _ArticlePageState extends State<ArticlePage> {
               content: snapshot.data!.content,
               timePublished: snapshot.data!.published,
               subName: context
-                  .read<Api>()
+                  .read<DataProvider>()
                   .subscriptions[snapshot.data!.subID]!
                   .title,
-              iconUrl: context.read<Api>().getIconUrl(
+              iconUrl: context.read<DataProvider>().getIconUrl(
                 context
-                    .read<Api>()
+                    .read<DataProvider>()
                     .subscriptions[snapshot.data!.subID]!
                     .iconUrl,
               ),

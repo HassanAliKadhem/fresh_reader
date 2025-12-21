@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import 'api/api.dart';
+import 'api/data.dart';
 import 'api/database.dart';
 import 'api/preferences.dart';
 import 'util/screen_size.dart';
@@ -16,13 +16,15 @@ void main() {
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   getDatabase()
       .then((db) async {
-        DB database = DB(db);
+        StorageSqlite database = StorageSqlite(db);
         Preferences pref = Preferences(database);
         await pref.load();
         runApp(
           MultiProvider(
             providers: [
-              ChangeNotifierProvider<Api>(create: (context) => Api(database)),
+              ChangeNotifierProvider<DataProvider>(
+                create: (context) => DataProvider(database),
+              ),
               ChangeNotifierProvider<Preferences>(create: (context) => pref),
             ],
             child: MyApp(),
@@ -114,10 +116,10 @@ class _HomeWidgetState extends State<HomeWidget> {
         key: _navigatorKey,
         onDidRemovePage: (page) {
           if (page.name == "/article") {
-            context.read<Api>().setSelectedIndex(null, null, true);
+            context.read<DataProvider>().setSelectedIndex(null, null, true);
           } else if (page.name == "/list") {
-            context.read<Api>().setSelectedIndex(null, null, true);
-            context.read<Api>().clearFiltered();
+            context.read<DataProvider>().setSelectedIndex(null, null, true);
+            context.read<DataProvider>().clearFiltered();
           }
         },
         pages: [
@@ -138,7 +140,8 @@ class _HomeWidgetState extends State<HomeWidget> {
                             valueListenable: isExpanded,
                             builder: (context, value, child) {
                               return AnimatedSize(
-                                duration: Duration(milliseconds: 400),
+                                duration: Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
                                 alignment: Alignment.centerLeft,
                                 child: SizedBox(
                                   width:
@@ -158,7 +161,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                             Expanded(
                               flex: 3,
                               child:
-                                  context.select<Api, bool>(
+                                  context.select<DataProvider, bool>(
                                     (a) => a.selectedIndex != null,
                                   )
                                   ? articleView()
@@ -174,7 +177,8 @@ class _HomeWidgetState extends State<HomeWidget> {
                   ),
           ),
           if (screenSizeOf(context) == ScreenSize.medium &&
-              context.select<Api, String?>((a) => a.filteredTitle) != null)
+              context.select<DataProvider, String?>((a) => a.filteredTitle) !=
+                  null)
             MaterialPage(
               child: Row(
                 children: [
@@ -183,7 +187,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   Expanded(
                     flex: 3,
                     child:
-                        context.select<Api, bool>(
+                        context.select<DataProvider, bool>(
                           (a) => a.selectedIndex != null,
                         )
                         ? articleView()
@@ -197,10 +201,13 @@ class _HomeWidgetState extends State<HomeWidget> {
               ),
             ),
           if (screenSizeOf(context) == ScreenSize.small &&
-              context.select<Api, String?>((a) => a.filteredTitle) != null)
+              context.select<DataProvider, String?>((a) => a.filteredTitle) !=
+                  null)
             const MaterialPage(name: "/list", child: ArticleList()),
           if (screenSizeOf(context) == ScreenSize.small &&
-              context.select<Api, bool>((a) => a.selectedIndex != null))
+              context.select<DataProvider, bool>(
+                (a) => a.selectedIndex != null,
+              ))
             MaterialPage(name: "/article", child: articleView()),
         ],
       ),
@@ -209,9 +216,9 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   Widget articleView() {
     return ArticleView(
-      index: context.read<Api>().selectedIndex,
+      index: context.read<DataProvider>().selectedIndex,
       articleIDs: context
-          .select<Api, List<String>?>((a) => a.searchResults)
+          .select<DataProvider, List<String>?>((a) => a.searchResults)
           ?.toSet(),
     );
   }

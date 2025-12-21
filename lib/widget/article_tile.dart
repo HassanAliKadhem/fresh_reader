@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../api/api.dart';
+import '../api/data.dart';
 import '../util/date.dart';
 import '../api/preferences.dart';
 import 'article_image.dart';
@@ -21,13 +21,13 @@ class _ArticleTileState extends State<ArticleTile> {
   @override
   Widget build(BuildContext context) {
     final String subID = context
-        .read<Api>()
+        .read<DataProvider>()
         .articlesMetaData[widget.articleID]!
         .$2;
-    bool isRead = context.select<Api, bool>(
+    bool isRead = context.select<DataProvider, bool>(
       (a) => a.articlesMetaData[widget.articleID]!.$3,
     );
-    bool isStarred = context.select<Api, bool>(
+    bool isStarred = context.select<DataProvider, bool>(
       (a) => a.articlesMetaData[widget.articleID]!.$4,
     );
     return Dismissible(
@@ -35,9 +35,17 @@ class _ArticleTileState extends State<ArticleTile> {
       direction: DismissDirection.horizontal,
       confirmDismiss: (direction) async {
         if (direction == DismissDirection.endToStart) {
-          context.read<Api>().setRead(widget.articleID, subID, !isRead);
+          context.read<DataProvider>().setRead(
+            widget.articleID,
+            subID,
+            !isRead,
+          );
         } else {
-          context.read<Api>().setStarred(widget.articleID, subID, !isStarred);
+          context.read<DataProvider>().setStarred(
+            widget.articleID,
+            subID,
+            !isStarred,
+          );
         }
         return false;
       },
@@ -66,23 +74,31 @@ class _ArticleTileState extends State<ArticleTile> {
       child: ArticleWidget(
         articleID: widget.articleID,
         subIcon:
-            context.select<Api, String?>(
+            context.select<DataProvider, String?>(
               (a) => a.subscriptions[subID]?.iconUrl,
             ) ??
             "",
         subTitle:
-            context.select<Api, String?>(
+            context.select<DataProvider, String?>(
               (a) => a.subscriptions[subID]?.title,
             ) ??
             "",
         onSelect: () {
-          context.read<Api>().setSelectedIndex(widget.index, false, true);
+          context.read<DataProvider>().setSelectedIndex(
+            widget.index,
+            false,
+            true,
+          );
           // if (context.read<Api>().filteredArticles != null &&
           //     context.read<Api>().filteredArticles![widget.articleID] != null) {
           bool newValue = context.read<Preferences>().markReadWhenOpen
               ? true
               : isRead;
-          context.read<Api>().setRead(widget.articleID, subID, newValue);
+          context.read<DataProvider>().setRead(
+            widget.articleID,
+            subID,
+            newValue,
+          );
           // }
         },
       ),
@@ -105,15 +121,15 @@ class ArticleWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String? selectedID = context.select<Api, String?>(
-      (a) => a.selectedIndex != null
-          ? a.filteredArticleIDs?.elementAt(a.selectedIndex!)
-          : null,
+    bool isSelected = context.select<DataProvider, bool>(
+      (a) =>
+          a.selectedIndex != null &&
+          a.filteredArticleIDs?.elementAt(a.selectedIndex!) == articleID,
     );
-    bool isRead = context.select<Api, bool>(
+    bool isRead = context.select<DataProvider, bool>(
       (a) => a.articlesMetaData[articleID]!.$3,
     );
-    bool isStarred = context.select<Api, bool>(
+    bool isStarred = context.select<DataProvider, bool>(
       (a) => a.articlesMetaData[articleID]!.$4,
     );
     return LayoutBuilder(
@@ -124,7 +140,7 @@ class ArticleWidget extends StatelessWidget {
           child: Container(
             height: 128.0,
             decoration: BoxDecoration(
-              color: selectedID == articleID
+              color: isSelected
                   ? Theme.of(context).listTileTheme.selectedTileColor
                   : null,
               // borderRadius: BorderRadius.circular(8.0),
@@ -133,9 +149,9 @@ class ArticleWidget extends StatelessWidget {
             child: Opacity(
               opacity: (isRead) ? 0.3 : 1.0,
               child: FutureBuilder(
-                future: context.read<Api>().database.loadArticles([
+                future: context.read<DataProvider>().db.loadArticles([
                   articleID,
-                ], context.read<Api>().account!.id),
+                ], context.read<DataProvider>().accountID!),
                 builder: (context, asyncSnapshot) {
                   if (!asyncSnapshot.hasData || asyncSnapshot.data == null) {
                     return Container();
@@ -174,9 +190,9 @@ class ArticleWidget extends StatelessWidget {
                                 children: [
                                   WidgetSpan(
                                     child: ArticleImage(
-                                      imageUrl: context.read<Api>().getIconUrl(
-                                        subIcon,
-                                      ),
+                                      imageUrl: context
+                                          .read<DataProvider>()
+                                          .getIconUrl(subIcon),
                                       fit: BoxFit.contain,
                                       width: 16.0,
                                       height: 16.0,

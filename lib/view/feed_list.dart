@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../api/api.dart';
+import '../api/data.dart';
 import '../api/data_types.dart';
 import '../util/date.dart';
 import '../api/preferences.dart';
@@ -31,7 +31,9 @@ class _FeedListState extends State<FeedList> {
         Theme.of(context).scaffoldBackgroundColor,
       ),
       appBar: AppBar(
-        title: Text(context.read<Api>().account?.username ?? "Feeds"),
+        title: Text(
+          context.read<DataProvider>().api?.account.username ?? "Feeds",
+        ),
         actions: [
           ShowAllSwitcherWidget(),
           AccountSwitcherWidget(),
@@ -79,7 +81,9 @@ class _FeedListState extends State<FeedList> {
         displacement: kToolbarHeight * 2.5,
         onRefresh: () async {
           await for (double? progress
-              in context.read<Api>().serverSync().handleError((onError) {
+              in context.read<DataProvider>().serverSync().handleError((
+                onError,
+              ) {
                 debugPrint(onError.toString());
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -123,8 +127,8 @@ class _CategoryListState extends State<CategoryList> {
     String? value,
     String title,
   ) {
-    context.read<Api>().getFilteredArticles(
-      context.read<Api>().showAll,
+    context.read<DataProvider>().getFilteredArticles(
+      context.read<DataProvider>().showAll,
       column,
       value,
       title,
@@ -135,20 +139,20 @@ class _CategoryListState extends State<CategoryList> {
   @override
   Widget build(BuildContext context) {
     secondsSinceToday = getTodaySecondsSinceEpoch();
-    String? filteredTitle = context.select<Api, String?>(
+    String? filteredTitle = context.select<DataProvider, String?>(
       (value) => value.filteredTitle,
     );
 
     bool showLastSync = context.select<Preferences, bool>(
       (a) => a.showLastSync,
     );
-    bool showAll = context.select<Api, bool>((a) => a.showAll);
-    List<Category> categories = context.select<Api, List<Category>>(
+    bool showAll = context.select<DataProvider, bool>((a) => a.showAll);
+    List<Category> categories = context.select<DataProvider, List<Category>>(
       (a) => a.categories.values
           .where((cat) => cat.catID != "user/-/state/com.google/starred")
           .toList(),
     );
-    return context.select<Api, Account?>((a) => a.account) == null
+    return context.select<DataProvider, int?>((a) => a.accountID) == null
         ? Center(child: Text("Please add/select an account"))
         : Scrollbar(
             child: CustomScrollView(
@@ -166,7 +170,7 @@ class _CategoryListState extends State<CategoryList> {
                       selected: filteredTitle == "All Articles",
                       title: const Text("All Articles"),
                       trailing: UnreadCount(
-                        context.select<Api, int>(
+                        context.select<DataProvider, int>(
                           (value) => value.articlesMetaData.values
                               .where((a) => showAll || !a.$3)
                               .length,
@@ -179,7 +183,7 @@ class _CategoryListState extends State<CategoryList> {
                       selected: filteredTitle == "Today",
                       title: const Text("Today"),
                       trailing: UnreadCount(
-                        context.select<Api, int>(
+                        context.select<DataProvider, int>(
                           (value) => value.articlesMetaData.values
                               .where(
                                 (a) =>
@@ -202,10 +206,10 @@ class _CategoryListState extends State<CategoryList> {
                         title: const Text("last Sync Articles"),
                         trailing: UnreadCount(
                           showAll
-                              ? (context.select<Api, int>(
+                              ? (context.select<DataProvider, int>(
                                   (a) => a.lastSyncIDs.length,
                                 ))
-                              : context.select<Api, int>(
+                              : context.select<DataProvider, int>(
                                   (value) => value.articlesMetaData.entries
                                       .where(
                                         (a) =>
@@ -222,7 +226,7 @@ class _CategoryListState extends State<CategoryList> {
                       selected: filteredTitle == "Starred",
                       title: const Text("Starred"),
                       trailing: UnreadCount(
-                        context.select<Api, int>(
+                        context.select<DataProvider, int>(
                           (value) => value.articlesMetaData.values
                               .where((a) => a.$4 && (showAll || !a.$3))
                               .length,
@@ -242,7 +246,7 @@ class _CategoryListState extends State<CategoryList> {
                   itemBuilder: (context, index) {
                     Map<String, Subscription> currentSubscriptions = {};
                     for (var value
-                        in context.read<Api>().subscriptions.values) {
+                        in context.read<DataProvider>().subscriptions.values) {
                       if (value.catID == categories[index].catID) {
                         currentSubscriptions[value.subID] = value;
                       }

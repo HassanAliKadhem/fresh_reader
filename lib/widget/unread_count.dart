@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../api/data.dart';
 
 class UnreadCount extends StatelessWidget {
   const UnreadCount(this.unread, {super.key});
@@ -12,6 +15,23 @@ class UnreadCount extends StatelessWidget {
         color: Theme.of(context).scaffoldBackgroundColor,
       ),
       child: Text(unread.toString(), textScaler: TextScaler.linear(1.15)),
+    );
+  }
+}
+
+class UnreadCounter extends StatelessWidget {
+  const UnreadCounter(this.filter, {super.key});
+  final bool Function(
+    (int timeStampPublished, String subID, bool isRead, bool isStarred),
+  )
+  filter;
+
+  @override
+  Widget build(BuildContext context) {
+    return UnreadCount(
+      context.select<DataProvider, int>(
+        (value) => value.articlesMetaData.values.where((a) => filter(a)).length,
+      ),
     );
   }
 }

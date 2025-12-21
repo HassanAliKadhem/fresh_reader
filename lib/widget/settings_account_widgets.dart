@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../api/api.dart';
+import '../api/data.dart';
 import '../api/data_types.dart';
 import 'adaptive_text_field.dart';
 
@@ -11,7 +11,7 @@ class AccountDetails extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(
-      future: context.watch<Api>().getAccounts(),
+      future: context.watch<DataProvider>().getAccounts(),
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return LinearProgressIndicator();
@@ -61,8 +61,8 @@ class _AccountCardState extends State<AccountCard> {
               ).then((onValue) {
                 if (onValue != null && onValue is Account) {
                   if (context.mounted &&
-                      onValue.id == context.read<Api>().account?.id) {
-                    context.read<Api>().changeAccount(onValue);
+                      onValue.id == context.read<DataProvider>().accountID) {
+                    context.read<DataProvider>().changeAccount(onValue);
                   } else {
                     debugPrint("Context not mounted");
                     setState(() {
@@ -85,12 +85,7 @@ class _AccountCardState extends State<AccountCard> {
                     actions: [
                       TextButton(
                         onPressed: () {
-                          Navigator.pop(context);
-                          context.read<Api>().deleteAccount(account.id).then((
-                            _,
-                          ) {
-                            setState(() {});
-                          });
+                          Navigator.pop(context, "account");
                         },
                         child: Text(
                           "Delete Account",
@@ -99,13 +94,7 @@ class _AccountCardState extends State<AccountCard> {
                       ),
                       TextButton(
                         onPressed: () {
-                          Navigator.pop(context);
-                          context
-                              .read<Api>()
-                              .deleteAccountData(account.id)
-                              .then((_) {
-                                setState(() {});
-                              });
+                          Navigator.pop(context, "data");
                         },
                         child: Text(
                           "Delete only data",
@@ -121,12 +110,21 @@ class _AccountCardState extends State<AccountCard> {
                     ],
                   );
                 },
-              );
+              ).then((value) {
+                if (context.mounted) {
+                  if (value == "account") {
+                    context.read<DataProvider>().deleteAccount(account.id);
+                  } else if (value == "data") {
+                    context.read<DataProvider>().deleteAccountData(account.id);
+                  }
+                }
+                setState(() {});
+              });
             },
           ),
           ListTile(
             title: FutureBuilder(
-              future: context.read<Api>().database.loadArticleMetaData(
+              future: context.read<DataProvider>().db.loadArticleMetaData(
                 account.id,
               ),
               builder: (context, asyncSnapshot) {
@@ -137,8 +135,8 @@ class _AccountCardState extends State<AccountCard> {
             ),
             subtitle: FutureBuilder(
               future: Future.wait([
-                context.read<Api>().database.loadAllCategory(account.id),
-                context.read<Api>().database.loadAllSubs(account.id),
+                context.read<DataProvider>().db.loadAllCategory(account.id),
+                context.read<DataProvider>().db.loadAllSubs(account.id),
               ]),
               builder: (context, asyncSnapshot) {
                 return Text(
@@ -165,11 +163,8 @@ class _AccountCardState extends State<AccountCard> {
               ).then((value) {
                 if (value != null) {
                   int newTime = (value.millisecondsSinceEpoch / 1000).floor();
-                  context.read<Api>().database.database.update(
-                    "Account",
-                    {"updatedArticleTime": newTime},
-                    where: "id = ?",
-                    whereArgs: [account.id],
+                  context.read<DataProvider>().db.updateAccount(
+                    account.copyWith(updatedArticleTime: newTime),
                   );
                   setState(() {
                     account.updatedArticleTime = newTime;
@@ -196,11 +191,8 @@ class _AccountCardState extends State<AccountCard> {
               ).then((value) {
                 if (value != null) {
                   int newTime = (value.millisecondsSinceEpoch / 1000).floor();
-                  context.read<Api>().database.database.update(
-                    "Account",
-                    {"updatedStarredTime": newTime},
-                    where: "id = ?",
-                    whereArgs: [account.id],
+                  context.read<DataProvider>().db.updateAccount(
+                    account.copyWith(updatedStarredTime: newTime),
                   );
                   setState(() {
                     account.updatedStarredTime = newTime;
@@ -231,10 +223,10 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
   Future<int> _addAccount(Account accountToAdd) async {
     int index = -1;
     if (widget.oldAccount != null) {
-      await context.read<Api>().database.updateAccount(accountToAdd);
+      await context.read<DataProvider>().db.updateAccount(accountToAdd);
       index = accountToAdd.id;
     } else {
-      index = await context.read<Api>().database.addAccount(accountToAdd);
+      index = await context.read<DataProvider>().db.addAccount(accountToAdd);
     }
     return index;
   }

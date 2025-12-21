@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../api/api.dart';
+import '../api/data.dart';
 import '../api/data_types.dart';
 import 'article_image.dart';
 import 'unread_count.dart';
@@ -23,7 +23,7 @@ class CategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    bool showAll = context.select<Api, bool>((a) => a.showAll);
+    bool showAll = context.select<DataProvider, bool>((a) => a.showAll);
     return Card(
       clipBehavior: Clip.hardEdge,
       margin: const EdgeInsets.all(8.0),
@@ -38,7 +38,7 @@ class CategoryCard extends StatelessWidget {
             selected: selected == categoryName,
             title: Text("All $categoryName"),
             trailing: UnreadCount(
-              context.select<Api, int>(
+              context.select<DataProvider, int>(
                 (value) => value.articlesMetaData.values
                     .where(
                       (a) =>
@@ -54,7 +54,7 @@ class CategoryCard extends StatelessWidget {
               .where(
                 (sub) =>
                     showAll ||
-                    context.select<Api, bool>(
+                    context.select<DataProvider, bool>(
                       (value) => value.articlesMetaData.values.any(
                         (a) => a.$2 == sub && (showAll || !a.$3),
                       ),
@@ -74,14 +74,14 @@ class CategoryCard extends StatelessWidget {
                   selected: selected == currentSubscriptions[key]!.title,
                   title: Text(currentSubscriptions[key]!.title),
                   trailing: UnreadCount(
-                    context.select<Api, int>(
+                    context.select<DataProvider, int>(
                       (value) => value.articlesMetaData.values
                           .where((a) => a.$2 == key && (showAll || !a.$3))
                           .length,
                     ),
                   ),
                   leading: ArticleImage(
-                    imageUrl: context.read<Api>().getIconUrl(
+                    imageUrl: context.read<DataProvider>().getIconUrl(
                       currentSubscriptions[key]!.iconUrl,
                     ),
                     height: 28,

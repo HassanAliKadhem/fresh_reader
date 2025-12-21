@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:fresh_reader/util/date.dart';
-// import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
-import 'api.dart';
 import 'data_types.dart';
 
 const subTable =
@@ -76,53 +73,7 @@ Future<Database> getDatabase() async {
         }
       } else if (oldVersion == 3 && newVersion == 4) {
         await db.execute(accTable);
-        // final preferences = await SharedPreferences.getInstance();
-        // int? accountID;
-        // if (preferences.containsKey("server")) {
-        //   accountID = await db.insert("Account", {
-        //     "serverUrl": preferences.getString("server"),
-        //     "username": preferences.getString("userName") ?? "",
-        //     "password": preferences.getString("password") ?? "",
-        //     "provider": "freshrss",
-        //     "updatedArticleTime": preferences.getInt("updatedArticleTime") ?? 0,
-        //     "updatedStarredTime": preferences.getInt("updatedStarredTime") ?? 0,
-        //   });
-        //   debugPrint("added account: $accountID");
-        // }
-        // if (accountID != null) {
-        //   await db.execute(artTable);
-        //   await db.execute(
-        //     '''INSERT INTO Articles
-        //      (accountID, articleID, subID, title, isRead, isStarred, img, timeStampPublished, content, url)
-        //      SELECT $accountID as accountID, articleID, subID, title, isRead, isStarred, img, timeStampPublished, content, url FROM Article;''',
-        //   );
-        //   await db.execute("DROP TABLE Article;");
-
-        //   await db.execute(subTable);
-        //   await db.execute(
-        //     '''INSERT INTO Subscriptions
-        //      (accountID, subID, title, url, htmlUrl, iconUrl)
-        //      SELECT $accountID as accountID, subID, title, url, htmlUrl, iconUrl FROM Subscription;''',
-        //   );
-        //   await db.execute("DROP TABLE Subscription");
-
-        //   await db.execute(catTable);
-        //   await db.execute(
-        //     '''INSERT INTO Categories
-        //      (accountID, catID, subID, name)
-        //      SELECT $accountID as accountID, catID, subID, name FROM Category;''',
-        //   );
-        //   await db.execute("DROP TABLE Category");
-
-        //   await db.execute(delTable);
-        //   await db.execute(
-        //     '''INSERT INTO DelayedActions
-        //      (accountID, articleID, action)
-        //      SELECT $accountID as accountID, articleID, action FROM DelayedAction;''',
-        //   );
-        //   await db.execute("DROP TABLE DelayedAction");
-        // }
-        // debugPrint("Finished upgrading db to: version 4");
+        debugPrint("Finished upgrading db to: version 4");
       } else if (oldVersion == 4 && newVersion == 5) {
         await db.execute("ALTER TABLE Subscriptions add column catID TEXT");
         debugPrint("Finished upgrading db to: version 5");
@@ -148,12 +99,99 @@ Future<Database> getDatabase() async {
   );
 }
 
-class DB {
-  Database database;
-  DB(this.database);
+abstract class StorageBase {
+  Future<String?> getPreference(String key);
 
+  Future<void> setPreference(String key, String value);
+
+  Future<void> clearOld(int accountID);
+
+  Future<Map<String, Subscription>> loadAllSubs(int accountID);
+
+  Future<Map<String, Category>> loadAllCategory(int accountID);
+
+  Future<void> insertCategories(List<Category> categories, int accountID);
+
+  Future<void> insertSubscriptions(List<Subscription> subs);
+
+  Future<Map<String, (int, String, bool, bool)>> loadArticleMetaData(
+    int accountID,
+  );
+
+  Future<Article> loadArticle(String articleID, int accountID);
+
+  Future<List<Article>> loadArticles(List<String> articleIDs, int accountID);
+
+  Future<Article> loadArticleContent(String articleID, int accountID);
+
+  Future<String?> loadArticleSubID(String articleID, int accountID);
+
+  Future<Map<String, String>> loadArticleSubIDs(
+    List<String> articleIDs,
+    int accountID,
+  );
+
+  Future<Map<String, String>> loadArticleIDs({
+    bool? showAll,
+    String? filterColumn,
+    String? filterValue,
+    required int accountID,
+    required int todaySecondsSinceEpoch,
+  });
+
+  Future<List<String>?> searchArticles(
+    String? searchTerm,
+    Set<String>? filteredArticleIDs,
+    int accountID,
+  );
+
+  Future<void> insertArticles(List<Article> articles);
+
+  Future<void> clearLastSyncTable(int accountID);
+
+  Future<List<String>> getLastSyncIDs(int accountID);
+
+  Future<void> updateArticleRead(String articleId, bool isRead, int accountID);
+
+  Future<void> updateArticleStar(
+    String articleId,
+    bool isStarred,
+    int accountID,
+  );
+
+  Future<void> syncArticlesRead(Set<String> articleIDs, int accountID);
+
+  Future<void> syncArticlesStar(Set<String> articleIDs, int accountID);
+
+  // Delayed Actions
+  Future<Map<String, DelayedAction>> loadDelayedActions(int accountID);
+
+  void saveDelayedActions(Map<String, DelayedAction> actions, int accountID);
+
+  void deleteDelayedActions(Map<String, DelayedAction> actions, int accountID);
+
+  Future<List<Account>> getAllAccounts({int? limit});
+
+  Future<List<int>> getAccountIds();
+
+  Future<Account> getAccount(int accountID);
+
+  Future<int> addAccount(Account accountToAdd);
+
+  Future<void> updateAccount(Account accountToAdd);
+
+  Future<void> deleteAccount(int accountID);
+
+  Future<void> deleteAccountData(int accountID);
+}
+
+class StorageSqlite extends StorageBase {
+  final Database _database;
+  StorageSqlite(this._database);
+
+  @override
   Future<String?> getPreference(String key) async {
-    var res = await database.query(
+    var res = await _database.query(
       "preferences",
       where: "key = ?",
       whereArgs: [key],
@@ -162,15 +200,39 @@ class DB {
     return res.isEmpty ? null : res.first["value"] as String;
   }
 
+  @override
   Future<void> setPreference(String key, String value) async {
-    await database.insert("preferences", {
+    await _database.insert("preferences", {
       "key": key,
       "value": value,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
+  @override
+  Future<void> clearOld(int accountID) async {
+    await getPreference("read_duration").then((duration) {
+      debugPrint("read duration to keep: $duration");
+      int? days = int.tryParse(duration ?? "");
+      if (duration != null && duration != "-1" && days != null) {
+        DateTime now = DateTime.now();
+        double seconds = now.millisecondsSinceEpoch / 1000;
+        _database
+            .delete(
+              "articles",
+              where:
+                  "accountID = ? and timeStampPublished < ? and isRead = ? and isStarred = ?",
+              whereArgs: [accountID, seconds - (days * 86400), "true", "false"],
+            )
+            .then((count) {
+              debugPrint("delete $count articles");
+            });
+      }
+    });
+  }
+
+  @override
   Future<Map<String, Subscription>> loadAllSubs(int accountID) async {
-    return (await database.query(
+    return (await _database.query(
       "Subscriptions",
       columns: [
         "subID",
@@ -189,8 +251,9 @@ class DB {
     );
   }
 
+  @override
   Future<Map<String, Category>> loadAllCategory(int accountID) async {
-    return (await database.query(
+    return (await _database.query(
       "Categories",
       where: "accountID = ?",
       whereArgs: [accountID],
@@ -200,10 +263,13 @@ class DB {
     );
   }
 
-  Future<void> insertNewCategories(List<dynamic> tags, int accountID) async {
-    final batch = database.batch();
-    for (var element in tags) {
-      Category cat = Category.fromJson(element, accountID);
+  @override
+  Future<void> insertCategories(
+    List<Category> categories,
+    int accountID,
+  ) async {
+    final batch = _database.batch();
+    for (Category cat in categories) {
       batch.insert(
         "Categories",
         cat.toMap(),
@@ -213,23 +279,25 @@ class DB {
     await batch.commit(continueOnError: true);
   }
 
-  void saveSubs(List<Subscription> subs) {
-    final Batch batch = database.batch();
-    for (var sub in subs) {
+  @override
+  Future<void> insertSubscriptions(List<Subscription> subs) async {
+    final Batch batch = _database.batch();
+    for (Subscription sub in subs) {
       batch.insert(
         "Subscriptions",
         sub.toDB(),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
     }
-    batch.commit(continueOnError: true);
+    await batch.commit(continueOnError: true);
   }
 
+  @override
   Future<Map<String, (int, String, bool, bool)>> loadArticleMetaData(
     int accountID,
   ) async {
     Map<String, (int, String, bool, bool)> res = {};
-    for (var article in (await database.rawQuery(
+    for (var article in (await _database.rawQuery(
       "select articleID, subID, timeStampPublished, isRead, isStarred from Articles where accountID = $accountID order by timeStampPublished desc",
     ))) {
       res[article.values.first.toString()] = (
@@ -242,9 +310,10 @@ class DB {
     return res;
   }
 
+  @override
   Future<Article> loadArticle(String articleID, int accountID) async {
     return Article.fromDB(
-      (await database.query(
+      (await _database.query(
         "Articles",
         where: "articleID = ? and accountID = ?",
         whereArgs: [articleID, accountID],
@@ -253,17 +322,19 @@ class DB {
     );
   }
 
+  @override
   Future<List<Article>> loadArticles(
     List<String> articleIDs,
     int accountID,
   ) async {
-    return (await database.rawQuery(
+    return (await _database.rawQuery(
       "select articleID ,subID, accountID, title, isRead, isStarred, timeStampPublished, url, img from Articles where accountID = $accountID and articleID in ('${articleIDs.join("','")}') order by timeStampPublished desc",
     )).map((article) => Article.fromDB(article)).toList();
   }
 
+  @override
   Future<Article> loadArticleContent(String articleID, int accountID) async {
-    var res = await database.query(
+    var res = await _database.query(
       "Articles",
       where: "articleID = ? and accountID = ?",
       whereArgs: [articleID, accountID],
@@ -272,8 +343,9 @@ class DB {
     return Article.fromDB(res.first);
   }
 
+  @override
   Future<String?> loadArticleSubID(String articleID, int accountID) async {
-    List<Map<String, Object?>> result = await database.query(
+    List<Map<String, Object?>> result = await _database.query(
       "Articles",
       columns: ["subID"],
       where: "articleID = ? and accountID = ?",
@@ -284,11 +356,12 @@ class DB {
     return result.isNotEmpty ? result.first.values.first as String : null;
   }
 
+  @override
   Future<Map<String, String>> loadArticleSubIDs(
     List<String> articleIDs,
     int accountID,
   ) async {
-    return (await database.query(
+    return (await _database.query(
       "Articles",
       columns: ["articleID", "subID"],
       where: "articleID in ? and accountID = ?",
@@ -299,64 +372,7 @@ class DB {
     );
   }
 
-  Future<Map<String, int>> countAllArticles(bool showAll, int accountID) async {
-    List<Map<String, Object?>> results = await database.query(
-      "Articles",
-      columns: ["subID, COUNT(id)"],
-      groupBy: "subID",
-      where: "accountID = ?${(!showAll ? " and isRead = ?" : "")}",
-      whereArgs: [accountID, if (!showAll) "false"],
-    );
-
-    Map<String, int> counts = results.asMap().map(
-      ((key, value) =>
-          MapEntry(value["subID"] as String, value["COUNT(id)"] as int)),
-    );
-
-    Object? todayCount = (await database.query(
-      "Articles",
-      columns: ["COUNT(id)"],
-      where:
-          "accountID = ? and timeStampPublished > ${getTodaySecondsSinceEpoch()} ${(!showAll ? " and isRead = ?" : "")}",
-      whereArgs: [accountID, if (!showAll) "false"],
-    )).firstOrNull?.values.firstOrNull;
-
-    if (todayCount != null) {
-      counts["Today"] = todayCount as int;
-    }
-
-    List<Map<String, Object?>> categories = await database.query(
-      "Categories",
-      columns: ["catID"],
-      distinct: true,
-      where: "accountID = ?",
-      whereArgs: [accountID],
-    );
-    for (var element in categories) {
-      await database
-          .rawQuery(
-            "Select COUNT(id) from Articles where accountID = $accountID and subID in (select subID from Subscriptions where catID = '${element["catID"]}') ${showAll == false ? "and isRead = 'false'" : ""}",
-          )
-          .then((count) {
-            // print(count.first.values);
-            // print(element["catID"]);
-            counts[element["catID"] as String] =
-                count.first["COUNT(id)"] as int;
-          });
-    }
-
-    await database
-        .rawQuery(
-          "select COUNT(id) from Articles where accountID = $accountID and isStarred = 'true' ${showAll == false ? "and isRead = 'false'" : ""}",
-        )
-        .then((value) {
-          counts["Starred"] = value.first.values.first as int;
-        });
-
-    // debugPrint("counts: $counts");
-    return counts;
-  }
-
+  @override
   Future<Map<String, String>> loadArticleIDs({
     bool? showAll,
     String? filterColumn,
@@ -366,11 +382,11 @@ class DB {
   }) async {
     late List<Map<String, Object?>> articles;
     if (filterColumn == "tag") {
-      articles = await database.rawQuery(
+      articles = await _database.rawQuery(
         "select articleID, subID from Articles where accountID = $accountID and subID in (select subID from Subscriptions where catID = '$filterValue') ${showAll == false ? "and isRead = 'false'" : ""} order by timeStampPublished DESC",
       );
     } else if (filterColumn == "timeStampPublished") {
-      articles = await database.rawQuery(
+      articles = await _database.rawQuery(
         "select articleID, subID from Articles where accountID = $accountID and timeStampPublished > $todaySecondsSinceEpoch ${showAll == false ? "and isRead = 'false'" : ""} order by timeStampPublished DESC",
       );
     } else {
@@ -388,7 +404,7 @@ class DB {
       where = "${where == null ? "" : "$where and "}accountID = ?";
       args.add(accountID);
 
-      articles = await database.query(
+      articles = await _database.query(
         "Articles",
         columns: ["articleID", "subID"],
         where: where,
@@ -402,8 +418,25 @@ class DB {
     );
   }
 
-  void insertArticles(List<Article> articles) {
-    final Batch batch = database.batch();
+  @override
+  Future<List<String>?> searchArticles(
+    String? searchTerm,
+    Set<String>? filteredArticleIDs,
+    int accountID,
+  ) async {
+    if (searchTerm == null ||
+        searchTerm.isEmpty ||
+        filteredArticleIDs == null) {
+      return filteredArticleIDs?.toList();
+    }
+    return (await _database.rawQuery(
+      "select articleID from Articles where articleID in ('${filteredArticleIDs.join("','")}') and accountID = $accountID and (LOWER(title) like '%' || '${searchTerm.toLowerCase()}' || '%' or LOWER(content) like '%' || '${searchTerm.toLowerCase()}' || '%') order by timeStampPublished desc",
+    )).map((res) => res.values.first.toString()).toList();
+  }
+
+  @override
+  Future<void> insertArticles(List<Article> articles) async {
+    final Batch batch = _database.batch();
     for (Article article in articles) {
       batch.insert(
         "Articles",
@@ -417,19 +450,21 @@ class DB {
         }, conflictAlgorithm: ConflictAlgorithm.fail);
       }
     }
-    batch.commit(continueOnError: true);
+    await batch.commit(continueOnError: true);
   }
 
+  @override
   Future<void> clearLastSyncTable(int accountID) async {
-    await database.delete(
+    await _database.delete(
       "lastSync",
       where: "accountID = ?",
       whereArgs: [accountID],
     );
   }
 
+  @override
   Future<List<String>> getLastSyncIDs(int accountID) async {
-    return (await database.query(
+    return (await _database.query(
       "lastSync",
       columns: ["articleID"],
       where: "accountID = ?",
@@ -437,12 +472,13 @@ class DB {
     )).map((elm) => elm.values.first.toString()).toList();
   }
 
+  @override
   Future<void> updateArticleRead(
     String articleId,
     bool isRead,
     int accountID,
   ) async {
-    await database.update(
+    await _database.update(
       "Articles",
       {"isRead": isRead ? "true" : "false"},
       where: "articleID = ? and accountID = ?",
@@ -450,12 +486,13 @@ class DB {
     );
   }
 
+  @override
   Future<void> updateArticleStar(
     String articleId,
     bool isStarred,
     int accountID,
   ) async {
-    database.update(
+    _database.update(
       "Articles",
       {"isStarred": isStarred ? "true" : "false"},
       where: "articleID = ? and accountID = ?",
@@ -463,25 +500,35 @@ class DB {
     );
   }
 
+  @override
   Future<void> syncArticlesRead(Set<String> articleIDs, int accountID) async {
-    await database.rawUpdate(
+    await _database.rawUpdate(
       "Update Articles set isRead = 'true' where articleID not in ('${articleIDs.join("','")}') and accountID = $accountID",
     );
   }
 
+  @override
   Future<void> syncArticlesStar(Set<String> articleIDs, int accountID) async {
     //user/-/state/com.google/starred
-    await database.rawUpdate(
-      "Update Articles set isStarred = 'true' where articleID in ('${articleIDs.join("','")}')  and accountID = $accountID",
-    );
-    await database.rawUpdate(
-      "Update Articles set isStarred = 'false' where articleID not in ('${articleIDs.join("','")}') and isRead = 'true' and accountID = $accountID",
-    );
+    await _database
+        .rawUpdate(
+          "Update Articles set isStarred = 'true' where articleID in ('${articleIDs.join("','")}') and accountID = $accountID",
+        )
+        .then((val) {
+          debugPrint("Set starred: $val");
+        });
+    await _database
+        .rawUpdate(
+          "Update Articles set isStarred = 'false' where articleID not in ('${articleIDs.join("','")}') and accountID = $accountID",
+        )
+        .then((val) {
+          debugPrint("Set unStarred: $val");
+        });
   }
 
-  // Delayed Actions
+  @override
   Future<Map<String, DelayedAction>> loadDelayedActions(int accountID) async {
-    List<Map<String, Object?>> actions = await database.query(
+    List<Map<String, Object?>> actions = await _database.query(
       "DelayedActions",
       where: "accountID = ?",
       whereArgs: [accountID],
@@ -494,8 +541,9 @@ class DB {
     );
   }
 
+  @override
   void saveDelayedActions(Map<String, DelayedAction> actions, int accountID) {
-    final Batch batch = database.batch();
+    final Batch batch = _database.batch();
 
     for (var element in actions.entries) {
       batch.insert("DelayedActions", {
@@ -507,8 +555,9 @@ class DB {
     batch.commit(continueOnError: true);
   }
 
+  @override
   void deleteDelayedActions(Map<String, DelayedAction> actions, int accountID) {
-    final Batch batch = database.batch();
+    final Batch batch = _database.batch();
 
     for (var element in actions.entries) {
       batch.delete(
@@ -520,23 +569,26 @@ class DB {
     batch.commit(continueOnError: true);
   }
 
+  @override
   Future<List<Account>> getAllAccounts({int? limit}) async {
-    return (await database.query(
+    return (await _database.query(
       "Account",
       limit: limit,
     )).map((elm) => Account.fromMap(elm)).toList();
   }
 
+  @override
   Future<List<int>> getAccountIds() async {
-    return (await database.query(
+    return (await _database.query(
       "Account",
       columns: ["id"],
     )).map((elm) => elm["id"] as int).toList();
   }
 
+  @override
   Future<Account> getAccount(int accountID) async {
     return Account.fromMap(
-      (await database.query(
+      (await _database.query(
         "Account",
         where: "id = ?",
         whereArgs: [accountID],
@@ -545,12 +597,17 @@ class DB {
     );
   }
 
+  @override
   Future<int> addAccount(Account accountToAdd) async {
-    return await database.insert("Account", accountToAdd.toMap()..remove("id"));
+    return await _database.insert(
+      "Account",
+      accountToAdd.toMap()..remove("id"),
+    );
   }
 
+  @override
   Future<void> updateAccount(Account accountToAdd) async {
-    await database.update(
+    await _database.update(
       "Account",
       accountToAdd.toMap(),
       where: "id = ?",
@@ -558,37 +615,361 @@ class DB {
     );
   }
 
+  @override
   Future<void> deleteAccount(int accountID) async {
     await deleteAccountData(accountID);
-    await database.delete("Account", where: "id = ?", whereArgs: [accountID]);
+    await _database.delete("Account", where: "id = ?", whereArgs: [accountID]);
   }
 
+  @override
   Future<void> deleteAccountData(int accountID) async {
-    await database.delete(
+    await _database.delete(
       "Articles",
       where: "accountID = ?",
       whereArgs: [accountID],
     );
-    await database.delete(
+    await _database.delete(
       "Categories",
       where: "accountID = ?",
       whereArgs: [accountID],
     );
-    await database.delete(
+    await _database.delete(
       "Subscriptions",
       where: "accountID = ?",
       whereArgs: [accountID],
     );
-    await database.delete(
+    await _database.delete(
       "DelayedActions",
       where: "accountID = ?",
       whereArgs: [accountID],
     );
-    await database.update(
+    await _database.update(
       "Account",
       {"updatedStarredTime": 0, "updatedArticleTime": 0},
       where: "id = ?",
       whereArgs: [accountID],
     );
+  }
+}
+
+class StorageMemory extends StorageBase {
+  final Map<String, String> _preferences = {};
+  final Map<int, Account> _accounts = {};
+  final Map<String, Subscription> _subscriptions = {};
+  final Map<String, Category> _categories = {};
+  final Map<String, Article> _articles = {};
+  final Map<String, int> _lastSync = {};
+
+  @override
+  Future<String?> getPreference(String key) async {
+    return _preferences[key];
+  }
+
+  @override
+  Future<void> setPreference(String key, String value) async {
+    _preferences[key] = value;
+  }
+
+  @override
+  Future<void> clearOld(int accountID) async {
+    await getPreference("read_duration").then((duration) {
+      debugPrint("read duration to keep: $duration");
+      int? days = int.tryParse(duration ?? "");
+      if (duration != null && duration != "-1" && days != null) {
+        DateTime now = DateTime.now();
+        double seconds = now.millisecondsSinceEpoch / 1000;
+        _articles.removeWhere((_, a) => a.published < seconds - (days * 86400));
+      }
+    });
+  }
+
+  @override
+  Future<Map<String, Subscription>> loadAllSubs(int accountID) async {
+    Map<String, Subscription> forAccount = {};
+    for (var sub in _subscriptions.entries) {
+      if (sub.value.accountID == accountID) {
+        forAccount[sub.key] = sub.value;
+      }
+    }
+    return forAccount;
+  }
+
+  @override
+  Future<Map<String, Category>> loadAllCategory(int accountID) async {
+    Map<String, Category> forAccount = {};
+    for (var cat in _categories.entries) {
+      if (cat.value.accountID == accountID) {
+        forAccount[cat.key] = cat.value;
+      }
+    }
+    return forAccount;
+  }
+
+  @override
+  Future<void> insertCategories(
+    List<Category> categories,
+    int accountID,
+  ) async {
+    for (var cat in categories) {
+      _categories[cat.catID] = cat;
+    }
+  }
+
+  @override
+  Future<void> insertSubscriptions(List<Subscription> subs) async {
+    for (var sub in subs) {
+      _subscriptions[sub.subID] = sub;
+    }
+  }
+
+  @override
+  Future<Map<String, (int, String, bool, bool)>> loadArticleMetaData(
+    int accountID,
+  ) async {
+    Map<String, (int, String, bool, bool)> res = {};
+    for (var a in _articles.values.where((a) => a.accountID == accountID)) {
+      res[a.articleID] = (a.published, a.subID, a.read, a.starred);
+    }
+
+    return res;
+  }
+
+  @override
+  Future<Article> loadArticle(String articleID, int accountID) async {
+    return _articles[articleID]!;
+  }
+
+  @override
+  Future<List<Article>> loadArticles(
+    List<String> articleIDs,
+    int accountID,
+  ) async {
+    return _articles.values
+        .where(
+          (a) => a.accountID == accountID && articleIDs.contains(a.articleID),
+        )
+        .toList();
+  }
+
+  @override
+  Future<Article> loadArticleContent(String articleID, int accountID) async {
+    return loadArticle(articleID, accountID);
+  }
+
+  @override
+  Future<String?> loadArticleSubID(String articleID, int accountID) async {
+    return _articles[articleID]!.subID;
+  }
+
+  @override
+  Future<Map<String, String>> loadArticleSubIDs(
+    List<String> articleIDs,
+    int accountID,
+  ) async {
+    return _articles.values
+        .where(
+          (a) => a.accountID == accountID && articleIDs.contains(a.articleID),
+        )
+        .toList()
+        .asMap()
+        .map((_, a) => MapEntry(a.articleID, a.subID));
+  }
+
+  @override
+  Future<Map<String, String>> loadArticleIDs({
+    bool? showAll,
+    String? filterColumn,
+    String? filterValue,
+    required int accountID,
+    required int todaySecondsSinceEpoch,
+  }) async {
+    Map<String, String> artSubIDs = {};
+    if (filterColumn == "tag") {
+      List<String> subIDs = _subscriptions.values
+          .where((s) => s.accountID == accountID && s.catID == filterValue)
+          .map((s) => s.subID)
+          .toList();
+      for (var a in _articles.values.where(
+        (a) =>
+            a.accountID == accountID &&
+            subIDs.contains(a.subID) &&
+            (showAll == false ? !a.read : true),
+      )) {
+        artSubIDs[a.articleID] = a.subID;
+      }
+    } else if (filterColumn == "timeStampPublished") {
+      for (var a in _articles.values.where(
+        (a) =>
+            a.accountID == accountID &&
+            a.published > todaySecondsSinceEpoch &&
+            (showAll == false ? !a.read : true),
+      )) {
+        artSubIDs[a.articleID] = a.subID;
+      }
+    } else {
+      // filter by subscription
+      for (var a in _articles.values.where(
+        (a) =>
+            a.accountID == accountID &&
+            a.published > todaySecondsSinceEpoch &&
+            (showAll == false ? !a.read : true),
+      )) {
+        artSubIDs[a.articleID] = a.subID;
+      }
+    }
+    return artSubIDs;
+  }
+
+  @override
+  Future<List<String>?> searchArticles(
+    String? searchTerm,
+    Set<String>? filteredArticleIDs,
+    int accountID,
+  ) async {
+    if (searchTerm == null ||
+        searchTerm.isEmpty ||
+        filteredArticleIDs == null) {
+      return filteredArticleIDs?.toList();
+    }
+    return _articles.values
+        .where(
+          (a) =>
+              a.accountID == accountID &&
+              filteredArticleIDs.contains(a.articleID) &&
+              (a.content.toLowerCase().contains(searchTerm.toLowerCase()) ||
+                  a.title.toLowerCase().contains(searchTerm.toLowerCase())),
+        )
+        .map((a) => a.articleID)
+        .toList();
+  }
+
+  @override
+  Future<void> insertArticles(List<Article> articles) async {
+    for (var art in articles) {
+      _articles[art.articleID] = art;
+      if (!art.read) {
+        _lastSync[art.articleID] = art.accountID;
+      }
+    }
+  }
+
+  @override
+  Future<void> clearLastSyncTable(int accountID) async {
+    _lastSync.removeWhere((_, id) => id == accountID);
+  }
+
+  @override
+  Future<List<String>> getLastSyncIDs(int accountID) async {
+    return _lastSync.entries
+        .where((l) => l.value == accountID)
+        .map((l) => l.key)
+        .toList();
+  }
+
+  @override
+  Future<void> updateArticleRead(
+    String articleId,
+    bool isRead,
+    int accountID,
+  ) async {
+    for (var a in _articles.entries) {
+      if (a.key == articleId && a.value.accountID == accountID) {
+        _articles[a.key]!.read = isRead;
+        return;
+      }
+    }
+  }
+
+  @override
+  Future<void> updateArticleStar(
+    String articleId,
+    bool isStarred,
+    int accountID,
+  ) async {
+    for (var a in _articles.entries) {
+      if (a.key == articleId && a.value.accountID == accountID) {
+        _articles[a.key]!.starred = isStarred;
+        return;
+      }
+    }
+  }
+
+  @override
+  Future<void> syncArticlesRead(Set<String> articleIDs, int accountID) async {
+    for (var a in _articles.entries) {
+      if (!articleIDs.contains(a.key) && a.value.accountID == accountID) {
+        _articles[a.key]!.read = true;
+      }
+    }
+  }
+
+  @override
+  Future<void> syncArticlesStar(Set<String> articleIDs, int accountID) async {
+    for (var a in _articles.entries) {
+      if (articleIDs.contains(a.key) && a.value.accountID == accountID) {
+        _articles[a.key]!.starred = true;
+      } else if (!articleIDs.contains(a.key) &&
+          a.value.accountID == accountID) {
+        _articles[a.key]!.starred = false;
+      }
+    }
+  }
+
+  @override
+  Future<Map<String, DelayedAction>> loadDelayedActions(int accountID) async {
+    return {};
+  }
+
+  @override
+  void saveDelayedActions(Map<String, DelayedAction> actions, int accountID) {}
+
+  @override
+  void deleteDelayedActions(
+    Map<String, DelayedAction> actions,
+    int accountID,
+  ) {}
+
+  @override
+  Future<List<Account>> getAllAccounts({int? limit}) async {
+    if (limit == null) {
+      return _accounts.values.toList();
+    }
+    return _accounts.values.take(limit).toList();
+  }
+
+  @override
+  Future<List<int>> getAccountIds() async {
+    return _accounts.keys.toList();
+  }
+
+  @override
+  Future<Account> getAccount(int accountID) async {
+    return _accounts[accountID]!;
+  }
+
+  @override
+  Future<int> addAccount(Account accountToAdd) async {
+    _accounts[_accounts.length + 1] = accountToAdd;
+    return _accounts.length;
+  }
+
+  @override
+  Future<void> updateAccount(Account accountToAdd) async {
+    _accounts[accountToAdd.id] = accountToAdd;
+  }
+
+  @override
+  Future<void> deleteAccount(int accountID) async {
+    await deleteAccountData(accountID);
+    _accounts.remove(accountID);
+  }
+
+  @override
+  Future<void> deleteAccountData(int accountID) async {
+    _articles.removeWhere((id, a) => a.accountID == accountID);
+    _categories.removeWhere((id, c) => c.accountID == accountID);
+    _subscriptions.removeWhere((id, s) => s.accountID == accountID);
+    _accounts[accountID]!.updatedArticleTime = 0;
+    _accounts[accountID]!.updatedStarredTime = 0;
   }
 }

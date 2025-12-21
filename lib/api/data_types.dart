@@ -2,7 +2,14 @@ import 'dart:convert';
 
 import 'package:html_unescape/html_unescape.dart';
 
-import 'api.dart';
+enum AccountType { test, freshrss }
+
+String getAccountString(AccountType acType) {
+  return switch (acType) {
+    AccountType.test => "test",
+    AccountType.freshrss => "Freshrss",
+  };
+}
 
 class Account {
   int id;
@@ -279,4 +286,28 @@ String tryDecode(String content) {
   } catch (e) {
     return content;
   }
+}
+
+// end of class
+String? getFirstImage(String content) {
+  RegExpMatch? match = RegExp('(?<=src=")(.*?)(?=")').firstMatch(content);
+  if (match?[0] == null) {
+    for (RegExpMatch newMatch in RegExp(
+      '(?<=href=")(.*?)(?=")',
+    ).allMatches(content)) {
+      if (newMatch[0]!.endsWith(".jpg") ||
+          newMatch[0]!.endsWith(".JPG") ||
+          newMatch[0]!.endsWith(".JPEG") ||
+          newMatch[0]!.endsWith(".jpeg") ||
+          newMatch[0]!.endsWith(".png") ||
+          newMatch[0]!.endsWith(".PNG") ||
+          newMatch[0]!.endsWith(".webp") ||
+          newMatch[0]!.endsWith(".tiff") ||
+          newMatch[0]!.endsWith(".tif") ||
+          newMatch[0]!.endsWith(".gif")) {
+        return newMatch[0]!;
+      }
+    }
+  }
+  return match?[0];
 }

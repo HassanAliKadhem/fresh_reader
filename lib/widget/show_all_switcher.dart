@@ -1,26 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../api/api.dart';
+import '../api/data.dart';
 
 class ShowAllSwitcherWidget extends StatelessWidget {
   const ShowAllSwitcherWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
-    bool showAll = context.select<Api, bool>((a) => a.showAll);
+    bool showAll = context.select<DataProvider, bool>((a) => a.showAll);
     return MenuAnchor(
       menuChildren: [
         MenuItemButton(
           onPressed: () {
-            context.read<Api>().setShowAll(true);
+            context.read<DataProvider>().setShowAll(true);
           },
           trailingIcon: Icon(Icons.circle_outlined),
           child: Text("All Articles"),
         ),
         MenuItemButton(
           onPressed: () {
-            context.read<Api>().setShowAll(false);
+            context.read<DataProvider>().setShowAll(false);
           },
           trailingIcon: Icon(Icons.circle),
           child: Text("Only Unread"),

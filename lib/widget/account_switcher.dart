@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../api/api.dart';
+import '../api/data.dart';
 import '../view/settings_view.dart';
 
 class AccountSwitcherWidget extends StatelessWidget {
@@ -10,7 +10,7 @@ class AccountSwitcherWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(
-      future: context.watch<Api>().getAccounts(),
+      future: context.read<DataProvider>().getAccounts(),
       builder: (context, accountSnapshot) {
         if (!accountSnapshot.hasData) {
           return CircularProgressIndicator.adaptive();
@@ -35,10 +35,10 @@ class AccountSwitcherWidget extends StatelessWidget {
                     .map(
                       (account) => MenuItemButton(
                         onPressed: () {
-                          context.read<Api>().changeAccount(account);
+                          context.read<DataProvider>().changeAccount(account);
                         },
                         leadingIcon: Icon(
-                          context.read<Api>().account?.id == account.id
+                          context.read<DataProvider>().accountID == account.id
                               ? Icons.check
                               : null,
                         ),

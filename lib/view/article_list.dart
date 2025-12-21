@@ -6,8 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:fresh_reader/util/date.dart';
 import 'package:provider/provider.dart';
 
-import '../api/api.dart';
-import '../api/data_types.dart';
+import '../api/data.dart';
 import '../main.dart';
 import '../util/screen_size.dart';
 import '../widget/article_tile.dart';
@@ -28,18 +27,18 @@ class _ArticleListState extends State<ArticleList> {
   int lastIndex = 0;
 
   void search(String? text) {
-    context.read<Api>().searchFilteredArticles(text);
+    context.read<DataProvider>().searchFilteredArticles(text);
   }
 
   @override
   void initState() {
     super.initState();
-    context.read<Api>().listController = _scrollController;
+    context.read<DataProvider>().listController = _scrollController;
   }
 
   @override
   Widget build(BuildContext context) {
-    List<String>? searchResults = context.select<Api, List<String>?>(
+    List<String>? searchResults = context.select<DataProvider, List<String>?>(
       (a) => a.searchResults,
     );
     return Scaffold(
@@ -61,11 +60,11 @@ class _ArticleListState extends State<ArticleList> {
                 },
                 padding: const EdgeInsets.all(12.0),
                 placeholder:
-                    "Search ${context.select<Api, String?>((value) => value.filteredTitle)?.split("/").last ?? ""}",
+                    "Search ${context.select<DataProvider, String?>((value) => value.filteredTitle)?.split("/").last ?? ""}",
               )
             : SearchBar(
                 hintText:
-                    "Search ${context.select<Api, String?>((value) => value.filteredTitle)?.split("/").last ?? ""}",
+                    "Search ${context.select<DataProvider, String?>((value) => value.filteredTitle)?.split("/").last ?? ""}",
                 controller: _searchController,
                 textInputAction: TextInputAction.search,
                 leading: Padding(
@@ -105,7 +104,9 @@ class _ArticleListState extends State<ArticleList> {
         child: SizedBox(height: MediaQuery.paddingOf(context).bottom),
       ),
       body:
-          context.select<Api, String?>((value) => value.filteredTitle) ==
+          context.select<DataProvider, String?>(
+                    (value) => value.filteredTitle,
+                  ) ==
                   null ||
               searchResults == null
           ? const SizedBox()
@@ -121,9 +122,10 @@ class _ArticleListState extends State<ArticleList> {
                   if (index == 0) {
                     String date = getFormattedDate(
                       context
-                          .read<Api>()
-                          .articlesMetaData[searchResults[index]]!
-                          .$1,
+                              .read<DataProvider>()
+                              .articlesMetaData[searchResults[index]]
+                              ?.$1 ??
+                          0,
                     ).split(", ")[1].split(" ")[0];
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,7 +155,7 @@ class _ArticleListState extends State<ArticleList> {
                 },
                 separatorBuilder: (context, index) {
                   int? previous = context
-                      .read<Api>()
+                      .read<DataProvider>()
                       .articlesMetaData[searchResults[index]]
                       ?.$1;
                   if (previous != null) {
@@ -161,7 +163,7 @@ class _ArticleListState extends State<ArticleList> {
                       previous,
                     ).split(", ")[1].split(" ")[0];
                     int? next = context
-                        .read<Api>()
+                        .read<DataProvider>()
                         .articlesMetaData[searchResults.elementAtOrNull(
                           index + 1,
                         )]

@@ -6,7 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'database.dart';
 
 class Preferences extends ChangeNotifier {
-  final DB database;
+  final StorageBase database;
 
   double fontSize = 14.0;
   double wordSpacing = 0.0;
