@@ -3,12 +3,12 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../api/data.dart';
 import '../api/preferences.dart';
+import '../util/share.dart';
 import '../widget/transparent_container.dart';
 
 class ArticleBottomButtons extends StatefulWidget {
@@ -29,7 +29,8 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
   @override
   Widget build(BuildContext context) {
     int? index = context.select<DataProvider, int?>((a) => a.selectedIndex);
-    if (index == null || context.read<DataProvider>().searchResults == null) {
+    if (index == null ||
+        context.select<DataProvider, bool>((d) => d.searchResults == null)) {
       return Container();
     }
     String? articleID = context
@@ -107,24 +108,11 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
                 return IconButton(
                   onPressed: () {
                     if (articleID != null) {
-                      try {
-                        final box = context.findRenderObject() as RenderBox?;
-                        getUrlTitle(articleID).then((res) {
-                          SharePlus.instance.share(
-                            ShareParams(
-                              uri: Uri.parse(res.$2),
-                              subject: res.$1,
-                              sharePositionOrigin:
-                                  box!.localToGlobal(Offset.zero) & box.size,
-                            ),
-                          );
-                        });
-                      } catch (e) {
-                        debugPrint(e.toString());
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(e.toString(), maxLines: 3)),
-                        );
-                      }
+                      getUrlTitle(articleID).then((res) {
+                        if (context.mounted) {
+                          shareLink(context, res.$2, res.$1);
+                        }
+                      });
                     }
                   },
                   icon: Icon(
@@ -257,36 +245,15 @@ class _ArticleWebViewButtonsState extends State<ArticleWebViewButtons> {
                 return IconButton(
                   onPressed: () {
                     widget.webViewController.currentUrl().then((url) async {
-                      if (url != null) {
-                        try {
+                      widget.webViewController.getTitle().then((title) {
+                        if (url != null) {
                           if (context.mounted) {
-                            final box =
-                                context.findRenderObject() as RenderBox?;
-                            SharePlus.instance.share(
-                              ShareParams(
-                                uri: Uri.parse(url),
-                                subject: (await widget.webViewController
-                                    .getTitle()),
-                                sharePositionOrigin:
-                                    box!.localToGlobal(Offset.zero) & box.size,
-                              ),
-                            );
-                          } else {
-                            debugPrint("Context not mounted");
-                          }
-                        } catch (e) {
-                          debugPrint(e.toString());
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(e.toString(), maxLines: 3),
-                              ),
-                            );
+                            shareLink(context, url, title);
                           } else {
                             debugPrint("Context not mounted");
                           }
                         }
-                      }
+                      });
                     });
                   },
                   icon: Icon(

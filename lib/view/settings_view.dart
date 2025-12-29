@@ -43,7 +43,10 @@ class _SettingsPageState extends State<SettingsPage> {
               )
             : null,
       ),
-      body: SingleChildScrollView(child: SettingsContent()),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(8.0),
+        child: SettingsContent(),
+      ),
     );
   }
 }
@@ -72,11 +75,11 @@ class _SettingsContentState extends State<SettingsContent> {
               builder: (context) {
                 return AddAccountDialog();
               },
-            ).then((onValue) {
-              if (onValue != null && onValue is Account) {
+            ).then((newAccount) {
+              if (newAccount != null && newAccount is Account) {
                 if (context.mounted) {
                   try {
-                    context.read<DataProvider>().changeAccount(onValue);
+                    context.read<DataProvider>().changeAccount(newAccount);
                   } catch (e) {
                     ScaffoldMessenger.of(
                       context,
@@ -91,12 +94,10 @@ class _SettingsContentState extends State<SettingsContent> {
           },
         ),
         const AccountDetails(),
-        const Divider(indent: 8.0, endIndent: 8.0),
+        const Divider(),
         const ListTile(title: Text("Other settings"), dense: true),
         const ReadWhenOpenCheckTile(),
         const ShowLastSyncCheckTile(),
-        const ListTile(title: Text("Theme"), dense: true),
-        const ThemeSwitcherCard(),
         const ReadDurationTile(
           title: "Keep read articles",
           dbKey: "read_duration",
@@ -107,8 +108,12 @@ class _SettingsContentState extends State<SettingsContent> {
         //   dbKey: "star_duration",
         //   values: amounts,
         // ),
-        const Divider(indent: 8.0, endIndent: 8.0),
+        const Divider(),
+        const ListTile(title: Text("Theme"), dense: true),
+        const ThemeSwitcherCard(),
+        const Divider(),
         AboutTile(),
+        SizedBox(height: MediaQuery.viewPaddingOf(context).bottom),
       ],
     );
   }

@@ -37,16 +37,10 @@ class CategoryCard extends StatelessWidget {
           ListTile(
             selected: selected == categoryName,
             title: Text("All $categoryName"),
-            trailing: UnreadCount(
-              context.select<DataProvider, int>(
-                (value) => value.articlesMetaData.values
-                    .where(
-                      (a) =>
-                          currentSubscriptions.keys.contains(a.$2) &&
-                          (showAll || !a.$3),
-                    )
-                    .length,
-              ),
+            trailing: UnreadCounter(
+              (a) =>
+                  currentSubscriptions.keys.contains(a.$2) &&
+                  (showAll || !a.$3),
             ),
             onTap: () => openAll(),
           ),
@@ -73,12 +67,8 @@ class CategoryCard extends StatelessWidget {
                   // ),
                   selected: selected == currentSubscriptions[key]!.title,
                   title: Text(currentSubscriptions[key]!.title),
-                  trailing: UnreadCount(
-                    context.select<DataProvider, int>(
-                      (value) => value.articlesMetaData.values
-                          .where((a) => a.$2 == key && (showAll || !a.$3))
-                          .length,
-                    ),
+                  trailing: UnreadCounter(
+                    (a) => a.$2 == key && (showAll || !a.$3),
                   ),
                   leading: ArticleImage(
                     imageUrl: context.read<DataProvider>().getIconUrl(

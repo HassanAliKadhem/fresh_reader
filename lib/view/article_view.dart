@@ -7,7 +7,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -16,7 +15,7 @@ import '../api/data_types.dart';
 import '../util/date.dart';
 import '../api/preferences.dart';
 import '../util/screen_size.dart';
-import '../widget/adaptive_list_tile.dart';
+import '../util/share.dart';
 import '../widget/article_buttons.dart';
 import '../widget/article_image.dart';
 import '../widget/transparent_container.dart';
@@ -275,115 +274,86 @@ class ArticleTextWidget extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) {
-        Widget? image;
-        if (imgExtensions.any((ext) => link.toLowerCase().endsWith(ext))) {
-          image = ArticleImage(imageUrl: link, width: 164.0, height: 164.0);
-        }
-        return AlertDialog.adaptive(
-          icon: image,
-          title: Text(
-            link,
-            textScaler: const TextScaler.linear(0.75),
-            // style: TextStyle(color: Colors.white60),
+        return SimpleDialog(
+          title: ListTile(
+            title: Text(link),
+            trailing:
+                imgExtensions.any((ext) => link.toLowerCase().endsWith(ext))
+                ? ArticleImage(imageUrl: link)
+                : imgUrl != null
+                ? ArticleImage(imageUrl: imgUrl)
+                : null,
           ),
+          titlePadding: EdgeInsetsGeometry.only(top: 8.0),
           contentPadding: EdgeInsets.zero,
           clipBehavior: Clip.hardEdge,
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Divider(),
-                AdaptiveListTile(
-                  title: "Open in browser",
+          children: [
+            const Divider(),
+            ListTile(
+              dense: true,
+              title: Text("Open in browser"),
+              trailing: Icon(
+                (Platform.isIOS || Platform.isMacOS)
+                    ? CupertinoIcons.globe
+                    : Icons.public_rounded,
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                launchUrl(Uri.parse(link));
+              },
+            ),
+            Builder(
+              builder: (context) {
+                return ListTile(
+                  dense: true,
+                  title: Text("Share Link"),
                   trailing: Icon(
                     (Platform.isIOS || Platform.isMacOS)
-                        ? CupertinoIcons.globe
-                        : Icons.public_rounded,
+                        ? CupertinoIcons.share
+                        : Icons.share,
                   ),
                   onTap: () {
-                    Navigator.pop(context);
-                    launchUrl(Uri.parse(link));
+                    shareLink(context, link, null);
                   },
-                ),
-                Builder(
-                  builder: (context) {
-                    return AdaptiveListTile(
-                      title: "Share Link",
+                );
+              },
+            ),
+            ...(imgUrl == null
+                ? []
+                : [
+                    const Divider(),
+                    ListTile(
+                      dense: true,
+                      title: Text("Preview Image"),
+                      trailing: const Icon(Icons.image_outlined),
+                      onTap: () {
+                        Navigator.pop(context);
+                        showImage(context, imgUrl, null, null);
+                      },
+                    ),
+                    ListTile(
+                      dense: true,
+                      title: Text("Open image in browser"),
+                      trailing: const Icon(Icons.image_search),
+                      onTap: () {
+                        Navigator.pop(context);
+                        launchUrl(Uri.parse(imgUrl));
+                      },
+                    ),
+                    ListTile(
+                      dense: true,
+                      title: Text("Share image link"),
                       trailing: Icon(
                         (Platform.isIOS || Platform.isMacOS)
                             ? CupertinoIcons.share
-                            : Icons.share_rounded,
+                            : Icons.share,
                       ),
                       onTap: () {
-                        try {
-                          final box = context.findRenderObject() as RenderBox?;
-                          SharePlus.instance.share(
-                            ShareParams(
-                              uri: Uri.parse(link),
-                              sharePositionOrigin:
-                                  box!.localToGlobal(Offset.zero) & box.size,
-                            ),
-                          );
-                        } catch (e) {
-                          debugPrint(e.toString());
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(e.toString(), maxLines: 3)),
-                          );
-                        }
-                        // Navigator.pop(context);
+                        shareLink(context, imgUrl, null);
                       },
-                    );
-                  },
-                ),
-                if (imgUrl != null) const Divider(),
-                if (imgUrl != null)
-                  AdaptiveListTile(
-                    title: "Preview Image",
-                    trailing: const Icon(Icons.image),
-                    onTap: () {
-                      Navigator.pop(context);
-                      showImage(context, imgUrl, null, null);
-                    },
-                  ),
-                if (imgUrl != null)
-                  AdaptiveListTile(
-                    title: "Open image in browser",
-                    trailing: const Icon(Icons.image_search_rounded),
-                    onTap: () {
-                      Navigator.pop(context);
-                      launchUrl(Uri.parse(imgUrl));
-                    },
-                  ),
-                if (imgUrl != null)
-                  AdaptiveListTile(
-                    title: "Share image link",
-                    trailing: Icon(
-                      (Platform.isIOS || Platform.isMacOS)
-                          ? CupertinoIcons.share
-                          : Icons.share_rounded,
                     ),
-                    onTap: () {
-                      try {
-                        final box = context.findRenderObject() as RenderBox?;
-                        SharePlus.instance.share(
-                          ShareParams(
-                            uri: Uri.parse(imgUrl),
-                            sharePositionOrigin:
-                                box!.localToGlobal(Offset.zero) & box.size,
-                          ),
-                        );
-                      } catch (e) {
-                        debugPrint(e.toString());
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(e.toString(), maxLines: 3)),
-                        );
-                      }
-                    },
-                  ),
-              ],
-            ),
-          ),
+                  ]),
+          ],
         );
       },
     );
@@ -507,7 +477,6 @@ class ArticleTextWidget extends StatelessWidget {
                 ),
                 HtmlWidget(
                   content,
-                  buildAsync: false,
                   enableCaching: true,
                   renderMode: RenderMode.sliverList,
                   onErrorBuilder: (context, element, error) {
@@ -539,17 +508,14 @@ class ArticleTextWidget extends StatelessWidget {
                           }
                         }
                       }
+                      String href = element.attributes["href"]!;
                       return InlineCustomWidget(
                         child: GestureDetector(
                           onTap: () {
-                            launchUrl(Uri.parse(element.attributes["href"]!));
+                            launchUrl(Uri.parse(href));
                           },
                           onLongPress: () {
-                            showLinkMenu(
-                              context,
-                              element.attributes["href"]!,
-                              imgUrl,
-                            );
+                            showLinkMenu(context, href, imgUrl);
                           },
                           child:
                               imgWidget ?? Text(element.text, style: urlStyle),
@@ -557,35 +523,25 @@ class ArticleTextWidget extends StatelessWidget {
                       );
                     } else if (element.localName == "img" &&
                         element.attributes["src"] != null) {
+                      String src = element.attributes["src"]!;
+                      double? width = double.tryParse(
+                        element.attributes["width"] ?? "",
+                      );
+                      double? height = double.tryParse(
+                        element.attributes["height"] ?? "",
+                      );
                       return InlineCustomWidget(
                         child: GestureDetector(
                           onTap: () {
-                            showImage(
-                              context,
-                              element.attributes["src"]!,
-                              double.tryParse(
-                                element.attributes["width"] ?? "",
-                              ),
-                              double.tryParse(
-                                element.attributes["height"] ?? "",
-                              ),
-                            );
+                            showImage(context, src, width, height);
                           },
                           onLongPress: () {
-                            showLinkMenu(
-                              context,
-                              element.attributes["src"]!,
-                              element.attributes["src"]!,
-                            );
+                            showLinkMenu(context, src, src);
                           },
                           child: ArticleImage(
-                            imageUrl: element.attributes["src"]!,
-                            width: double.tryParse(
-                              element.attributes["width"] ?? "",
-                            ),
-                            height: double.tryParse(
-                              element.attributes["height"] ?? "",
-                            ),
+                            imageUrl: src,
+                            width: width,
+                            height: height,
                           ),
                         ),
                       );
@@ -595,7 +551,9 @@ class ArticleTextWidget extends StatelessWidget {
                 ),
                 SliverPadding(
                   padding: EdgeInsetsGeometry.only(
-                    bottom: MediaQuery.paddingOf(context).bottom + 16.0,
+                    bottom:
+                        (MediaQuery.maybePaddingOf(context)?.bottom ?? 0.0) +
+                        16.0,
                   ),
                 ),
               ],

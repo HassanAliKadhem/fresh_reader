@@ -169,29 +169,15 @@ class _CategoryListState extends State<CategoryList> {
                     ListTile(
                       selected: filteredTitle == "All Articles",
                       title: const Text("All Articles"),
-                      trailing: UnreadCount(
-                        context.select<DataProvider, int>(
-                          (value) => value.articlesMetaData.values
-                              .where((a) => showAll || !a.$3)
-                              .length,
-                        ),
-                      ),
+                      trailing: UnreadCounter((a) => showAll || !a.$3),
                       onTap: () =>
                           openArticleList(context, null, null, "All Articles"),
                     ),
                     ListTile(
                       selected: filteredTitle == "Today",
                       title: const Text("Today"),
-                      trailing: UnreadCount(
-                        context.select<DataProvider, int>(
-                          (value) => value.articlesMetaData.values
-                              .where(
-                                (a) =>
-                                    a.$1 > secondsSinceToday &&
-                                    (showAll || !a.$3),
-                              )
-                              .length,
-                        ),
+                      trailing: UnreadCounter(
+                        (a) => a.$1 > secondsSinceToday && (showAll || !a.$3),
                       ),
                       onTap: () => openArticleList(
                         context,
@@ -204,33 +190,15 @@ class _CategoryListState extends State<CategoryList> {
                       ListTile(
                         selected: filteredTitle == "lastSync",
                         title: const Text("last Sync Articles"),
-                        trailing: UnreadCount(
-                          showAll
-                              ? (context.select<DataProvider, int>(
-                                  (a) => a.lastSyncIDs.length,
-                                ))
-                              : context.select<DataProvider, int>(
-                                  (value) => value.articlesMetaData.entries
-                                      .where(
-                                        (a) =>
-                                            value.lastSyncIDs.contains(a.key) &&
-                                            !a.value.$3,
-                                      )
-                                      .length,
-                                ),
-                        ),
+                        trailing: const UnreadLastSync(),
                         onTap: () =>
                             openArticleList(context, null, null, "lastSync"),
                       ),
                     ListTile(
                       selected: filteredTitle == "Starred",
                       title: const Text("Starred"),
-                      trailing: UnreadCount(
-                        context.select<DataProvider, int>(
-                          (value) => value.articlesMetaData.values
-                              .where((a) => a.$4 && (showAll || !a.$3))
-                              .length,
-                        ),
+                      trailing: UnreadCounter(
+                        (a) => a.$4 && (showAll || !a.$3),
                       ),
                       onTap: () => openArticleList(
                         context,

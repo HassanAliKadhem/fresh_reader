@@ -33,6 +33,10 @@ class Preferences extends ChangeNotifier {
     wordSpacing = (await _tryGetDouble("format_wordSpacing")) ?? wordSpacing;
     lineHeight = (await _tryGetDouble("format_lineHeight")) ?? lineHeight;
     font = await database.getPreference("format_font") ?? font;
+    if (!fonts.contains(font)) {
+      // check if font is not available
+      font = fonts.first;
+    }
     isLetterHighlight = (await _tryGetBool("format_bionic")) ?? false;
     markReadWhenOpen = (await _tryGetBool("read_when_open")) ?? true;
     showLastSync = (await _tryGetBool("show_last_sync")) ?? false;

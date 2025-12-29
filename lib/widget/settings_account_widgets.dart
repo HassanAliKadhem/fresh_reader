@@ -82,6 +82,7 @@ class _AccountCardState extends State<AccountCard> {
                 builder: (context) {
                   return AlertDialog.adaptive(
                     title: const Text("Are you sure?"),
+                    content: Text("This cannot be undone"),
                     actions: [
                       TextButton(
                         onPressed: () {
@@ -254,14 +255,16 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
             child: Column(
               children: [
                 RadioListTile.adaptive(
-                  title: const Text('Freshrss'),
-                  value: "Freshrss",
+                  title: Text(getAccountString(.freshrss)),
+                  value: getAccountString(.freshrss),
                 ),
-                // RadioListTile.adaptive(
-                //   title: const Text('InoReader'),
-                //   value: "InoReader",
-                // ),
               ],
+              // AccountType.values.map(
+              //     (t) => RadioListTile.adaptive(
+              //       value: getAccountString(t),
+              //       title: Text(getAccountString(t)),
+              //     ),
+              //   ).toList()
             ),
           ),
           Text("Connection details"),

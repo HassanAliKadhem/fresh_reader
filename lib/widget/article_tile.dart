@@ -1,9 +1,8 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../api/data.dart';
+import '../api/data_types.dart';
 import '../util/date.dart';
 import '../api/preferences.dart';
 import 'article_image.dart';
@@ -31,7 +30,7 @@ class _ArticleTileState extends State<ArticleTile> {
       (a) => a.articlesMetaData[widget.articleID]!.$4,
     );
     return Dismissible(
-      key: ValueKey("tile${widget.articleID}"),
+      key: ValueKey("Dismissible_${widget.articleID}"),
       direction: DismissDirection.horizontal,
       confirmDismiss: (direction) async {
         if (direction == DismissDirection.endToStart) {
@@ -71,19 +70,8 @@ class _ArticleTileState extends State<ArticleTile> {
           ],
         ),
       ),
-      child: ArticleWidget(
-        articleID: widget.articleID,
-        subIcon:
-            context.select<DataProvider, String?>(
-              (a) => a.subscriptions[subID]?.iconUrl,
-            ) ??
-            "",
-        subTitle:
-            context.select<DataProvider, String?>(
-              (a) => a.subscriptions[subID]?.title,
-            ) ??
-            "",
-        onSelect: () {
+      child: InkWell(
+        onTap: () {
           context.read<DataProvider>().setSelectedIndex(
             widget.index,
             false,
@@ -99,135 +87,140 @@ class _ArticleTileState extends State<ArticleTile> {
             subID,
             newValue,
           );
-          // }
         },
+        child: Opacity(
+          opacity: isRead ? 0.3 : 1.0,
+          child: ArticleWidget(
+            articleID: widget.articleID,
+            subIcon: context.select<DataProvider, String>(
+              (a) => a.getIconUrl(a.subscriptions[subID]?.iconUrl ?? ""),
+            ),
+            subTitle:
+                context.select<DataProvider, String?>(
+                  (a) => a.subscriptions[subID]?.title,
+                ) ??
+                "",
+            isStarred: isStarred,
+          ),
+        ),
       ),
     );
   }
 }
 
-class ArticleWidget extends StatelessWidget {
+class ArticleWidget extends StatefulWidget {
   const ArticleWidget({
     super.key,
     required this.articleID,
     required this.subIcon,
     required this.subTitle,
-    required this.onSelect,
+    required this.isStarred,
   });
   final String articleID;
   final String subIcon;
   final String subTitle;
-  final VoidCallback onSelect;
+  final bool isStarred;
+
+  @override
+  State<ArticleWidget> createState() => _ArticleWidgetState();
+}
+
+class _ArticleWidgetState extends State<ArticleWidget> {
+  late final Future<List<Article>> future = context
+      .read<DataProvider>()
+      .db
+      .loadArticles([
+        widget.articleID,
+      ], context.read<DataProvider>().accountID!);
 
   @override
   Widget build(BuildContext context) {
     bool isSelected = context.select<DataProvider, bool>(
       (a) =>
           a.selectedIndex != null &&
-          a.filteredArticleIDs?.elementAt(a.selectedIndex!) == articleID,
+          a.filteredArticleIDs?.elementAt(a.selectedIndex!) == widget.articleID,
     );
-    bool isRead = context.select<DataProvider, bool>(
-      (a) => a.articlesMetaData[articleID]!.$3,
-    );
-    bool isStarred = context.select<DataProvider, bool>(
-      (a) => a.articlesMetaData[articleID]!.$4,
-    );
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return InkWell(
-          onTap: onSelect,
-          // borderRadius: BorderRadius.circular(8.0),
-          child: Container(
-            height: 128.0,
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? Theme.of(context).listTileTheme.selectedTileColor
-                  : null,
-              // borderRadius: BorderRadius.circular(8.0),
-            ),
-            padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
-            child: Opacity(
-              opacity: (isRead) ? 0.3 : 1.0,
-              child: FutureBuilder(
-                future: context.read<DataProvider>().db.loadArticles([
-                  articleID,
-                ], context.read<DataProvider>().accountID!),
-                builder: (context, asyncSnapshot) {
-                  if (!asyncSnapshot.hasData || asyncSnapshot.data == null) {
-                    return Container();
-                  }
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    spacing: 8.0,
-                    children: [
-                      if (asyncSnapshot.data!.first.image != null)
-                        Container(
-                          clipBehavior: Clip.hardEdge,
-                          width: min(112.0, constraints.maxWidth / 3.0),
-                          height: 112.0,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8.0),
-                            color: Colors.grey.shade800,
+    return Container(
+      height: 128.0,
+      decoration: BoxDecoration(
+        color: isSelected
+            ? Theme.of(context).listTileTheme.selectedTileColor
+            : null,
+        // borderRadius: BorderRadius.circular(8.0),
+      ),
+      padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+      child: FutureBuilder(
+        future: future,
+        builder: (context, asyncSnapshot) {
+          if (!asyncSnapshot.hasData || asyncSnapshot.data == null) {
+            return Container();
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
+            spacing: 8.0,
+            children: [
+              if (asyncSnapshot.data!.first.image != null)
+                Container(
+                  clipBehavior: Clip.hardEdge,
+                  width: 112.0,
+                  height: 112.0,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8.0),
+                    color: Colors.grey.shade800,
+                  ),
+                  child: ArticleImage(
+                    imageUrl: asyncSnapshot.data!.first.image!,
+                    fit: BoxFit.cover,
+                    onError: (error) => const Icon(Icons.error),
+                  ),
+                ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    RichText(
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      text: TextSpan(
+                        // style: TextStyle(color: Colors.grey.shade500),
+                        style: Theme.of(context).textTheme.bodySmall,
+                        children: [
+                          WidgetSpan(
+                            child: ArticleImage(
+                              imageUrl: widget.subIcon,
+                              fit: BoxFit.contain,
+                              width: 16.0,
+                              height: 16.0,
+                              onError: (error) =>
+                                  const Icon(Icons.error, size: 16.0),
+                            ),
                           ),
-                          child: ArticleImage(
-                            imageUrl: asyncSnapshot.data!.first.image!,
-                            fit: BoxFit.cover,
-                            onError: (error) => const Icon(Icons.error),
-                          ),
-                        ),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            RichText(
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              text: TextSpan(
-                                // style: TextStyle(color: Colors.grey.shade500),
-                                style: Theme.of(context).textTheme.bodySmall,
-                                children: [
-                                  WidgetSpan(
-                                    child: ArticleImage(
-                                      imageUrl: context
-                                          .read<DataProvider>()
-                                          .getIconUrl(subIcon),
-                                      fit: BoxFit.contain,
-                                      width: 16.0,
-                                      height: 16.0,
-                                      onError: (error) =>
-                                          const Icon(Icons.error, size: 16.0),
-                                    ),
-                                  ),
-                                  TextSpan(text: " $subTitle"),
-                                ],
-                              ),
-                            ),
-                            Text(
-                              asyncSnapshot.data!.first.title,
-                              style: Theme.of(context).textTheme.titleMedium,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              "${isRead ? "" : "⚪️ "}${isStarred ? "⭐️ " : ""}${getFormattedDate(asyncSnapshot.data!.first.published)}",
-                              // style: TextStyle(color: Colors.grey.shade500),
-                              style: Theme.of(context).textTheme.bodySmall,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
+                          TextSpan(text: " ${widget.subTitle}"),
+                        ],
                       ),
-                    ],
-                  );
-                },
+                    ),
+                    Text(
+                      asyncSnapshot.data!.first.title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      "${widget.isStarred ? "⭐️ " : ""}${getFormattedDate(asyncSnapshot.data!.first.published)}",
+                      // style: TextStyle(color: Colors.grey.shade500),
+                      style: Theme.of(context).textTheme.bodySmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
-        );
-      },
+            ],
+          );
+        },
+      ),
     );
   }
 }

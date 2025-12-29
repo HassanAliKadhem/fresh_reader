@@ -35,3 +35,24 @@ class UnreadCounter extends StatelessWidget {
     );
   }
 }
+
+class UnreadLastSync extends StatelessWidget {
+  const UnreadLastSync({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return context.select<DataProvider, bool>((a) => a.showAll)
+        ? UnreadCount(
+            (context.select<DataProvider, int>((a) => a.lastSyncIDs.length)),
+          )
+        : UnreadCount(
+            context.select<DataProvider, int>(
+              (value) => value.articlesMetaData.entries
+                  .where(
+                    (a) => value.lastSyncIDs.contains(a.key) && !a.value.$3,
+                  )
+                  .length,
+            ),
+          );
+  }
+}

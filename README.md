@@ -1,6 +1,6 @@
 # FreshReader
 
-An opinionated client for FreshRss (not affiliated) made just for me. but you can use it if you want
+A mobile client for FreshRss(not affiliated) made just for me. but you can use it if you want, check the releases section for the .apk file
 
 ## Features
 - [x] multi account feature
