@@ -267,6 +267,8 @@ class ArticleTextWidget extends StatelessWidget {
   final String content;
   final String? iconUrl;
   final String subName;
+  late final String modifiedContent =
+      "<div class='freshArticle'><img class='icon' src='$iconUrl' style='width: 1em; height: 1em;'/> <span style='color: lightgray'>$subName</span><br><a href='$url' class='title'>$title</a><h5 style='margin: 5px 0; color: lightgray'>${getFormattedDate(timePublished)}</h5>$content</div>";
   final int timePublished;
   final ScrollController scrollController = ScrollController();
 
@@ -385,6 +387,7 @@ class ArticleTextWidget extends StatelessWidget {
                     width: width,
                     height: height,
                     isViewer: true,
+                    fit: BoxFit.contain,
                   ),
                 ),
               ],
@@ -406,15 +409,106 @@ class ArticleTextWidget extends StatelessWidget {
       color: Theme.of(context).colorScheme.primary,
       decoration: TextDecoration.underline,
     );
-    return AnimatedDefaultTextStyle(
+    return SelectionArea(
+      child: DefaultTextStyle(
+        style: TextStyle(
+          fontFamily: context.select<Preferences, String>((a) => a.font),
+          fontSize: context.select<Preferences, double>((a) => a.fontSize),
+          wordSpacing: context.select<Preferences, double>(
+            (a) => a.wordSpacing,
+          ),
+          height: context.select<Preferences, double>((a) => a.lineHeight),
+        ),
+        child: HtmlWidget(
+          modifiedContent,
+          enableCaching: true,
+          renderMode: RenderMode.listView,
+          onErrorBuilder: (context, element, error) {
+            return Text(error.toString());
+          },
+          customStylesBuilder: (element) {
+            if (element.className == "freshArticle") {
+              return {"margin": "0.5em"};
+            }
+            return {"width": "100%"};
+          },
+          customWidgetBuilder: (element) {
+            if (element.className == "icon") {
+              return null;
+            }
+            if (element.localName == "a") {
+              Widget? imgWidget;
+              String? imgUrl;
+              if (element.children.any((child) => child.localName == "img")) {
+                for (var child in element.children) {
+                  if (child.localName == "img") {
+                    imgUrl = child.attributes["src"];
+                    imgWidget = ArticleImage(
+                      imageUrl: imgUrl ?? "",
+                      width: double.tryParse(child.attributes["width"] ?? ""),
+                      height: double.tryParse(child.attributes["height"] ?? ""),
+                    );
+                    break;
+                  }
+                }
+              }
+              String href = element.attributes["href"]!;
+              return InlineCustomWidget(
+                child: GestureDetector(
+                  onTap: () {
+                    launchUrl(Uri.parse(href));
+                  },
+                  onLongPress: () {
+                    showLinkMenu(context, href, imgUrl);
+                  },
+                  child:
+                      imgWidget ??
+                      Text(
+                        element.text,
+                        style: urlStyle,
+                        textScaler: element.classes.contains("title")
+                            ? TextScaler.linear(1.15)
+                            : null,
+                      ),
+                ),
+              );
+            } else if (element.localName == "img" &&
+                element.attributes["src"] != null) {
+              String src = element.attributes["src"]!;
+              double? width = double.tryParse(
+                element.attributes["width"] ?? "",
+              );
+              double? height = double.tryParse(
+                element.attributes["height"] ?? "",
+              );
+              return InlineCustomWidget(
+                child: GestureDetector(
+                  onTap: () {
+                    showImage(context, src, width, height);
+                  },
+                  onLongPress: () {
+                    showLinkMenu(context, src, src);
+                  },
+                  child: ArticleImage(
+                    imageUrl: src,
+                    width: width,
+                    height: height,
+                  ),
+                ),
+              );
+            }
+            return null;
+          },
+        ),
+      ),
+    );
+    return DefaultTextStyle(
       style: TextStyle(
         fontFamily: context.select<Preferences, String>((a) => a.font),
-        // fontFamilyFallback: [formattingSetting.fonts[0]],
         fontSize: context.select<Preferences, double>((a) => a.fontSize),
         wordSpacing: context.select<Preferences, double>((a) => a.wordSpacing),
         height: context.select<Preferences, double>((a) => a.lineHeight),
       ),
-      duration: const Duration(milliseconds: 100),
       child: SelectionArea(
         child: Scrollbar(
           controller: scrollController,
@@ -423,9 +517,14 @@ class ArticleTextWidget extends StatelessWidget {
             child: CustomScrollView(
               controller: scrollController,
               slivers: [
+                SliverPadding(
+                  padding: EdgeInsetsGeometry.only(
+                    top:
+                        (MediaQuery.maybePaddingOf(context)?.top ?? 0.0) + 16.0,
+                  ),
+                ),
                 SliverList(
                   delegate: SliverChildListDelegate([
-                    SizedBox(height: MediaQuery.paddingOf(context).top + 16.0),
                     Text.rich(
                       textScaler: TextScaler.linear(0.9),
                       TextSpan(

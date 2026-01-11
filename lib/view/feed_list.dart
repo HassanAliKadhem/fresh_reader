@@ -32,7 +32,9 @@ class _FeedListState extends State<FeedList> {
       ),
       appBar: AppBar(
         title: Text(
-          context.read<DataProvider>().api?.account.username ?? "Feeds",
+          context.select<DataProvider, String>(
+            (d) => d.api?.account.username ?? "Feeds",
+          ),
         ),
         actions: [
           ShowAllSwitcherWidget(),

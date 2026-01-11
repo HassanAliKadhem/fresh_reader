@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const String gitHubUrl = "https://github.com/HassanAliKadhem/fresh_reader";
-const String version = "v1.2.18";
+const String version = "v1.2.19";
 
 class AboutTile extends StatelessWidget {
   const AboutTile({super.key});

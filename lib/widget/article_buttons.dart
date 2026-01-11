@@ -373,14 +373,15 @@ class FormattingDialog extends StatelessWidget {
                           ),
                           Text("Size"),
                           Slider.adaptive(
-                            value: context.select<Preferences, double>(
-                              (a) => a.fontSize,
-                            ),
+                            value: context
+                                .select<Preferences, double>((a) => a.fontSize)
+                                .roundToDouble(),
                             label: context
                                 .select<Preferences, double>((a) => a.fontSize)
                                 .toString(),
                             min: 10.0,
                             max: 30.0,
+                            divisions: 20,
                             onChanged: (v) {
                               context.read<Preferences>().setSize(v);
                             },
@@ -404,6 +405,7 @@ class FormattingDialog extends StatelessWidget {
                                 .toString(),
                             min: 1.0,
                             max: 2.0,
+                            divisions: 20,
                             onChanged: (v) {
                               context.read<Preferences>().setLineHeight(v);
                             },
@@ -423,6 +425,7 @@ class FormattingDialog extends StatelessWidget {
                                 .toString(),
                             min: 0.0,
                             max: 10.0,
+                            divisions: 20,
                             onChanged: (v) {
                               context.read<Preferences>().setSpacing(v);
                             },
