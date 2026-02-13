@@ -57,8 +57,9 @@ class ArticleImage extends StatelessWidget {
               constraints: BoxConstraints(maxWidth: 16.0, maxHeight: 16.0),
             );
           case LoadState.failed:
+            debugPrint("${state.lastException}");
             if (onError != null) {
-              return onError!(state.lastException.toString());
+              return onError!("${state.lastException}");
             }
             return Placeholder(child: Text(state.lastException.toString()));
           case LoadState.completed:

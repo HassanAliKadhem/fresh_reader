@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:fresh_reader/util/open_link.dart';
 
 const String gitHubUrl = "https://github.com/HassanAliKadhem/fresh_reader";
-const String version = "v1.2.19";
+const String version = "v1.2.20";
 
 class AboutTile extends StatelessWidget {
   const AboutTile({super.key});
@@ -32,7 +32,7 @@ class AboutTile extends StatelessWidget {
               subtitle: const Text(gitHubUrl),
               leading: const Icon(Icons.code),
               trailing: const Icon(Icons.open_in_browser),
-              onTap: () => launchUrl(Uri.parse(gitHubUrl)),
+              onTap: () => openLink(context, gitHubUrl),
             ),
           ],
         );

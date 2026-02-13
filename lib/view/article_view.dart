@@ -6,8 +6,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:html/dom.dart' as dom;
+import 'package:fresh_reader/util/open_link.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../api/data.dart';
@@ -112,9 +113,7 @@ class ArticleViewPages extends StatelessWidget {
             articleIDs.elementAt(page),
             context
                 .read<DataProvider>()
-                .articlesMetaData[context
-                    .read<DataProvider>()
-                    .searchResults![page]]!
+                .articlesMetaData[articleIDs.elementAt(page)]!
                 .$2,
             true,
           );
@@ -240,7 +239,7 @@ class _ArticleWebWidgetState extends State<ArticleWebWidget> {
   }
 }
 
-List<String> imgExtensions = [
+const List<String> imgExtensions = [
   ".jpg",
   ".jpeg",
   ".apng",
@@ -252,8 +251,8 @@ List<String> imgExtensions = [
   ".bmp",
 ];
 
-class ArticleTextWidget extends StatelessWidget {
-  ArticleTextWidget({
+class ArticleTextWidget extends StatefulWidget {
+  const ArticleTextWidget({
     super.key,
     required this.url,
     required this.title,
@@ -267,95 +266,117 @@ class ArticleTextWidget extends StatelessWidget {
   final String content;
   final String? iconUrl;
   final String subName;
-  late final String modifiedContent =
-      "<div class='freshArticle'><img class='icon' src='$iconUrl' style='width: 1em; height: 1em;'/> <span style='color: lightgray'>$subName</span><br><a href='$url' class='title'>$title</a><h5 style='margin: 5px 0; color: lightgray'>${getFormattedDate(timePublished)}</h5>$content</div>";
   final int timePublished;
+
+  @override
+  State<ArticleTextWidget> createState() => _ArticleTextWidgetState();
+}
+
+class _ArticleTextWidgetState extends State<ArticleTextWidget> {
   final ScrollController scrollController = ScrollController();
 
   void showLinkMenu(BuildContext context, String link, String? imgUrl) {
     showDialog(
       context: context,
       builder: (context) {
-        return SimpleDialog(
-          title: ListTile(
-            title: Text(link),
-            trailing:
-                imgExtensions.any((ext) => link.toLowerCase().endsWith(ext))
-                ? ArticleImage(imageUrl: link)
+        return AlertDialog(
+          icon: ConstrainedBox(
+            constraints: .loose(Size.fromHeight(200.0)),
+            child: imgExtensions.any((ext) => link.toLowerCase().endsWith(ext))
+                ? ArticleImage(
+                    imageUrl: link,
+                    fit: .contain,
+                    onError: (error) => Icon(Icons.error),
+                  )
                 : imgUrl != null
-                ? ArticleImage(imageUrl: imgUrl)
+                ? ArticleImage(
+                    imageUrl: imgUrl,
+                    fit: .contain,
+                    onError: (error) => Icon(Icons.error),
+                  )
                 : null,
           ),
-          titlePadding: EdgeInsetsGeometry.only(top: 8.0),
+          title: ListTile(title: Text(link)),
+          titlePadding: .zero,
+          iconPadding: const EdgeInsetsGeometry.only(
+            bottom: 8.0,
+            top: 16.0,
+            left: 16.0,
+            right: 16.0,
+          ),
           contentPadding: EdgeInsets.zero,
           clipBehavior: Clip.hardEdge,
-          children: [
-            const Divider(),
-            ListTile(
-              dense: true,
-              title: Text("Open in browser"),
-              trailing: Icon(
-                (Platform.isIOS || Platform.isMacOS)
-                    ? CupertinoIcons.globe
-                    : Icons.public_rounded,
+          scrollable: true,
+          content: Column(
+            mainAxisSize: .min,
+            children: [
+              const Divider(),
+              ListTile(
+                dense: true,
+                title: Text("Open in browser"),
+                trailing: Icon(
+                  (Platform.isIOS || Platform.isMacOS)
+                      ? CupertinoIcons.globe
+                      : Icons.public_rounded,
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  openLink(context, link);
+                },
               ),
-              onTap: () {
-                Navigator.pop(context);
-                launchUrl(Uri.parse(link));
-              },
-            ),
-            Builder(
-              builder: (context) {
-                return ListTile(
-                  dense: true,
-                  title: Text("Share Link"),
-                  trailing: Icon(
-                    (Platform.isIOS || Platform.isMacOS)
-                        ? CupertinoIcons.share
-                        : Icons.share,
-                  ),
-                  onTap: () {
-                    shareLink(context, link, null);
-                  },
-                );
-              },
-            ),
-            ...(imgUrl == null
-                ? []
-                : [
-                    const Divider(),
-                    ListTile(
-                      dense: true,
-                      title: Text("Preview Image"),
-                      trailing: const Icon(Icons.image_outlined),
-                      onTap: () {
-                        Navigator.pop(context);
-                        showImage(context, imgUrl, null, null);
-                      },
+              Builder(
+                builder: (context) {
+                  return ListTile(
+                    dense: true,
+                    title: Text("Share Link"),
+                    trailing: Icon(
+                      (Platform.isIOS || Platform.isMacOS)
+                          ? CupertinoIcons.share
+                          : Icons.share,
                     ),
-                    ListTile(
-                      dense: true,
-                      title: Text("Open image in browser"),
-                      trailing: const Icon(Icons.image_search),
-                      onTap: () {
-                        Navigator.pop(context);
-                        launchUrl(Uri.parse(imgUrl));
-                      },
-                    ),
-                    ListTile(
-                      dense: true,
-                      title: Text("Share image link"),
-                      trailing: Icon(
-                        (Platform.isIOS || Platform.isMacOS)
-                            ? CupertinoIcons.share
-                            : Icons.share,
+                    onTap: () {
+                      shareLink(context, link, null);
+                    },
+                  );
+                },
+              ),
+              ...(imgUrl == null
+                  ? []
+                  : [
+                      const Divider(),
+                      ListTile(
+                        dense: true,
+                        title: Text("Preview Image"),
+                        trailing: const Icon(Icons.image_outlined),
+                        onTap: () {
+                          Navigator.pop(context);
+                          showImage(context, imgUrl, null, null);
+                        },
                       ),
-                      onTap: () {
-                        shareLink(context, imgUrl, null);
-                      },
-                    ),
-                  ]),
-          ],
+                      ListTile(
+                        dense: true,
+                        title: Text("Open image in browser"),
+                        trailing: const Icon(Icons.image_search),
+                        onTap: () {
+                          Navigator.pop(context);
+                          openLink(context, imgUrl);
+                        },
+                      ),
+                      ListTile(
+                        dense: true,
+                        title: Text("Share image link"),
+                        trailing: Icon(
+                          (Platform.isIOS || Platform.isMacOS)
+                              ? CupertinoIcons.share
+                              : Icons.share,
+                        ),
+                        onTap: () {
+                          shareLink(context, imgUrl, null);
+                        },
+                      ),
+                    ]),
+            ],
+          ),
         );
       },
     );
@@ -403,104 +424,115 @@ class ArticleTextWidget extends StatelessWidget {
     );
   }
 
+  SliverList titleSlivers(BuildContext context, TextStyle urlStyle) {
+    return SliverList(
+      delegate: SliverChildListDelegate([
+        Text.rich(
+          textScaler: TextScaler.linear(0.9),
+          TextSpan(
+            children: [
+              WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: Builder(
+                  builder: (context) {
+                    double? size = DefaultTextStyle.of(context).style.fontSize;
+                    return ArticleImage(
+                      imageUrl: widget.iconUrl ?? "",
+                      height: size,
+                      width: size,
+                      onError: (error) => Icon(Icons.error, size: size),
+                    );
+                  },
+                ),
+              ),
+              TextSpan(
+                text: " ${widget.subName}",
+                style: TextStyle(color: Colors.grey.shade500),
+              ),
+            ],
+          ),
+        ),
+        GestureDetector(
+          onLongPress: () {
+            showLinkMenu(context, widget.url, null);
+          },
+          onTap: () {
+            openLink(context, widget.url);
+          },
+          child: Text(
+            widget.title,
+            textScaler: TextScaler.linear(1.15),
+            style: urlStyle,
+          ),
+        ),
+        Text(
+          getFormattedDate(widget.timePublished),
+          style: TextStyle(color: Colors.grey.shade500),
+          textScaler: TextScaler.linear(0.8),
+        ),
+        SizedBox(height: 8.0),
+      ]),
+    );
+  }
+
+  Widget? customWidgetBuilder(
+    BuildContext context,
+    dom.Element element,
+    TextStyle urlStyle,
+  ) {
+    if (element.localName == "a" && element.attributes["href"] != null) {
+      Widget? imgWidget;
+      String? imgUrl;
+      if (element.children.any((child) => child.localName == "img")) {
+        for (var child in element.children) {
+          if (child.localName == "img") {
+            imgUrl = child.attributes["src"];
+            imgWidget = ArticleImage(
+              imageUrl: imgUrl ?? "",
+              width: double.tryParse(child.attributes["width"] ?? ""),
+              height: double.tryParse(child.attributes["height"] ?? ""),
+            );
+            break;
+          }
+        }
+      }
+      String href = element.attributes["href"]!;
+      return InlineCustomWidget(
+        child: GestureDetector(
+          onTap: () {
+            openLink(context, href);
+          },
+          onLongPress: () {
+            showLinkMenu(context, href, imgUrl);
+          },
+          child: imgWidget ?? Text(element.text, style: urlStyle),
+        ),
+      );
+    } else if (element.localName == "img" &&
+        element.attributes["src"] != null) {
+      String src = element.attributes["src"]!;
+      double? width = double.tryParse(element.attributes["width"] ?? "");
+      double? height = double.tryParse(element.attributes["height"] ?? "");
+      return InlineCustomWidget(
+        child: GestureDetector(
+          onTap: () {
+            showImage(context, src, width, height);
+          },
+          onLongPress: () {
+            showLinkMenu(context, src, src);
+          },
+          child: ArticleImage(imageUrl: src, width: width, height: height),
+        ),
+      );
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     TextStyle urlStyle = TextStyle(
       color: Theme.of(context).colorScheme.primary,
       decoration: TextDecoration.underline,
-    );
-    return SelectionArea(
-      child: DefaultTextStyle(
-        style: TextStyle(
-          fontFamily: context.select<Preferences, String>((a) => a.font),
-          fontSize: context.select<Preferences, double>((a) => a.fontSize),
-          wordSpacing: context.select<Preferences, double>(
-            (a) => a.wordSpacing,
-          ),
-          height: context.select<Preferences, double>((a) => a.lineHeight),
-        ),
-        child: HtmlWidget(
-          modifiedContent,
-          enableCaching: true,
-          renderMode: RenderMode.listView,
-          onErrorBuilder: (context, element, error) {
-            return Text(error.toString());
-          },
-          customStylesBuilder: (element) {
-            if (element.className == "freshArticle") {
-              return {"margin": "0.5em"};
-            }
-            return {"width": "100%"};
-          },
-          customWidgetBuilder: (element) {
-            if (element.className == "icon") {
-              return null;
-            }
-            if (element.localName == "a") {
-              Widget? imgWidget;
-              String? imgUrl;
-              if (element.children.any((child) => child.localName == "img")) {
-                for (var child in element.children) {
-                  if (child.localName == "img") {
-                    imgUrl = child.attributes["src"];
-                    imgWidget = ArticleImage(
-                      imageUrl: imgUrl ?? "",
-                      width: double.tryParse(child.attributes["width"] ?? ""),
-                      height: double.tryParse(child.attributes["height"] ?? ""),
-                    );
-                    break;
-                  }
-                }
-              }
-              String href = element.attributes["href"]!;
-              return InlineCustomWidget(
-                child: GestureDetector(
-                  onTap: () {
-                    launchUrl(Uri.parse(href));
-                  },
-                  onLongPress: () {
-                    showLinkMenu(context, href, imgUrl);
-                  },
-                  child:
-                      imgWidget ??
-                      Text(
-                        element.text,
-                        style: urlStyle,
-                        textScaler: element.classes.contains("title")
-                            ? TextScaler.linear(1.15)
-                            : null,
-                      ),
-                ),
-              );
-            } else if (element.localName == "img" &&
-                element.attributes["src"] != null) {
-              String src = element.attributes["src"]!;
-              double? width = double.tryParse(
-                element.attributes["width"] ?? "",
-              );
-              double? height = double.tryParse(
-                element.attributes["height"] ?? "",
-              );
-              return InlineCustomWidget(
-                child: GestureDetector(
-                  onTap: () {
-                    showImage(context, src, width, height);
-                  },
-                  onLongPress: () {
-                    showLinkMenu(context, src, src);
-                  },
-                  child: ArticleImage(
-                    imageUrl: src,
-                    width: width,
-                    height: height,
-                  ),
-                ),
-              );
-            }
-            return null;
-          },
-        ),
-      ),
     );
     return DefaultTextStyle(
       style: TextStyle(
@@ -523,60 +555,11 @@ class ArticleTextWidget extends StatelessWidget {
                         (MediaQuery.maybePaddingOf(context)?.top ?? 0.0) + 16.0,
                   ),
                 ),
-                SliverList(
-                  delegate: SliverChildListDelegate([
-                    Text.rich(
-                      textScaler: TextScaler.linear(0.9),
-                      TextSpan(
-                        children: [
-                          WidgetSpan(
-                            alignment: PlaceholderAlignment.middle,
-                            child: Builder(
-                              builder: (context) {
-                                double? size = DefaultTextStyle.of(
-                                  context,
-                                ).style.fontSize;
-                                return ArticleImage(
-                                  imageUrl: iconUrl ?? "",
-                                  height: size,
-                                  width: size,
-                                  onError: (error) =>
-                                      Icon(Icons.error, size: size),
-                                );
-                              },
-                            ),
-                          ),
-                          TextSpan(
-                            text: " $subName",
-                            style: TextStyle(color: Colors.grey.shade500),
-                          ),
-                        ],
-                      ),
-                    ),
-                    GestureDetector(
-                      onLongPress: () {
-                        showLinkMenu(context, url, null);
-                      },
-                      onTap: () {
-                        launchUrl(Uri.parse(url));
-                      },
-                      child: Text(
-                        title,
-                        textScaler: TextScaler.linear(1.15),
-                        style: urlStyle,
-                      ),
-                    ),
-                    Text(
-                      getFormattedDate(timePublished),
-                      style: TextStyle(color: Colors.grey.shade500),
-                      textScaler: TextScaler.linear(0.8),
-                    ),
-                    SizedBox(height: 8.0),
-                  ]),
-                ),
+                titleSlivers(context, urlStyle),
                 HtmlWidget(
-                  content,
+                  widget.content,
                   enableCaching: true,
+                  key: ValueKey("html_${widget.url}"),
                   renderMode: RenderMode.sliverList,
                   onErrorBuilder: (context, element, error) {
                     return Text(error.toString());
@@ -585,67 +568,7 @@ class ArticleTextWidget extends StatelessWidget {
                     return {"width": "100%"};
                   },
                   customWidgetBuilder: (element) {
-                    if (element.localName == "a") {
-                      Widget? imgWidget;
-                      String? imgUrl;
-                      if (element.children.any(
-                        (child) => child.localName == "img",
-                      )) {
-                        for (var child in element.children) {
-                          if (child.localName == "img") {
-                            imgUrl = child.attributes["src"];
-                            imgWidget = ArticleImage(
-                              imageUrl: imgUrl ?? "",
-                              width: double.tryParse(
-                                child.attributes["width"] ?? "",
-                              ),
-                              height: double.tryParse(
-                                child.attributes["height"] ?? "",
-                              ),
-                            );
-                            break;
-                          }
-                        }
-                      }
-                      String href = element.attributes["href"]!;
-                      return InlineCustomWidget(
-                        child: GestureDetector(
-                          onTap: () {
-                            launchUrl(Uri.parse(href));
-                          },
-                          onLongPress: () {
-                            showLinkMenu(context, href, imgUrl);
-                          },
-                          child:
-                              imgWidget ?? Text(element.text, style: urlStyle),
-                        ),
-                      );
-                    } else if (element.localName == "img" &&
-                        element.attributes["src"] != null) {
-                      String src = element.attributes["src"]!;
-                      double? width = double.tryParse(
-                        element.attributes["width"] ?? "",
-                      );
-                      double? height = double.tryParse(
-                        element.attributes["height"] ?? "",
-                      );
-                      return InlineCustomWidget(
-                        child: GestureDetector(
-                          onTap: () {
-                            showImage(context, src, width, height);
-                          },
-                          onLongPress: () {
-                            showLinkMenu(context, src, src);
-                          },
-                          child: ArticleImage(
-                            imageUrl: src,
-                            width: width,
-                            height: height,
-                          ),
-                        ),
-                      );
-                    }
-                    return null;
+                    return customWidgetBuilder(context, element, urlStyle);
                   },
                 ),
                 SliverPadding(

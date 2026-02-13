@@ -23,6 +23,7 @@ class Preferences extends ChangeNotifier {
   int? readDuration;
   int? starDuration;
   bool markReadWhenOpen = true;
+  bool openInBrowser = false;
   bool showLastSync = false;
   int themeIndex = 0;
 
@@ -40,6 +41,7 @@ class Preferences extends ChangeNotifier {
     isLetterHighlight = (await _tryGetBool("format_bionic")) ?? false;
     markReadWhenOpen = (await _tryGetBool("read_when_open")) ?? true;
     showLastSync = (await _tryGetBool("show_last_sync")) ?? false;
+    openInBrowser = (await _tryGetBool("open_in_browser")) ?? false;
     themeIndex = (await _tryGetInt("theme_index")) ?? 0;
     readDuration = (await _tryGetInt("read_duration"));
     starDuration = (await _tryGetInt("star_duration"));
@@ -63,6 +65,7 @@ class Preferences extends ChangeNotifier {
     setBool("format_letterHighlight", isLetterHighlight);
     setBool("read_when_open", markReadWhenOpen);
     setBool("show_last_sync", showLastSync);
+    setBool("open_in_browser", openInBrowser);
     database.setPreference("theme_index", themeIndex.toString());
     database.setPreference("read_duration", readDuration.toString());
     database.setPreference("star_duration", starDuration.toString());
@@ -102,6 +105,11 @@ class Preferences extends ChangeNotifier {
 
   void setShowLastSync(bool val) {
     showLastSync = val;
+    notifyListeners();
+  }
+
+  void setOpenInBrowser(bool val) {
+    openInBrowser = val;
     notifyListeners();
   }
 

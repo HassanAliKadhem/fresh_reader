@@ -98,6 +98,7 @@ class _SettingsContentState extends State<SettingsContent> {
         const ListTile(title: Text("Other settings"), dense: true),
         const ReadWhenOpenCheckTile(),
         const ShowLastSyncCheckTile(),
+        const OpenInBrowserCheckTile(),
         const ReadDurationTile(
           title: "Keep read articles",
           dbKey: "read_duration",
@@ -108,8 +109,6 @@ class _SettingsContentState extends State<SettingsContent> {
         //   dbKey: "star_duration",
         //   values: amounts,
         // ),
-        const Divider(),
-        const ListTile(title: Text("Theme"), dense: true),
         const ThemeSwitcherCard(),
         const Divider(),
         AboutTile(),

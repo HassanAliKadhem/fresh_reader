@@ -19,16 +19,10 @@ class ArticleTile extends StatefulWidget {
 class _ArticleTileState extends State<ArticleTile> {
   @override
   Widget build(BuildContext context) {
-    final String subID = context
-        .read<DataProvider>()
-        .articlesMetaData[widget.articleID]!
-        .$2;
-    bool isRead = context.select<DataProvider, bool>(
-      (a) => a.articlesMetaData[widget.articleID]!.$3,
-    );
-    bool isStarred = context.select<DataProvider, bool>(
-      (a) => a.articlesMetaData[widget.articleID]!.$4,
-    );
+    var (_, subID, isRead, isStarred) = context
+        .select<DataProvider, (int, String, bool, bool)>(
+          (a) => a.articlesMetaData[widget.articleID]!,
+        );
     return Dismissible(
       key: ValueKey("Dismissible_${widget.articleID}"),
       direction: DismissDirection.horizontal,
@@ -92,14 +86,11 @@ class _ArticleTileState extends State<ArticleTile> {
           opacity: isRead ? 0.3 : 1.0,
           child: ArticleWidget(
             articleID: widget.articleID,
-            subIcon: context.select<DataProvider, String>(
-              (a) => a.getIconUrl(a.subscriptions[subID]?.iconUrl ?? ""),
+            subIcon: context.read<DataProvider>().getIconUrl(
+              context.read<DataProvider>().subscriptions[subID]?.iconUrl ?? "",
             ),
             subTitle:
-                context.select<DataProvider, String?>(
-                  (a) => a.subscriptions[subID]?.title,
-                ) ??
-                "",
+                context.read<DataProvider>().subscriptions[subID]?.title ?? "",
             isStarred: isStarred,
           ),
         ),
@@ -125,6 +116,10 @@ class ArticleWidget extends StatefulWidget {
   State<ArticleWidget> createState() => _ArticleWidgetState();
 }
 
+const double _tileHeight = 128.0;
+const double _tileIconSize = 14.0;
+const double _tilePadding = 8.0;
+
 class _ArticleWidgetState extends State<ArticleWidget> {
   late final Future<List<Article>> future = context
       .read<DataProvider>()
@@ -140,31 +135,33 @@ class _ArticleWidgetState extends State<ArticleWidget> {
           a.selectedIndex != null &&
           a.filteredArticleIDs?.elementAt(a.selectedIndex!) == widget.articleID,
     );
+    TextStyle? subTitleStyle = Theme.of(context).textTheme.bodySmall;
+    TextStyle? titleStyle = Theme.of(context).textTheme.titleMedium;
     return Container(
-      height: 128.0,
+      height: _tileHeight,
       decoration: BoxDecoration(
         color: isSelected
             ? Theme.of(context).listTileTheme.selectedTileColor
             : null,
         // borderRadius: BorderRadius.circular(8.0),
       ),
-      padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+      padding: const EdgeInsets.all(_tilePadding),
       child: FutureBuilder(
         future: future,
         builder: (context, asyncSnapshot) {
           if (!asyncSnapshot.hasData || asyncSnapshot.data == null) {
-            return Container();
+            return Text(asyncSnapshot.error.toString());
           }
           return Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisAlignment: MainAxisAlignment.center,
-            spacing: 8.0,
+            spacing: _tilePadding,
             children: [
               if (asyncSnapshot.data!.first.image != null)
                 Container(
                   clipBehavior: Clip.hardEdge,
-                  width: 112.0,
-                  height: 112.0,
+                  width: _tileHeight - 16.0,
+                  height: _tileHeight - 16.0,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8.0),
                     color: Colors.grey.shade800,
@@ -185,16 +182,16 @@ class _ArticleWidgetState extends State<ArticleWidget> {
                       overflow: TextOverflow.ellipsis,
                       text: TextSpan(
                         // style: TextStyle(color: Colors.grey.shade500),
-                        style: Theme.of(context).textTheme.bodySmall,
+                        style: subTitleStyle,
                         children: [
                           WidgetSpan(
                             child: ArticleImage(
                               imageUrl: widget.subIcon,
                               fit: BoxFit.contain,
-                              width: 16.0,
-                              height: 16.0,
+                              width: _tileIconSize,
+                              height: _tileIconSize,
                               onError: (error) =>
-                                  const Icon(Icons.error, size: 16.0),
+                                  const Icon(Icons.error, size: _tileIconSize),
                             ),
                           ),
                           TextSpan(text: " ${widget.subTitle}"),
@@ -203,14 +200,14 @@ class _ArticleWidgetState extends State<ArticleWidget> {
                     ),
                     Text(
                       asyncSnapshot.data!.first.title,
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: titleStyle,
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      "${widget.isStarred ? "⭐️ " : ""}${getFormattedDate(asyncSnapshot.data!.first.published)}",
+                      "${widget.isStarred ? "★ " : ""}${getFormattedDate(asyncSnapshot.data!.first.published)}",
                       // style: TextStyle(color: Colors.grey.shade500),
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: subTitleStyle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),

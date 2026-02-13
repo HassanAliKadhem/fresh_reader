@@ -14,7 +14,7 @@ class UnreadCount extends StatelessWidget {
         borderRadius: const BorderRadius.all(Radius.circular(5)),
         color: Theme.of(context).scaffoldBackgroundColor,
       ),
-      child: Text(unread.toString(), textScaler: TextScaler.linear(1.15)),
+      child: Text(unread.toString(), textScaler: const TextScaler.linear(1.15)),
     );
   }
 }
@@ -41,18 +41,14 @@ class UnreadLastSync extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return context.select<DataProvider, bool>((a) => a.showAll)
-        ? UnreadCount(
-            (context.select<DataProvider, int>((a) => a.lastSyncIDs.length)),
-          )
-        : UnreadCount(
-            context.select<DataProvider, int>(
-              (value) => value.articlesMetaData.entries
-                  .where(
-                    (a) => value.lastSyncIDs.contains(a.key) && !a.value.$3,
-                  )
+    return UnreadCount(
+      context.select<DataProvider, int>(
+        (data) => data.showAll
+            ? data.lastSyncIDs.length
+            : data.lastSyncIDs
+                  .where((l) => !(data.articlesMetaData[l]?.$3 ?? true))
                   .length,
-            ),
-          );
+      ),
+    );
   }
 }

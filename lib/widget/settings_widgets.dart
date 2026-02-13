@@ -130,27 +130,71 @@ class ReadWhenOpenCheckTile extends StatelessWidget {
   }
 }
 
+class OpenInBrowserCheckTile extends StatelessWidget {
+  const OpenInBrowserCheckTile({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    bool openInBrowser = context.select<Preferences, bool>(
+      (a) => a.openInBrowser,
+    );
+    return Card(
+      child: Column(
+        mainAxisSize: .min,
+        children: [
+          const ListTile(title: Text("Open links in"), dense: true),
+          RadioGroup<bool>(
+            onChanged: (val) {
+              if (val != null) {
+                context.read<Preferences>().setOpenInBrowser(val);
+              }
+            },
+            groupValue: openInBrowser,
+            child: Column(
+              children: [
+                RadioListTile.adaptive(
+                  value: false,
+                  title: Text("InApp browser view"),
+                ),
+                RadioListTile.adaptive(value: true, title: Text("Browser/App")),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class ThemeSwitcherCard extends StatelessWidget {
   const ThemeSwitcherCard({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: RadioGroup<int>(
-        onChanged: (val) {
-          if (val != null) {
-            context.read<Preferences>().setThemeIndex(val);
-          }
-        },
-        groupValue: context.select<Preferences, int>((a) => a.themeIndex),
-        child: Column(
-          children: themes.entries
-              .map(
-                (t) =>
-                    RadioListTile.adaptive(value: t.value, title: Text(t.key)),
-              )
-              .toList(),
-        ),
+      child: Column(
+        mainAxisSize: .min,
+        children: [
+          const ListTile(title: Text("Theme"), dense: true),
+          RadioGroup<int>(
+            onChanged: (val) {
+              if (val != null) {
+                context.read<Preferences>().setThemeIndex(val);
+              }
+            },
+            groupValue: context.select<Preferences, int>((a) => a.themeIndex),
+            child: Column(
+              children: themes.entries
+                  .map(
+                    (t) => RadioListTile.adaptive(
+                      value: t.value,
+                      title: Text(t.key),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        ],
       ),
     );
   }
