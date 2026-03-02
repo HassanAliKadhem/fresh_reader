@@ -7,19 +7,20 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:html/dom.dart' as dom;
-import 'package:fresh_reader/util/open_link.dart';
 import 'package:provider/provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../api/data.dart';
 import '../api/data_types.dart';
-import '../util/date.dart';
 import '../api/preferences.dart';
+import '../util/date.dart';
+import '../util/open_link.dart';
 import '../util/screen_size.dart';
 import '../util/share.dart';
 import '../widget/article_buttons.dart';
 import '../widget/article_image.dart';
 import '../widget/transparent_container.dart';
+import '../widget/web_view_button.dart';
 
 class ArticleView extends StatefulWidget {
   const ArticleView({super.key, required this.index, required this.articleIDs});
@@ -31,7 +32,6 @@ class ArticleView extends StatefulWidget {
 }
 
 class _ArticleViewState extends State<ArticleView> {
-  bool showWebView = false;
   late final PageController pageController = PageController(
     initialPage: widget.index ?? 0,
   );
@@ -44,26 +44,12 @@ class _ArticleViewState extends State<ArticleView> {
 
   @override
   Widget build(BuildContext context) {
+    bool showWebView = context.select<Preferences, bool>((p) => p.useWebView);
     return Scaffold(
       appBar: AppBar(
         title: ArticleCount(length: widget.articleIDs?.length ?? 0),
         automaticallyImplyLeading: screenSizeOf(context) == ScreenSize.small,
-        actions: [
-          IconButton(
-            onPressed: () {
-              setState(() {
-                showWebView = !showWebView;
-              });
-            },
-            icon: Icon(
-              (Platform.isIOS || Platform.isMacOS)
-                  ? CupertinoIcons.globe
-                  : Icons.public,
-              color: showWebView ? Theme.of(context).colorScheme.primary : null,
-            ),
-            tooltip: showWebView ? "Article" : "Web",
-          ),
-        ],
+        actions: [WebViewButton()],
         flexibleSpace: const TransparentContainer(hasBorder: false),
       ),
       extendBodyBehindAppBar: !showWebView,
@@ -76,7 +62,6 @@ class _ArticleViewState extends State<ArticleView> {
               articleIDs: widget.articleIDs ?? {},
               pageController: pageController,
               initialIndex: widget.index,
-              showWebView: showWebView,
             )
           : const Center(child: Text("Please select an article")),
     );
@@ -87,12 +72,10 @@ class ArticleViewPages extends StatelessWidget {
   const ArticleViewPages({
     super.key,
     required this.articleIDs,
-    required this.showWebView,
     required this.pageController,
     required this.initialIndex,
   });
   final Set<String> articleIDs;
-  final bool showWebView;
   final PageController pageController;
   final int? initialIndex;
 
@@ -121,10 +104,7 @@ class ArticleViewPages extends StatelessWidget {
       },
       itemCount: articleIDs.length,
       itemBuilder: (context, index) {
-        return ArticlePage(
-          articleID: articleIDs.elementAt(index),
-          showWebView: showWebView,
-        );
+        return ArticlePage(articleID: articleIDs.elementAt(index));
       },
     );
   }
@@ -146,13 +126,8 @@ class ArticleCount extends StatelessWidget {
 }
 
 class ArticlePage extends StatefulWidget {
-  const ArticlePage({
-    super.key,
-    required this.articleID,
-    required this.showWebView,
-  });
+  const ArticlePage({super.key, required this.articleID});
   final String articleID;
-  final bool showWebView;
 
   @override
   State<ArticlePage> createState() => _ArticlePageState();
@@ -166,12 +141,13 @@ class _ArticlePageState extends State<ArticlePage> {
     article ??= context.read<DataProvider>().getArticleWithContent(
       widget.articleID,
     );
+    bool showWebView = context.select<Preferences, bool>((p) => p.useWebView);
     return FutureBuilder<Article>(
       key: ValueKey("future_${widget.articleID}"),
       future: article,
       builder: (context, snapshot) {
         if (snapshot.data != null) {
-          if (widget.showWebView) {
+          if (showWebView) {
             return ArticleWebWidget(
               key: ValueKey(snapshot.data!.url),
               url: snapshot.data!.url,
@@ -392,8 +368,7 @@ class _ArticleTextWidgetState extends State<ArticleTextWidget> {
       context: context,
       barrierDismissible: true,
       barrierColor: Colors.transparent,
-      // fullscreenDialog: true,
-      // useSafeArea: false,
+      fullscreenDialog: true,
       builder: (context) {
         return Stack(
           children: [
@@ -530,6 +505,7 @@ class _ArticleTextWidgetState extends State<ArticleTextWidget> {
 
   @override
   Widget build(BuildContext context) {
+    print(getFirstImageFromContent(widget.content));
     TextStyle urlStyle = TextStyle(
       color: Theme.of(context).colorScheme.primary,
       decoration: TextDecoration.underline,
@@ -548,6 +524,7 @@ class _ArticleTextWidgetState extends State<ArticleTextWidget> {
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: CustomScrollView(
               controller: scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
                 SliverPadding(
                   padding: EdgeInsetsGeometry.only(

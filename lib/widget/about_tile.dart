@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:fresh_reader/util/open_link.dart';
+
+import '../util/open_link.dart';
 
 const String gitHubUrl = "https://github.com/HassanAliKadhem/fresh_reader";
 const String version = "v1.2.20";

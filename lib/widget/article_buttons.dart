@@ -100,7 +100,7 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
                   }
                 }
               },
-              icon: Icon(Icons.open_in_browser_rounded),
+              icon: Icon(Icons.open_in_browser),
               tooltip: "Browser",
             ),
             Builder(
@@ -118,7 +118,7 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
                   icon: Icon(
                     (Platform.isIOS || Platform.isMacOS)
                         ? CupertinoIcons.share
-                        : Icons.share_rounded,
+                        : Icons.share,
                   ),
                   tooltip: "Share",
                 );

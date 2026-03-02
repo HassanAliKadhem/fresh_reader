@@ -36,14 +36,14 @@ class ArticleImage extends StatelessWidget {
       initGestureConfigHandler: (state) {
         if (isViewer) {
           return GestureConfig(
-            minScale: 0.9,
+            minScale: 1.0,
             animationMinScale: 0.7,
             maxScale: 3.0,
             animationMaxScale: 3.5,
             speed: 1.0,
             inertialSpeed: 100.0,
             initialScale: 1.0,
-            inPageView: false,
+            inPageView: true,
             initialAlignment: InitialAlignment.center,
           );
         }
@@ -53,10 +53,29 @@ class ArticleImage extends StatelessWidget {
       loadStateChanged: (state) {
         switch (state.extendedImageLoadState) {
           case LoadState.loading:
-            return CircularProgressIndicator.adaptive(
-              constraints: BoxConstraints(maxWidth: 16.0, maxHeight: 16.0),
+            return Container(
+              width: width,
+              height: height,
+              color: Colors.grey.shade900,
+              child: Stack(
+                alignment: .center,
+                children: [CircularProgressIndicator.adaptive()],
+              ),
             );
           case LoadState.failed:
+            // fix for some reddit images
+            if ((imageUrl.startsWith("https://preview.redd.it") ||
+                    imageUrl.startsWith("https://external-preview.redd.it")) &&
+                imageUrl.contains("amp;")) {
+              return ArticleImage(
+                imageUrl: imageUrl.replaceAll("amp;", ""),
+                width: width,
+                height: height,
+                onError: onError,
+                isViewer: isViewer,
+                fit: fit,
+              );
+            }
             debugPrint("${state.lastException}");
             if (onError != null) {
               return onError!("${state.lastException}");

@@ -15,48 +15,37 @@ class AccountSwitcherWidget extends StatelessWidget {
         if (!accountSnapshot.hasData) {
           return CircularProgressIndicator.adaptive();
         }
-        return MenuAnchor(
-          menuChildren: accountSnapshot.data!.isEmpty
-              ? [
-                  MenuItemButton(
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) {
-                          return SettingsPage();
-                        },
-                      );
-                    },
-                    trailingIcon: Icon(Icons.add),
-                    child: Text("Click here to add account"),
-                  ),
-                ]
-              : accountSnapshot.data!
-                    .map(
-                      (account) => MenuItemButton(
-                        onPressed: () {
-                          context.read<DataProvider>().changeAccount(account);
-                        },
-                        leadingIcon: Icon(
-                          context.read<DataProvider>().accountID == account.id
-                              ? Icons.check
-                              : null,
+        return PopupMenuButton<int?>(
+          initialValue: context.read<DataProvider>().accountID,
+          icon: Icon(Icons.account_circle),
+          itemBuilder: (context) {
+            return accountSnapshot.data!.isEmpty
+                ? [
+                    PopupMenuItem<int?>(
+                      value: null,
+                      child: Text("Add new account"),
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            return SettingsPage();
+                          },
+                        );
+                      },
+                    ),
+                  ]
+                : accountSnapshot.data!
+                      .map(
+                        (item) => PopupMenuItem<int?>(
+                          value: item.id,
+                          // child: Text("${item.username} : ${item.provider}"),
+                          child: Text(item.username),
+                          onTap: () {
+                            context.read<DataProvider>().changeAccount(item);
+                          },
                         ),
-                        child: Text("${account.username}: ${account.provider}"),
-                      ),
-                    )
-                    .toList(),
-          builder: (_, MenuController controller, Widget? child) {
-            return IconButton(
-              onPressed: () {
-                if (controller.isOpen) {
-                  controller.close();
-                } else {
-                  controller.open();
-                }
-              },
-              icon: const Icon(Icons.account_circle),
-            );
+                      )
+                      .toList();
           },
         );
       },

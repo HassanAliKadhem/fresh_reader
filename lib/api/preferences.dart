@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/widgets.dart';
 
+import 'data_types.dart';
 import 'database.dart';
 
 class Preferences extends ChangeNotifier {
@@ -24,8 +25,10 @@ class Preferences extends ChangeNotifier {
   int? starDuration;
   bool markReadWhenOpen = true;
   bool openInBrowser = false;
+  bool useWebView = false;
   bool showLastSync = false;
   int themeIndex = 0;
+  Sorting sorting = .date;
 
   Preferences(this.database);
 
@@ -42,9 +45,16 @@ class Preferences extends ChangeNotifier {
     markReadWhenOpen = (await _tryGetBool("read_when_open")) ?? true;
     showLastSync = (await _tryGetBool("show_last_sync")) ?? false;
     openInBrowser = (await _tryGetBool("open_in_browser")) ?? false;
+    useWebView = (await _tryGetBool("use_web_view")) ?? false;
     themeIndex = (await _tryGetInt("theme_index")) ?? 0;
     readDuration = (await _tryGetInt("read_duration"));
     starDuration = (await _tryGetInt("star_duration"));
+    sorting = switch ((await database.getPreference("sorting"))) {
+      "1" => .dateDesc,
+      "2" => .fresh,
+      "3" => .freshDesc,
+      _ => .date,
+    };
     // debugPrint("readDuration: $readDuration");
     if (readDuration != null && readDuration != -1) {
       // delete old image caches
@@ -66,9 +76,19 @@ class Preferences extends ChangeNotifier {
     setBool("read_when_open", markReadWhenOpen);
     setBool("show_last_sync", showLastSync);
     setBool("open_in_browser", openInBrowser);
+    setBool("use_web_view", useWebView);
     database.setPreference("theme_index", themeIndex.toString());
     database.setPreference("read_duration", readDuration.toString());
     database.setPreference("star_duration", starDuration.toString());
+    database.setPreference(
+      "sorting",
+      switch (sorting) {
+        .date => 0,
+        .dateDesc => 1,
+        .fresh => 2,
+        .freshDesc => 3,
+      }.toString(),
+    );
   }
 
   Future<double?> _tryGetDouble(String key) async {
@@ -113,6 +133,11 @@ class Preferences extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setUseWebView(bool val) {
+    useWebView = val;
+    notifyListeners();
+  }
+
   void setThemeIndex(int index) {
     themeIndex = index;
     notifyListeners();
@@ -150,6 +175,11 @@ class Preferences extends ChangeNotifier {
 
   void setIsLetterHighlight(bool newIs) {
     isLetterHighlight = newIs;
+    notifyListeners();
+  }
+
+  void setSorting(Sorting sort) {
+    sorting = sort;
     notifyListeners();
   }
 }

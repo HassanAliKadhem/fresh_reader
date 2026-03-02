@@ -1,8 +1,11 @@
 import 'dart:convert';
 
+import 'package:html/parser.dart';
 import 'package:html_unescape/html_unescape.dart';
 
 enum AccountType { test, freshrss }
+
+enum Sorting { date, dateDesc, fresh, freshDesc }
 
 String getAccountString(AccountType acType) {
   return switch (acType) {
@@ -243,7 +246,9 @@ class Article {
       published = json["published"],
       content = tryDecode(json["summary"]["content"].toString()),
       url = (json["canonical"])[0]["href"] as String,
-      image = getFirstImage(json["summary"]["content"].toString());
+      image =
+          getFirstImageFromEnclosure(json["enclosure"]) ??
+          getFirstImageFromContent(json["summary"]["content"].toString());
 
   Article.fromDB(Map<String, Object?> element)
     : articleID = element["articleID"] as String,
@@ -257,7 +262,7 @@ class Article {
           ? element["content"] as String
           : "",
       url = element["url"] as String,
-      image = (element["img"] ?? "") as String;
+      image = element["img"] as String?;
 
   Map<String, Object?> toDB() => {
     "articleID": articleID,
@@ -288,26 +293,56 @@ String tryDecode(String content) {
   }
 }
 
-// end of class
-String? getFirstImage(String content) {
-  RegExpMatch? match = RegExp('(?<=src=")(.*?)(?=")').firstMatch(content);
-  if (match?[0] == null) {
-    for (RegExpMatch newMatch in RegExp(
-      '(?<=href=")(.*?)(?=")',
-    ).allMatches(content)) {
-      if (newMatch[0]!.endsWith(".jpg") ||
-          newMatch[0]!.endsWith(".JPG") ||
-          newMatch[0]!.endsWith(".JPEG") ||
-          newMatch[0]!.endsWith(".jpeg") ||
-          newMatch[0]!.endsWith(".png") ||
-          newMatch[0]!.endsWith(".PNG") ||
-          newMatch[0]!.endsWith(".webp") ||
-          newMatch[0]!.endsWith(".tiff") ||
-          newMatch[0]!.endsWith(".tif") ||
-          newMatch[0]!.endsWith(".gif")) {
-        return newMatch[0]!;
-      }
+List<String> imgExtensions = [
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".tiff",
+  ".tif",
+  ".gif",
+];
+
+String? getFirstImageFromContent(String content) {
+  final html = HtmlParser(content).parse();
+  for (var link in html.getElementsByTagName("img")) {
+    final src = link.attributes["src"];
+    if (src != null) {
+      return src;
     }
   }
-  return match?[0];
+  for (var link in html.getElementsByTagName("a")) {
+    final href = link.attributes["href"];
+    if (href != null &&
+        imgExtensions.any((ext) => href.toLowerCase().endsWith(ext))) {
+      return href;
+    }
+  }
+  // Iterable<RegExpMatch> match = RegExp(
+  //   '<img[^>]+src="([^">]+)"',
+  // ).allMatches(content);
+  // if (match.isEmpty) {
+  //   for (RegExpMatch newMatch in RegExp(
+  //     '(?<=href=")(.*?)(?=")',
+  //   ).allMatches(content)) {
+  //     if (imgExtensions.any(
+  //       (ext) => newMatch[0]?.toLowerCase().endsWith(ext) ?? false,
+  //     )) {
+  //       return newMatch[0]!;
+  //     }
+  //   }
+  // } else {
+  //   return match.first[1];
+  // }
+  return null;
+}
+
+String? getFirstImageFromEnclosure(dynamic enclosure) {
+  try {
+    return (enclosure as List<dynamic>).firstWhere(
+      (en) => en["type"].toString().startsWith("image/"),
+    )["href"];
+  } catch (e) {
+    return null;
+  }
 }

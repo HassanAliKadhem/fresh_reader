@@ -10,7 +10,7 @@ import 'package:fresh_reader/api/database.dart';
 import 'package:fresh_reader/api/preferences.dart';
 import 'package:fresh_reader/main.dart';
 
-Future<void> loadSampleData(StorageSqlite db) async {
+Future<void> loadSampleData(StorageBase db) async {
   await db.addAccount(
     Account(
       1,
@@ -55,7 +55,7 @@ Future<void> loadSampleData(StorageSqlite db) async {
 }
 
 Future<MultiProvider> prepare() async {
-  var db = StorageSqlite(await getDatabase());
+  var db = StorageMemory();
   await loadSampleData(db);
   print("loaded sample data");
 

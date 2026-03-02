@@ -19,10 +19,13 @@ class ArticleTile extends StatefulWidget {
 class _ArticleTileState extends State<ArticleTile> {
   @override
   Widget build(BuildContext context) {
-    var (_, subID, isRead, isStarred) = context
+    var (id, subID, isRead, isStarred) = context
         .select<DataProvider, (int, String, bool, bool)>(
-          (a) => a.articlesMetaData[widget.articleID]!,
+          (a) => a.articlesMetaData[widget.articleID] ?? (0, "", false, false),
         );
+    if (id == 0) {
+      return SizedBox(height: 1.0);
+    }
     return Dismissible(
       key: ValueKey("Dismissible_${widget.articleID}"),
       direction: DismissDirection.horizontal,
@@ -133,19 +136,23 @@ class _ArticleWidgetState extends State<ArticleWidget> {
     bool isSelected = context.select<DataProvider, bool>(
       (a) =>
           a.selectedIndex != null &&
-          a.filteredArticleIDs?.elementAt(a.selectedIndex!) == widget.articleID,
+          a.searchResults?.elementAt(a.selectedIndex!) == widget.articleID,
     );
     TextStyle? subTitleStyle = Theme.of(context).textTheme.bodySmall;
-    TextStyle? titleStyle = Theme.of(context).textTheme.titleMedium;
+    TextStyle? titleStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
+      color: isSelected ? Theme.of(context).colorScheme.primary : null,
+    );
     return Container(
       height: _tileHeight,
       decoration: BoxDecoration(
         color: isSelected
             ? Theme.of(context).listTileTheme.selectedTileColor
             : null,
-        // borderRadius: BorderRadius.circular(8.0),
       ),
-      padding: const EdgeInsets.all(_tilePadding),
+      padding: const EdgeInsets.symmetric(
+        vertical: _tilePadding,
+        horizontal: _tilePadding * 1.5,
+      ),
       child: FutureBuilder(
         future: future,
         builder: (context, asyncSnapshot) {
@@ -157,21 +164,6 @@ class _ArticleWidgetState extends State<ArticleWidget> {
             mainAxisAlignment: MainAxisAlignment.center,
             spacing: _tilePadding,
             children: [
-              if (asyncSnapshot.data!.first.image != null)
-                Container(
-                  clipBehavior: Clip.hardEdge,
-                  width: _tileHeight - 16.0,
-                  height: _tileHeight - 16.0,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8.0),
-                    color: Colors.grey.shade800,
-                  ),
-                  child: ArticleImage(
-                    imageUrl: asyncSnapshot.data!.first.image!,
-                    fit: BoxFit.cover,
-                    onError: (error) => const Icon(Icons.error),
-                  ),
-                ),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,7 +173,6 @@ class _ArticleWidgetState extends State<ArticleWidget> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       text: TextSpan(
-                        // style: TextStyle(color: Colors.grey.shade500),
                         style: subTitleStyle,
                         children: [
                           WidgetSpan(
@@ -198,15 +189,16 @@ class _ArticleWidgetState extends State<ArticleWidget> {
                         ],
                       ),
                     ),
+                    SizedBox(height: 4.0),
                     Text(
                       asyncSnapshot.data!.first.title,
                       style: titleStyle,
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    Spacer(),
                     Text(
                       "${widget.isStarred ? "★ " : ""}${getFormattedDate(asyncSnapshot.data!.first.published)}",
-                      // style: TextStyle(color: Colors.grey.shade500),
                       style: subTitleStyle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -214,6 +206,20 @@ class _ArticleWidgetState extends State<ArticleWidget> {
                   ],
                 ),
               ),
+              if (asyncSnapshot.data!.first.image != null)
+                Container(
+                  clipBehavior: Clip.hardEdge,
+                  width: _tileHeight - 16.0,
+                  height: _tileHeight - 16.0,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  child: ArticleImage(
+                    imageUrl: asyncSnapshot.data!.first.image!,
+                    fit: BoxFit.cover,
+                    onError: (error) => const Icon(Icons.error),
+                  ),
+                ),
             ],
           );
         },

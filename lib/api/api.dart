@@ -146,6 +146,8 @@ class ApiFreshRss extends ApiBase {
     return cats;
   }
 
+  dynamic old = "";
+
   @override
   Stream<(int?, List<Article>)> getAllServerArticles() async* {
     int count = 0;

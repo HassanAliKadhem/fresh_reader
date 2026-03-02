@@ -80,7 +80,7 @@ class _AccountCardState extends State<AccountCard> {
               showAdaptiveDialog(
                 context: context,
                 builder: (context) {
-                  return AlertDialog.adaptive(
+                  return AlertDialog(
                     title: const Text("Are you sure?"),
                     content: Text("This cannot be undone"),
                     actions: [

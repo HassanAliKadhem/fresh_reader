@@ -131,6 +131,7 @@ class _CategoryListState extends State<CategoryList> {
   ) {
     context.read<DataProvider>().getFilteredArticles(
       context.read<DataProvider>().showAll,
+      context.read<Preferences>().sorting,
       column,
       value,
       title,

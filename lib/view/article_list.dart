@@ -3,11 +3,13 @@ import 'dart:io';
 import 'package:anchor_scroll_controller/anchor_scroll_controller.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:fresh_reader/util/date.dart';
 import 'package:provider/provider.dart';
 
 import '../api/data.dart';
+import '../api/data_types.dart';
+import '../api/preferences.dart';
 import '../main.dart';
+import '../util/date.dart';
 import '../util/screen_size.dart';
 import '../widget/article_tile.dart';
 import '../widget/transparent_container.dart';
@@ -19,6 +21,13 @@ class ArticleList extends StatefulWidget {
   State<ArticleList> createState() => _ArticleListState();
 }
 
+List<(Sorting, String)> sortItems = [
+  (.date, "Newest first"), // ⧗↓"),
+  (.dateDesc, "Oldest first"), // ⧗↑"),
+  (.fresh, "Freshly received first"),
+  (.freshDesc, "Freshly received last"),
+];
+
 class _ArticleListState extends State<ArticleList> {
   final TextEditingController _searchController = TextEditingController();
   final AnchorScrollController _scrollController = AnchorScrollController(
@@ -26,8 +35,8 @@ class _ArticleListState extends State<ArticleList> {
   );
   int lastIndex = 0;
 
-  void search(String? text) {
-    context.read<DataProvider>().searchFilteredArticles(text);
+  void search(String? text, Sorting sort) {
+    context.read<DataProvider>().searchFilteredArticles(text, sort);
   }
 
   @override
@@ -39,7 +48,10 @@ class _ArticleListState extends State<ArticleList> {
   @override
   Widget build(BuildContext context) {
     List<String>? searchResults = context.select<DataProvider, List<String>?>(
-      (a) => a.searchResults,
+      (d) => d.searchResults,
+    );
+    Sorting selectedSorting = context.select<Preferences, Sorting>(
+      (p) => p.sorting,
     );
     return Scaffold(
       backgroundColor: Color.alphaBlend(
@@ -48,15 +60,47 @@ class _ArticleListState extends State<ArticleList> {
       ),
       appBar: AppBar(
         flexibleSpace: const TransparentContainer(hasBorder: false),
+        actions: [
+          PopupMenuButton<Sorting>(
+            initialValue: selectedSorting,
+            icon: Icon(switch (selectedSorting) {
+              .date => Icons.sort,
+              .dateDesc => Icons.sort,
+              .fresh => Icons.sort_by_alpha,
+              .freshDesc => Icons.sort_by_alpha,
+            }),
+            itemBuilder: (context) {
+              return sortItems
+                  .map(
+                    (item) => PopupMenuItem<Sorting>(
+                      value: item.$1,
+                      child: Text(item.$2),
+                    ),
+                  )
+                  .toList();
+            },
+            onSelected: (value) {
+              setState(() {
+                context.read<Preferences>().setSorting(value);
+                search(
+                  _searchController.text.isEmpty
+                      ? null
+                      : _searchController.text,
+                  value,
+                );
+              });
+            },
+          ),
+        ],
         title: (Platform.isIOS || Platform.isMacOS)
             ? CupertinoSearchTextField(
                 controller: _searchController,
                 onChanged: (value) {
-                  search(value);
+                  search(value, selectedSorting);
                 },
                 onSuffixTap: () {
                   _searchController.clear();
-                  search(null);
+                  search(null, selectedSorting);
                 },
                 padding: const EdgeInsets.all(12.0),
                 placeholder:
@@ -78,14 +122,14 @@ class _ArticleListState extends State<ArticleList> {
                         IconButton(
                           onPressed: () {
                             _searchController.clear();
-                            search(null);
+                            search(null, selectedSorting);
                           },
                           icon: const Icon(Icons.clear),
                         ),
                       ]
                     : null,
                 onChanged: (value) {
-                  search(value);
+                  search(value, selectedSorting);
                 },
               ),
         leading: screenSizeOf(context) == ScreenSize.big
@@ -114,6 +158,7 @@ class _ArticleListState extends State<ArticleList> {
               controller: _scrollController,
               child: ListView.separated(
                 key: const PageStorageKey(0),
+                physics: const AlwaysScrollableScrollPhysics(),
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 itemCount: searchResults.length,
@@ -178,7 +223,7 @@ class _ArticleListState extends State<ArticleList> {
                     }
                   }
 
-                  return Container();
+                  return SizedBox(height: 8.0);
                 },
               ),
             ),

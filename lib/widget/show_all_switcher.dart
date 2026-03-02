@@ -9,34 +9,31 @@ class ShowAllSwitcherWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     bool showAll = context.select<DataProvider, bool>((a) => a.showAll);
-    return MenuAnchor(
-      menuChildren: [
-        MenuItemButton(
-          onPressed: () {
-            context.read<DataProvider>().setShowAll(true);
-          },
-          trailingIcon: Icon(Icons.circle_outlined),
-          child: Text("All Articles"),
-        ),
-        MenuItemButton(
-          onPressed: () {
-            context.read<DataProvider>().setShowAll(false);
-          },
-          trailingIcon: Icon(Icons.circle),
-          child: Text("Only Unread"),
-        ),
-      ],
-      builder: (_, MenuController controller, Widget? child) {
-        return IconButton(
-          onPressed: () {
-            if (controller.isOpen) {
-              controller.close();
-            } else {
-              controller.open();
-            }
-          },
-          icon: Icon(showAll ? Icons.circle_outlined : Icons.circle),
-        );
+    return PopupMenuButton<bool>(
+      initialValue: showAll,
+      icon: Icon(showAll ? Icons.circle_outlined : Icons.circle),
+      itemBuilder: (context) {
+        return [
+          PopupMenuItem<bool>(
+            value: true,
+            child: Row(
+              mainAxisSize: .min,
+              spacing: 8.0,
+              children: [Icon(Icons.circle_outlined), Text("All Articles")],
+            ),
+          ),
+          PopupMenuItem<bool>(
+            value: false,
+            child: Row(
+              mainAxisSize: .min,
+              spacing: 8.0,
+              children: [Icon(Icons.circle), Text("Only Unread")],
+            ),
+          ),
+        ];
+      },
+      onSelected: (show) {
+        context.read<DataProvider>().setShowAll(show);
       },
     );
   }

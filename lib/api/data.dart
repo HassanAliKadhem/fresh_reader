@@ -46,7 +46,7 @@ class DataProvider extends ChangeNotifier {
             categories = cats;
             db.loadArticleMetaData(accountID!).then((meta) {
               articlesMetaData = meta;
-              db.getLastSyncIDs(accountID!).then((lastIds) {
+              db.getLastSyncIDs(accountID!, .date).then((lastIds) {
                 lastSyncIDs = lastIds;
                 notifyListeners();
               });
@@ -113,7 +113,7 @@ class DataProvider extends ChangeNotifier {
         db.loadAllCategory(accountID!).then((cats) {
           categories = cats;
         }),
-        db.getLastSyncIDs(accountID!).then((lastIds) {
+        db.getLastSyncIDs(accountID!, .date).then((lastIds) {
           lastSyncIDs = lastIds;
         }),
       ]).then((_) {
@@ -467,7 +467,10 @@ class DataProvider extends ChangeNotifier {
     db.updateArticleStar(id, isStarred, accountID!);
   }
 
-  Future<void> searchFilteredArticles(String? searchTerm) async {
+  Future<void> searchFilteredArticles(
+    String? searchTerm,
+    Sorting sorting,
+  ) async {
     if (accountID == null) {
       searchResults = [];
       return;
@@ -475,6 +478,7 @@ class DataProvider extends ChangeNotifier {
     searchResults = await db.searchArticles(
       searchTerm,
       filteredArticleIDs,
+      sorting,
       accountID!,
     );
     notifyListeners();
@@ -482,6 +486,7 @@ class DataProvider extends ChangeNotifier {
 
   Future<void> getFilteredArticles(
     bool? showAll,
+    Sorting sorting,
     String? filterColumn,
     String? filterValue,
     String title,
@@ -495,7 +500,7 @@ class DataProvider extends ChangeNotifier {
     setSelectedIndex(null, null);
     filteredTitle = null;
     if (title == "lastSync") {
-      await db.getLastSyncIDs(accountID!).then((value) {
+      await db.getLastSyncIDs(accountID!, sorting).then((value) {
         if (showAll == true) {
           filteredArticleIDs = value.toSet();
         } else {
@@ -515,6 +520,7 @@ class DataProvider extends ChangeNotifier {
             filterValue: filterValue,
             accountID: accountID!,
             todaySecondsSinceEpoch: todaySecondsSinceEpoch,
+            sorting: sorting,
           )
           .then((value) {
             filteredArticleIDs = value.keys.toSet();

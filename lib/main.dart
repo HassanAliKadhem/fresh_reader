@@ -215,11 +215,13 @@ class _HomeWidgetState extends State<HomeWidget> {
   }
 
   Widget articleView() {
+    Set<String>? ids = context
+        .select<DataProvider, List<String>?>((a) => a.searchResults)
+        ?.toSet();
     return ArticleView(
+      key: ValueKey(ids),
       index: context.read<DataProvider>().selectedIndex,
-      articleIDs: context
-          .select<DataProvider, List<String>?>((a) => a.searchResults)
-          ?.toSet(),
+      articleIDs: ids,
     );
   }
 }

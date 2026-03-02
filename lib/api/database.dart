@@ -19,6 +19,7 @@ const lastSyncTable =
 
 const _indexes = [
   "CREATE INDEX if not exists idx_article_id ON articles (articleID)",
+  // "CREATE INDEX if not exists idx_timestamp ON articles (timeStampPublished)",
   "CREATE INDEX if not exists idx_article_subid ON articles (subID)",
   "CREATE INDEX if not exists idx_article_accid ON articles (accountID)",
 ];
@@ -65,7 +66,7 @@ Future<Database> getDatabase() async {
             "Article",
             {
               "img":
-                  getFirstImage(articleContents[i]["content"] as String) ?? "",
+                  getFirstImageFromContent(articleContents[i]["content"] as String) ?? "",
             },
             where: "id = ?",
             whereArgs: [articleContents[i]["id"]],
@@ -137,11 +138,13 @@ abstract class StorageBase {
     String? filterValue,
     required int accountID,
     required int todaySecondsSinceEpoch,
+    required Sorting sorting,
   });
 
   Future<List<String>?> searchArticles(
     String? searchTerm,
     Set<String>? filteredArticleIDs,
+    Sorting sorting,
     int accountID,
   );
 
@@ -149,7 +152,7 @@ abstract class StorageBase {
 
   Future<void> clearLastSyncTable(int accountID);
 
-  Future<List<String>> getLastSyncIDs(int accountID);
+  Future<List<String>> getLastSyncIDs(int accountID, Sorting sorting);
 
   Future<void> updateArticleRead(String articleId, bool isRead, int accountID);
 
@@ -372,6 +375,15 @@ class StorageSqlite extends StorageBase {
     );
   }
 
+  String getOrderBy(Sorting sorting) {
+    return switch (sorting) {
+      .date => "timeStampPublished desc",
+      .dateDesc => "timeStampPublished",
+      .fresh => "articleID desc",
+      .freshDesc => "articleID",
+    };
+  }
+
   @override
   Future<Map<String, String>> loadArticleIDs({
     bool? showAll,
@@ -379,15 +391,16 @@ class StorageSqlite extends StorageBase {
     String? filterValue,
     required int accountID,
     required int todaySecondsSinceEpoch,
+    required Sorting sorting,
   }) async {
     late List<Map<String, Object?>> articles;
     if (filterColumn == "tag") {
       articles = await _database.rawQuery(
-        "select articleID, subID from Articles where accountID = $accountID and subID in (select subID from Subscriptions where catID = '$filterValue') ${showAll == false ? "and isRead = 'false'" : ""} order by timeStampPublished DESC",
+        "select articleID, subID from Articles where accountID = $accountID and subID in (select subID from Subscriptions where catID = '$filterValue') ${showAll == false ? "and isRead = 'false'" : ""} order by ${getOrderBy(sorting)}",
       );
     } else if (filterColumn == "timeStampPublished") {
       articles = await _database.rawQuery(
-        "select articleID, subID from Articles where accountID = $accountID and timeStampPublished > $todaySecondsSinceEpoch ${showAll == false ? "and isRead = 'false'" : ""} order by timeStampPublished DESC",
+        "select articleID, subID from Articles where accountID = $accountID and timeStampPublished > $todaySecondsSinceEpoch ${showAll == false ? "and isRead = 'false'" : ""} order by ${getOrderBy(sorting)}",
       );
     } else {
       String? where;
@@ -409,7 +422,7 @@ class StorageSqlite extends StorageBase {
         columns: ["articleID", "subID"],
         where: where,
         whereArgs: args.isNotEmpty ? args : null,
-        orderBy: "timeStampPublished DESC",
+        orderBy: getOrderBy(sorting),
       );
     }
     return articles.asMap().map(
@@ -422,15 +435,11 @@ class StorageSqlite extends StorageBase {
   Future<List<String>?> searchArticles(
     String? searchTerm,
     Set<String>? filteredArticleIDs,
+    Sorting sorting,
     int accountID,
   ) async {
-    if (searchTerm == null ||
-        searchTerm.isEmpty ||
-        filteredArticleIDs == null) {
-      return filteredArticleIDs?.toList();
-    }
     return (await _database.rawQuery(
-      "select articleID from Articles where articleID in ('${filteredArticleIDs.join("','")}') and accountID = $accountID and (LOWER(title) like '%' || '${searchTerm.toLowerCase()}' || '%' or LOWER(content) like '%' || '${searchTerm.toLowerCase()}' || '%') order by timeStampPublished desc",
+      "select articleID from Articles where articleID in ('${(filteredArticleIDs ?? {}).join("','")}') and accountID = $accountID and (LOWER(title) like '%' || '${(searchTerm ?? "").toLowerCase()}' || '%' or LOWER(content) like '%' || '${(searchTerm ?? "").toLowerCase()}' || '%') order by ${getOrderBy(sorting)}",
     )).map((res) => res.values.first.toString()).toList();
   }
 
@@ -463,12 +472,13 @@ class StorageSqlite extends StorageBase {
   }
 
   @override
-  Future<List<String>> getLastSyncIDs(int accountID) async {
+  Future<List<String>> getLastSyncIDs(int accountID, Sorting sorting) async {
     return (await _database.query(
-      "lastSync",
-      columns: ["articleID"],
-      where: "accountID = ?",
+      "lastSync l, articles a",
+      columns: ["l.articleID"],
+      where: "l.accountID = ? and l.articleID = a.articleID",
       whereArgs: [accountID],
+      orderBy: "a.${getOrderBy(sorting)}",
     )).map((elm) => elm.values.first.toString()).toList();
   }
 
@@ -782,6 +792,7 @@ class StorageMemory extends StorageBase {
     String? filterValue,
     required int accountID,
     required int todaySecondsSinceEpoch,
+    required Sorting sorting,
   }) async {
     Map<String, String> artSubIDs = {};
     if (filterColumn == "tag") {
@@ -824,6 +835,7 @@ class StorageMemory extends StorageBase {
   Future<List<String>?> searchArticles(
     String? searchTerm,
     Set<String>? filteredArticleIDs,
+    Sorting sorting,
     int accountID,
   ) async {
     if (searchTerm == null ||
@@ -859,7 +871,7 @@ class StorageMemory extends StorageBase {
   }
 
   @override
-  Future<List<String>> getLastSyncIDs(int accountID) async {
+  Future<List<String>> getLastSyncIDs(int accountID, Sorting sorting) async {
     return _lastSync.entries
         .where((l) => l.value == accountID)
         .map((l) => l.key)
