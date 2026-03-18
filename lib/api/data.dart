@@ -158,7 +158,7 @@ class DataProvider extends ChangeNotifier {
   void setShowAll(bool newValue) {
     showAll = newValue;
     clear(false);
-    notifyListeners();
+    clearFiltered();
   }
 
   Stream<double> serverSync() async* {

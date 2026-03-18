@@ -252,37 +252,37 @@ class _ArticleTextWidgetState extends State<ArticleTextWidget> {
   final ScrollController scrollController = ScrollController();
 
   void showLinkMenu(BuildContext context, String link, String? imgUrl) {
+    String? imgPreview =
+        imgUrl ??
+        (imgExtensions.any((ext) => link.toLowerCase().endsWith(ext))
+            ? link
+            : null);
     showDialog(
       context: context,
+      barrierDismissible: true,
       builder: (context) {
         return AlertDialog(
-          icon: ConstrainedBox(
-            constraints: .loose(Size.fromHeight(200.0)),
-            child: imgExtensions.any((ext) => link.toLowerCase().endsWith(ext))
-                ? ArticleImage(
-                    imageUrl: link,
+          icon: imgPreview != null
+              ? ConstrainedBox(
+                  constraints: .loose(Size.fromHeight(200.0)),
+                  child: ArticleImage(
+                    imageUrl: imgPreview,
                     fit: .contain,
                     onError: (error) => Icon(Icons.error),
-                  )
-                : imgUrl != null
-                ? ArticleImage(
-                    imageUrl: imgUrl,
-                    fit: .contain,
-                    onError: (error) => Icon(Icons.error),
-                  )
-                : null,
-          ),
-          title: ListTile(title: Text(link)),
-          titlePadding: .zero,
+                  ),
+                )
+              : null,
           iconPadding: const EdgeInsetsGeometry.only(
             bottom: 8.0,
             top: 16.0,
             left: 16.0,
             right: 16.0,
           ),
-          contentPadding: EdgeInsets.zero,
+          title: ListTile(title: Text(link)),
+          titlePadding: .zero,
           clipBehavior: Clip.hardEdge,
           scrollable: true,
+          contentPadding: EdgeInsets.zero,
           content: Column(
             mainAxisSize: .min,
             children: [
@@ -399,55 +399,53 @@ class _ArticleTextWidgetState extends State<ArticleTextWidget> {
     );
   }
 
-  SliverList titleSlivers(BuildContext context, TextStyle urlStyle) {
-    return SliverList(
-      delegate: SliverChildListDelegate([
-        Text.rich(
-          textScaler: TextScaler.linear(0.9),
-          TextSpan(
-            children: [
-              WidgetSpan(
-                alignment: PlaceholderAlignment.middle,
-                child: Builder(
-                  builder: (context) {
-                    double? size = DefaultTextStyle.of(context).style.fontSize;
-                    return ArticleImage(
-                      imageUrl: widget.iconUrl ?? "",
-                      height: size,
-                      width: size,
-                      onError: (error) => Icon(Icons.error, size: size),
-                    );
-                  },
-                ),
+  List<Widget> titleSlivers(BuildContext context, TextStyle urlStyle) {
+    return [
+      Text.rich(
+        textScaler: TextScaler.linear(0.9),
+        TextSpan(
+          children: [
+            WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: Builder(
+                builder: (context) {
+                  double? size = DefaultTextStyle.of(context).style.fontSize;
+                  return ArticleImage(
+                    imageUrl: widget.iconUrl ?? "",
+                    height: size,
+                    width: size,
+                    onError: (error) => Icon(Icons.error, size: size),
+                  );
+                },
               ),
-              TextSpan(
-                text: " ${widget.subName}",
-                style: TextStyle(color: Colors.grey.shade500),
-              ),
-            ],
-          ),
+            ),
+            TextSpan(
+              text: " ${widget.subName}",
+              style: TextStyle(color: Colors.grey.shade500),
+            ),
+          ],
         ),
-        GestureDetector(
-          onLongPress: () {
-            showLinkMenu(context, widget.url, null);
-          },
-          onTap: () {
-            openLink(context, widget.url);
-          },
-          child: Text(
-            widget.title,
-            textScaler: TextScaler.linear(1.15),
-            style: urlStyle,
-          ),
+      ),
+      GestureDetector(
+        onLongPress: () {
+          showLinkMenu(context, widget.url, null);
+        },
+        onTap: () {
+          openLink(context, widget.url);
+        },
+        child: Text(
+          widget.title,
+          textScaler: TextScaler.linear(1.15),
+          style: urlStyle,
         ),
-        Text(
-          getFormattedDate(widget.timePublished),
-          style: TextStyle(color: Colors.grey.shade500),
-          textScaler: TextScaler.linear(0.8),
-        ),
-        SizedBox(height: 8.0),
-      ]),
-    );
+      ),
+      Text(
+        getFormattedDate(widget.timePublished),
+        style: TextStyle(color: Colors.grey.shade500),
+        textScaler: TextScaler.linear(0.8),
+      ),
+      SizedBox(height: 8.0),
+    ];
   }
 
   Widget? customWidgetBuilder(
@@ -505,7 +503,6 @@ class _ArticleTextWidgetState extends State<ArticleTextWidget> {
 
   @override
   Widget build(BuildContext context) {
-    print(getFirstImageFromContent(widget.content));
     TextStyle urlStyle = TextStyle(
       color: Theme.of(context).colorScheme.primary,
       decoration: TextDecoration.underline,
@@ -520,43 +517,32 @@ class _ArticleTextWidgetState extends State<ArticleTextWidget> {
       child: SelectionArea(
         child: Scrollbar(
           controller: scrollController,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: CustomScrollView(
-              controller: scrollController,
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverPadding(
-                  padding: EdgeInsetsGeometry.only(
-                    top:
-                        (MediaQuery.maybePaddingOf(context)?.top ?? 0.0) + 16.0,
-                  ),
-                ),
-                titleSlivers(context, urlStyle),
-                HtmlWidget(
-                  widget.content,
-                  enableCaching: true,
-                  key: ValueKey("html_${widget.url}"),
-                  renderMode: RenderMode.sliverList,
-                  onErrorBuilder: (context, element, error) {
-                    return Text(error.toString());
-                  },
-                  customStylesBuilder: (element) {
-                    return {"width": "100%"};
-                  },
-                  customWidgetBuilder: (element) {
-                    return customWidgetBuilder(context, element, urlStyle);
-                  },
-                ),
-                SliverPadding(
-                  padding: EdgeInsetsGeometry.only(
-                    bottom:
-                        (MediaQuery.maybePaddingOf(context)?.bottom ?? 0.0) +
-                        16.0,
-                  ),
-                ),
-              ],
+          child: ListView(
+            padding: EdgeInsets.only(
+              left: 16.0,
+              right: 16.0,
+              top: (MediaQuery.maybePaddingOf(context)?.top ?? 0.0) + 16.0,
+              bottom:
+                  (MediaQuery.maybePaddingOf(context)?.bottom ?? 0.0) + 16.0,
             ),
+            children: [
+              ...titleSlivers(context, urlStyle),
+              HtmlWidget(
+                widget.content,
+                enableCaching: true,
+                key: ValueKey("html_${widget.url}"),
+                renderMode: RenderMode.column,
+                onErrorBuilder: (context, element, error) {
+                  return Text(error.toString());
+                },
+                customStylesBuilder: (element) {
+                  return {"width": "100%"};
+                },
+                customWidgetBuilder: (element) {
+                  return customWidgetBuilder(context, element, urlStyle);
+                },
+              ),
+            ],
           ),
         ),
       ),
