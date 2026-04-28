@@ -54,33 +54,11 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            IconButton(
-              onPressed: () {
-                if (articleID != null) {
-                  context.read<DataProvider>().setRead(
-                    articleID,
-                    subID,
-                    !isRead,
-                  );
-                }
-              },
-              icon: Icon(isRead ? Icons.circle_outlined : Icons.circle),
-              tooltip: "Read",
-            ),
-            IconButton(
-              onPressed: () {
-                if (articleID != null) {
-                  context.read<DataProvider>().setStarred(
-                    articleID,
-                    subID,
-                    !isStarred,
-                  );
-                }
-              },
-              icon: Icon(
-                isStarred ? Icons.star_rounded : Icons.star_border_rounded,
-              ),
-              tooltip: "Star",
+            ReadButton(isRead: isRead, articleID: articleID, subID: subID),
+            StarButton(
+              isStarred: isStarred,
+              articleID: articleID,
+              subID: subID,
             ),
             IconButton(
               onPressed: () {
@@ -100,7 +78,11 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
                   }
                 }
               },
-              icon: Icon(Icons.open_in_browser),
+              icon: Icon(
+                (Platform.isIOS || Platform.isMacOS)
+                    ? CupertinoIcons.globe
+                    : Icons.open_in_browser,
+              ),
               tooltip: "Browser",
             ),
             Builder(
@@ -151,6 +133,60 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
   }
 }
 
+class ReadButton extends StatelessWidget {
+  const ReadButton({
+    super.key,
+    required this.isRead,
+    required this.articleID,
+    required this.subID,
+  });
+  final bool isRead;
+  final String? articleID;
+  final String subID;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: () {
+        if (articleID != null) {
+          context.read<DataProvider>().setRead(articleID!, subID, !isRead);
+        }
+      },
+      icon: Icon(isRead ? Icons.circle_outlined : Icons.circle),
+      tooltip: "Read",
+    );
+  }
+}
+
+class StarButton extends StatelessWidget {
+  const StarButton({
+    super.key,
+    required this.isStarred,
+    required this.articleID,
+    required this.subID,
+  });
+  final bool isStarred;
+  final String? articleID;
+  final String subID;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: () {
+        if (articleID != null) {
+          context.read<DataProvider>().setStarred(
+            articleID!,
+            subID,
+            !isStarred,
+          );
+        }
+      },
+      icon: Icon(isStarred ? Icons.star_rounded : Icons.star_border_rounded),
+      tooltip: "Star",
+    );
+  }
+}
+
 class ArticleWebViewButtons extends StatefulWidget {
   const ArticleWebViewButtons({super.key, required this.webViewController});
   final WebViewController webViewController;
@@ -184,87 +220,114 @@ class _ArticleWebViewButtonsState extends State<ArticleWebViewButtons> {
 
   @override
   Widget build(BuildContext context) {
+    int? index = context.select<DataProvider, int?>((a) => a.selectedIndex);
+    if (index == null ||
+        context.select<DataProvider, bool>((d) => d.searchResults == null)) {
+      return Container();
+    }
+    String? articleID = context
+        .read<DataProvider>()
+        .searchResults
+        ?.elementAtOrNull(index);
+    if (!context.select<DataProvider, bool>(
+      (a) => a.articlesMetaData.containsKey(articleID),
+    )) {
+      return Container();
+    }
+    var (_, subID, isRead, isStarred) = context
+        .select<DataProvider, (int, String, bool, bool)>(
+          (a) => a.articlesMetaData[articleID]!,
+        );
     return Column(
       children: [
         SizedBox(
-          height: 2,
+          height: 4,
           child: progress == 100
               ? LinearProgressIndicator(value: progress / 100.0)
               : null,
         ),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            FutureBuilder(
-              future: widget.webViewController.canGoBack(),
-              builder: (context, snapshot) {
-                return IconButton(
-                  onPressed: snapshot.data == true
-                      ? () {
-                          widget.webViewController.goBack();
-                        }
-                      : null,
-                  icon: Icon(
-                    (Platform.isIOS || Platform.isMacOS)
-                        ? CupertinoIcons.back
-                        : Icons.arrow_back,
-                  ),
-                );
-              },
-            ),
-            FutureBuilder(
-              future: widget.webViewController.canGoForward(),
-              builder: (context, snapshot) {
-                return IconButton(
-                  onPressed: snapshot.data == true
-                      ? () {
-                          widget.webViewController.goForward();
-                        }
-                      : null,
-                  icon: Icon(
-                    (Platform.isIOS || Platform.isMacOS)
-                        ? CupertinoIcons.forward
-                        : Icons.arrow_forward,
-                  ),
-                );
-              },
-            ),
-            IconButton(
-              onPressed: () {
-                widget.webViewController.reload();
-              },
-              icon: Icon(
-                (Platform.isIOS || Platform.isMacOS)
-                    ? CupertinoIcons.refresh
-                    : Icons.refresh,
+        SafeArea(
+          minimum: EdgeInsets.only(top: 8.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              ReadButton(isRead: isRead, articleID: articleID, subID: subID),
+              StarButton(
+                isStarred: isStarred,
+                articleID: articleID,
+                subID: subID,
               ),
-            ),
-            Builder(
-              builder: (context) {
-                return IconButton(
-                  onPressed: () {
-                    widget.webViewController.currentUrl().then((url) async {
-                      widget.webViewController.getTitle().then((title) {
-                        if (url != null) {
-                          if (context.mounted) {
-                            shareLink(context, url, title);
-                          } else {
-                            debugPrint("Context not mounted");
+              FutureBuilder(
+                future: widget.webViewController.canGoBack(),
+                builder: (context, snapshot) {
+                  return IconButton(
+                    onPressed: snapshot.data == true
+                        ? () {
+                            widget.webViewController.goBack();
                           }
-                        }
+                        : null,
+                    icon: Icon(
+                      (Platform.isIOS || Platform.isMacOS)
+                          ? CupertinoIcons.back
+                          : Icons.arrow_back,
+                    ),
+                  );
+                },
+              ),
+              FutureBuilder(
+                future: widget.webViewController.canGoForward(),
+                builder: (context, snapshot) {
+                  return IconButton(
+                    onPressed: snapshot.data == true
+                        ? () {
+                            widget.webViewController.goForward();
+                          }
+                        : null,
+                    icon: Icon(
+                      (Platform.isIOS || Platform.isMacOS)
+                          ? CupertinoIcons.forward
+                          : Icons.arrow_forward,
+                    ),
+                  );
+                },
+              ),
+              IconButton(
+                onPressed: () {
+                  widget.webViewController.reload();
+                },
+                icon: Icon(
+                  (Platform.isIOS || Platform.isMacOS)
+                      ? CupertinoIcons.refresh
+                      : Icons.refresh,
+                ),
+              ),
+              Builder(
+                builder: (context) {
+                  return IconButton(
+                    onPressed: () {
+                      widget.webViewController.currentUrl().then((url) async {
+                        widget.webViewController.getTitle().then((title) {
+                          if (url != null) {
+                            if (context.mounted) {
+                              shareLink(context, url, title);
+                            } else {
+                              debugPrint("Context not mounted");
+                            }
+                          }
+                        });
                       });
-                    });
-                  },
-                  icon: Icon(
-                    (Platform.isIOS || Platform.isMacOS)
-                        ? CupertinoIcons.share_solid
-                        : Icons.share_outlined,
-                  ),
-                );
-              },
-            ),
-          ],
+                    },
+                    icon: Icon(
+                      (Platform.isIOS || Platform.isMacOS)
+                          ? CupertinoIcons.share
+                          : Icons.share,
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ],
     );

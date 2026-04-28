@@ -54,7 +54,8 @@ class _ArticleViewState extends State<ArticleView> {
       ),
       extendBodyBehindAppBar: !showWebView,
       extendBody: !showWebView,
-      bottomNavigationBar: widget.index != null && widget.articleIDs != null
+      bottomNavigationBar:
+          widget.index != null && widget.articleIDs != null && !showWebView
           ? ArticleBottomButtons()
           : null,
       body: widget.index != null && widget.articleIDs != null
@@ -399,7 +400,7 @@ class _ArticleTextWidgetState extends State<ArticleTextWidget> {
     );
   }
 
-  List<Widget> titleSlivers(BuildContext context, TextStyle urlStyle) {
+  List<Widget> titleWidgets(BuildContext context, TextStyle urlStyle) {
     return [
       Text.rich(
         textScaler: TextScaler.linear(0.9),
@@ -526,7 +527,7 @@ class _ArticleTextWidgetState extends State<ArticleTextWidget> {
                   (MediaQuery.maybePaddingOf(context)?.bottom ?? 0.0) + 16.0,
             ),
             children: [
-              ...titleSlivers(context, urlStyle),
+              ...titleWidgets(context, urlStyle),
               HtmlWidget(
                 widget.content,
                 enableCaching: true,

@@ -1,6 +1,3 @@
-import 'dart:io';
-
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -16,13 +13,7 @@ class WebViewButton extends StatelessWidget {
       onPressed: () {
         context.read<Preferences>().setUseWebView(!showWebView);
       },
-      icon: showWebView
-          ? Icon(Icons.article_outlined)
-          : Icon(
-              (Platform.isIOS || Platform.isMacOS)
-                  ? CupertinoIcons.globe
-                  : Icons.public,
-            ),
+      icon: showWebView ? Icon(Icons.article_outlined) : Icon(Icons.public),
       tooltip: showWebView ? "Article" : "Web",
     );
   }

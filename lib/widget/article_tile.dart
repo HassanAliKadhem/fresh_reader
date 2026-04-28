@@ -86,7 +86,7 @@ class _ArticleTileState extends State<ArticleTile> {
           );
         },
         child: Opacity(
-          opacity: isRead ? 0.3 : 1.0,
+          opacity: isRead ? 0.5 : 1.0,
           child: ArticleWidget(
             articleID: widget.articleID,
             subIcon: context.read<DataProvider>().getIconUrl(
