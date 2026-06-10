@@ -32,7 +32,7 @@ class CategoryCard extends StatelessWidget {
         key: PageStorageKey('categoryTile_$categoryName'),
         shape: const Border(),
         initiallyExpanded: true,
-        controlAffinity: ListTileControlAffinity.leading,
+        // controlAffinity: ListTileControlAffinity.leading,
         children: [
           ListTile(
             selected: selected == categoryName,

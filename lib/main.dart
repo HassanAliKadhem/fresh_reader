@@ -18,12 +18,14 @@ void main() {
       .then((db) async {
         StorageSqlite database = StorageSqlite(db);
         Preferences pref = Preferences(database);
+        DataProvider data = DataProvider(database);
         await pref.load();
+        data.setShowAll(pref.showAll);
         runApp(
           MultiProvider(
             providers: [
               ChangeNotifierProvider<DataProvider>(
-                create: (context) => DataProvider(database),
+                create: (context) => data,
               ),
               ChangeNotifierProvider<Preferences>(create: (context) => pref),
             ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../api/data.dart';
+import '../api/preferences.dart';
 
 class ShowAllSwitcherWidget extends StatelessWidget {
   const ShowAllSwitcherWidget({super.key});
@@ -34,6 +35,7 @@ class ShowAllSwitcherWidget extends StatelessWidget {
       },
       onSelected: (show) {
         context.read<DataProvider>().setShowAll(show);
+        context.read<Preferences>().setShowAll(show);
       },
     );
   }

@@ -18,7 +18,7 @@ A mobile client for FreshRss(not affiliated) made just for me. but you can use i
 - [x] show feed icon
 - [x] image viewer with zoom
 - text formatting:
-    - [x] save formatting options to storage
+    - [x] font family
     - [x] font size
     - [x] word spacing
     - [x] line height

@@ -157,101 +157,96 @@ class _CategoryListState extends State<CategoryList> {
     );
     return context.select<DataProvider, int?>((a) => a.accountID) == null
         ? Center(child: Text("Please add/select an account"))
-        : Scrollbar(
-            child: CustomScrollView(
-              primary: true,
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverPadding(
-                  padding: EdgeInsetsGeometry.only(
-                    top: MediaQuery.paddingOf(context).top,
-                  ),
+        : CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverPadding(
+                padding: EdgeInsetsGeometry.only(
+                  top: MediaQuery.paddingOf(context).top,
                 ),
-                SliverList(
-                  delegate: SliverChildListDelegate([
+              ),
+              SliverList(
+                delegate: SliverChildListDelegate([
+                  ListTile(
+                    selected: filteredTitle == "All Articles",
+                    title: const Text("All Articles"),
+                    trailing: UnreadCounter((a) => showAll || !a.$3),
+                    onTap: () =>
+                        openArticleList(context, null, null, "All Articles"),
+                  ),
+                  ListTile(
+                    selected: filteredTitle == "Today",
+                    title: const Text("Today"),
+                    trailing: UnreadCounter(
+                      (a) => a.$1 > secondsSinceToday && (showAll || !a.$3),
+                    ),
+                    onTap: () => openArticleList(
+                      context,
+                      "timeStampPublished",
+                      null,
+                      "Today",
+                    ),
+                  ),
+                  if (showLastSync)
                     ListTile(
-                      selected: filteredTitle == "All Articles",
-                      title: const Text("All Articles"),
-                      trailing: UnreadCounter((a) => showAll || !a.$3),
+                      selected: filteredTitle == "lastSync",
+                      title: const Text("last Sync Articles"),
+                      trailing: const UnreadLastSync(),
                       onTap: () =>
-                          openArticleList(context, null, null, "All Articles"),
+                          openArticleList(context, null, null, "lastSync"),
                     ),
-                    ListTile(
-                      selected: filteredTitle == "Today",
-                      title: const Text("Today"),
-                      trailing: UnreadCounter(
-                        (a) => a.$1 > secondsSinceToday && (showAll || !a.$3),
-                      ),
-                      onTap: () => openArticleList(
-                        context,
-                        "timeStampPublished",
-                        null,
-                        "Today",
-                      ),
+                  ListTile(
+                    selected: filteredTitle == "Starred",
+                    title: const Text("Starred"),
+                    trailing: UnreadCounter((a) => a.$4 && (showAll || !a.$3)),
+                    onTap: () => openArticleList(
+                      context,
+                      "isStarred",
+                      "true",
+                      "Starred",
                     ),
-                    if (showLastSync)
-                      ListTile(
-                        selected: filteredTitle == "lastSync",
-                        title: const Text("last Sync Articles"),
-                        trailing: const UnreadLastSync(),
-                        onTap: () =>
-                            openArticleList(context, null, null, "lastSync"),
-                      ),
-                    ListTile(
-                      selected: filteredTitle == "Starred",
-                      title: const Text("Starred"),
-                      trailing: UnreadCounter(
-                        (a) => a.$4 && (showAll || !a.$3),
-                      ),
-                      onTap: () => openArticleList(
-                        context,
-                        "isStarred",
-                        "true",
-                        "Starred",
-                      ),
-                    ),
-                  ]),
-                ),
-                SliverList.builder(
-                  itemCount: categories.length,
-                  itemBuilder: (context, index) {
-                    Map<String, Subscription> currentSubscriptions = {};
-                    for (var value
-                        in context.read<DataProvider>().subscriptions.values) {
-                      if (value.catID == categories[index].catID) {
-                        currentSubscriptions[value.subID] = value;
-                      }
-                    }
-                    return CategoryCard(
-                      categoryName: categories[index].catID.split("/").last,
-                      selected: filteredTitle ?? "",
-                      openAll: () {
-                        openArticleList(
-                          context,
-                          "tag",
-                          categories[index].catID,
-                          categories[index].catID.split("/").last,
-                        );
-                      },
-                      openFeed: (key) {
-                        openArticleList(
-                          context,
-                          "subID",
-                          currentSubscriptions[key]!.subID.toString(),
-                          currentSubscriptions[key]!.title,
-                        );
-                      },
-                      currentSubscriptions: currentSubscriptions,
-                    );
-                  },
-                ),
-                SliverPadding(
-                  padding: EdgeInsetsGeometry.only(
-                    bottom: MediaQuery.paddingOf(context).bottom,
                   ),
+                ]),
+              ),
+              SliverList.builder(
+                itemCount: categories.length,
+                itemBuilder: (context, index) {
+                  Map<String, Subscription> currentSubscriptions = {};
+                  for (var value
+                      in context.read<DataProvider>().subscriptions.values) {
+                    if (value.catID == categories[index].catID) {
+                      currentSubscriptions[value.subID] = value;
+                    }
+                  }
+                  return CategoryCard(
+                    categoryName: categories[index].catID.split("/").last,
+                    selected: filteredTitle ?? "",
+                    openAll: () {
+                      openArticleList(
+                        context,
+                        "tag",
+                        categories[index].catID,
+                        categories[index].catID.split("/").last,
+                      );
+                    },
+                    openFeed: (key) {
+                      openArticleList(
+                        context,
+                        "subID",
+                        currentSubscriptions[key]!.subID.toString(),
+                        currentSubscriptions[key]!.title,
+                      );
+                    },
+                    currentSubscriptions: currentSubscriptions,
+                  );
+                },
+              ),
+              SliverPadding(
+                padding: EdgeInsetsGeometry.only(
+                  bottom: MediaQuery.paddingOf(context).bottom,
                 ),
-              ],
-            ),
+              ),
+            ],
           );
   }
 }

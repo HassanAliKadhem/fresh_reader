@@ -26,6 +26,7 @@ class Preferences extends ChangeNotifier {
   bool markReadWhenOpen = true;
   bool openInBrowser = false;
   bool useWebView = false;
+  bool showAll = false;
   bool showLastSync = false;
   int themeIndex = 0;
   Sorting sorting = .date;
@@ -46,6 +47,7 @@ class Preferences extends ChangeNotifier {
     showLastSync = (await _tryGetBool("show_last_sync")) ?? false;
     openInBrowser = (await _tryGetBool("open_in_browser")) ?? false;
     useWebView = (await _tryGetBool("use_web_view")) ?? false;
+    showAll = (await _tryGetBool("show_all")) ?? false;
     themeIndex = (await _tryGetInt("theme_index")) ?? 0;
     readDuration = (await _tryGetInt("read_duration"));
     starDuration = (await _tryGetInt("star_duration"));
@@ -77,6 +79,7 @@ class Preferences extends ChangeNotifier {
     setBool("show_last_sync", showLastSync);
     setBool("open_in_browser", openInBrowser);
     setBool("use_web_view", useWebView);
+    setBool("show_all", showAll);
     database.setPreference("theme_index", themeIndex.toString());
     database.setPreference("read_duration", readDuration.toString());
     database.setPreference("star_duration", starDuration.toString());
@@ -135,6 +138,11 @@ class Preferences extends ChangeNotifier {
 
   void setUseWebView(bool val) {
     useWebView = val;
+    notifyListeners();
+  }
+
+  void setShowAll(bool val) {
+    showAll = val;
     notifyListeners();
   }
 

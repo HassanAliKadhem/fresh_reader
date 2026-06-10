@@ -519,6 +519,8 @@ class _ArticleTextWidgetState extends State<ArticleTextWidget> {
         child: Scrollbar(
           controller: scrollController,
           child: ListView(
+            controller: scrollController,
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.only(
               left: 16.0,
               right: 16.0,
