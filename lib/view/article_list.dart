@@ -55,7 +55,9 @@ class _ArticleListState extends State<ArticleList> {
     );
     return Scaffold(
       backgroundColor: Color.alphaBlend(
-        Colors.black.withAlpha(24),
+        Colors.black.withAlpha(
+          Theme.brightnessOf(context) == Brightness.dark ? 24 : 8,
+        ),
         Theme.of(context).scaffoldBackgroundColor,
       ),
       appBar: AppBar(

@@ -422,7 +422,7 @@ class _ArticleTextWidgetState extends State<ArticleTextWidget> {
             ),
             TextSpan(
               text: " ${widget.subName}",
-              style: TextStyle(color: Colors.grey.shade500),
+              style: TextStyle(color: Theme.of(context).hintColor),
             ),
           ],
         ),
@@ -436,14 +436,14 @@ class _ArticleTextWidgetState extends State<ArticleTextWidget> {
         },
         child: Text(
           widget.title,
-          textScaler: TextScaler.linear(1.15),
+          textScaler: const TextScaler.linear(1.15),
           style: urlStyle,
         ),
       ),
       Text(
         getFormattedDate(widget.timePublished),
-        style: TextStyle(color: Colors.grey.shade500),
-        textScaler: TextScaler.linear(0.8),
+        style: TextStyle(color: Theme.of(context).hintColor),
+        textScaler: const TextScaler.linear(0.8),
       ),
       SizedBox(height: 8.0),
     ];
@@ -514,6 +514,9 @@ class _ArticleTextWidgetState extends State<ArticleTextWidget> {
         fontSize: context.select<Preferences, double>((a) => a.fontSize),
         wordSpacing: context.select<Preferences, double>((a) => a.wordSpacing),
         height: context.select<Preferences, double>((a) => a.lineHeight),
+        color: Theme.brightnessOf(context) == Brightness.dark
+            ? Colors.grey.shade200
+            : Colors.grey.shade800,
       ),
       child: SelectionArea(
         child: Scrollbar(

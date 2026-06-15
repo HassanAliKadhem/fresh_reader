@@ -27,7 +27,9 @@ class _FeedListState extends State<FeedList> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color.alphaBlend(
-        Colors.black.withAlpha(46),
+        Colors.black.withAlpha(
+          Theme.brightnessOf(context) == Brightness.dark ? 46 : 16,
+        ),
         Theme.of(context).scaffoldBackgroundColor,
       ),
       appBar: AppBar(

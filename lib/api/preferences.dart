@@ -29,6 +29,8 @@ class Preferences extends ChangeNotifier {
   bool showAll = false;
   bool showLastSync = false;
   int themeIndex = 0;
+  bool themeDynamic = true;
+  int themeColor = 0xFF673AB7;
   Sorting sorting = .date;
 
   Preferences(this.database);
@@ -48,7 +50,9 @@ class Preferences extends ChangeNotifier {
     openInBrowser = (await _tryGetBool("open_in_browser")) ?? false;
     useWebView = (await _tryGetBool("use_web_view")) ?? false;
     showAll = (await _tryGetBool("show_all")) ?? false;
+    themeDynamic = (await _tryGetBool("theme_mode")) ?? true;
     themeIndex = (await _tryGetInt("theme_index")) ?? 0;
+    themeColor = (await _tryGetInt("theme_color")) ?? 0xFF673AB7;
     readDuration = (await _tryGetInt("read_duration"));
     starDuration = (await _tryGetInt("star_duration"));
     sorting = switch ((await database.getPreference("sorting"))) {
@@ -80,7 +84,9 @@ class Preferences extends ChangeNotifier {
     setBool("open_in_browser", openInBrowser);
     setBool("use_web_view", useWebView);
     setBool("show_all", showAll);
+    setBool("theme_mode", themeDynamic);
     database.setPreference("theme_index", themeIndex.toString());
+    database.setPreference("theme_color", themeColor.toString());
     database.setPreference("read_duration", readDuration.toString());
     database.setPreference("star_duration", starDuration.toString());
     database.setPreference(
@@ -148,6 +154,16 @@ class Preferences extends ChangeNotifier {
 
   void setThemeIndex(int index) {
     themeIndex = index;
+    notifyListeners();
+  }
+
+  void setThemeMode(bool useDynamic) {
+    themeDynamic = useDynamic;
+    notifyListeners();
+  }
+
+  void setThemeColor(Color color) {
+    themeColor = color.toARGB32();
     notifyListeners();
   }
 

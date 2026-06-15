@@ -110,7 +110,7 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
               onPressed: () {
                 showDialog(
                   barrierDismissible: true,
-                  barrierColor: Colors.transparent,
+                  // barrierColor: Colors.transparent,
                   context: context,
                   builder: (context) {
                     return FormattingDialog();

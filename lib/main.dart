@@ -1,3 +1,4 @@
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -24,9 +25,7 @@ void main() {
         runApp(
           MultiProvider(
             providers: [
-              ChangeNotifierProvider<DataProvider>(
-                create: (context) => data,
-              ),
+              ChangeNotifierProvider<DataProvider>(create: (context) => data),
               ChangeNotifierProvider<Preferences>(create: (context) => pref),
             ],
             child: MyApp(),
@@ -54,42 +53,102 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Fresh Reader',
-      themeMode: ThemeMode.dark,
-      darkTheme: ThemeData(
-        cupertinoOverrideTheme: CupertinoThemeData(
-          primaryColor: Colors.deepPurple,
-          brightness: Brightness.dark,
-          textTheme: CupertinoTextThemeData(primaryColor: Colors.grey.shade600),
-        ),
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
-          brightness: Brightness.dark,
-          surface:
-              [null, Colors.black][context.select<Preferences, int>(
-                (a) => a.themeIndex,
-              )], // for AMOLED black
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.transparent,
-          scrolledUnderElevation: 0,
-          systemOverlayStyle: SystemUiOverlayStyle(
-            statusBarColor: Colors.transparent,
-            systemStatusBarContrastEnforced: false,
-            statusBarIconBrightness: Brightness.light,
-            systemNavigationBarColor: Colors.transparent,
-            systemNavigationBarDividerColor: Colors.transparent,
-            systemNavigationBarContrastEnforced: false,
-            systemNavigationBarIconBrightness: Brightness.light,
+    Color? surfaceColor =
+        context.select<Preferences, bool>(
+          (a) => a.themeIndex == 1 || a.themeIndex == 3,
+        )
+        ? Colors.black
+        : null;
+    ThemeMode themeMode = [
+      ThemeMode.dark,
+      ThemeMode.dark,
+      ThemeMode.system,
+      ThemeMode.system,
+      ThemeMode.light,
+    ][context.select<Preferences, int>((a) => a.themeIndex)];
+    bool useDynamicColor = context.select<Preferences, bool>(
+      (a) => a.themeDynamic,
+    );
+    Color seedColor = Color(
+      context.select<Preferences, int>((a) => a.themeColor),
+    );
+    ColorScheme fallbackDarkScheme = ColorScheme.fromSeed(
+      seedColor: seedColor,
+      brightness: Brightness.dark,
+    );
+    ColorScheme fallbackLightScheme = ColorScheme.fromSeed(
+      seedColor: seedColor,
+    );
+    return DynamicColorBuilder(
+      builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+        return MaterialApp(
+          title: 'Fresh Reader',
+          themeMode: themeMode,
+          theme: ThemeData(
+            cupertinoOverrideTheme: CupertinoThemeData(
+              primaryColor: seedColor,
+              brightness: Brightness.light,
+              textTheme: CupertinoTextThemeData(
+                primaryColor: Colors.grey.shade600,
+              ),
+            ),
+            useMaterial3: true,
+            colorScheme:
+                (useDynamicColor
+                        ? lightDynamic?.harmonized() ?? fallbackLightScheme
+                        : fallbackLightScheme)
+                    .copyWith(surface: surfaceColor),
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Colors.transparent,
+              scrolledUnderElevation: 0,
+              systemOverlayStyle: SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                systemStatusBarContrastEnforced: false,
+                statusBarIconBrightness: Brightness.dark,
+                systemNavigationBarColor: Colors.transparent,
+                systemNavigationBarDividerColor: Colors.transparent,
+                systemNavigationBarContrastEnforced: false,
+                systemNavigationBarIconBrightness: Brightness.dark,
+              ),
+            ),
+            listTileTheme: ListTileThemeData(selectedTileColor: Colors.white70),
+            sliderTheme: SliderThemeData(year2023: false),
+            progressIndicatorTheme: ProgressIndicatorThemeData(year2023: false),
           ),
-        ),
-        listTileTheme: ListTileThemeData(selectedTileColor: Colors.white10),
-        sliderTheme: SliderThemeData(year2023: false),
-        progressIndicatorTheme: ProgressIndicatorThemeData(year2023: false),
-      ),
-      home: const HomeWidget(),
+          darkTheme: ThemeData(
+            cupertinoOverrideTheme: CupertinoThemeData(
+              primaryColor: seedColor,
+              brightness: Brightness.dark,
+              textTheme: CupertinoTextThemeData(
+                primaryColor: Colors.grey.shade600,
+              ),
+            ),
+            useMaterial3: true,
+            colorScheme:
+                (useDynamicColor
+                        ? darkDynamic?.harmonized() ?? fallbackDarkScheme
+                        : fallbackDarkScheme)
+                    .copyWith(surface: surfaceColor),
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Colors.transparent,
+              scrolledUnderElevation: 0,
+              systemOverlayStyle: SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                systemStatusBarContrastEnforced: false,
+                statusBarIconBrightness: Brightness.light,
+                systemNavigationBarColor: Colors.transparent,
+                systemNavigationBarDividerColor: Colors.transparent,
+                systemNavigationBarContrastEnforced: false,
+                systemNavigationBarIconBrightness: Brightness.light,
+              ),
+            ),
+            listTileTheme: ListTileThemeData(selectedTileColor: Colors.white10),
+            sliderTheme: SliderThemeData(year2023: false),
+            progressIndicatorTheme: ProgressIndicatorThemeData(year2023: false),
+          ),
+          home: const HomeWidget(),
+        );
+      },
     );
   }
 }
