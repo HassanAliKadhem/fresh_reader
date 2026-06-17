@@ -45,25 +45,23 @@ class _ArticleTileState extends State<ArticleTile> {
         }
         return false;
       },
-      background: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      background: DismissBackground(
+        color: Colors.yellow.withAlpha(124),
+        alignment: .start,
         child: Row(
-          mainAxisSize: MainAxisSize.max,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Row(
-              children: [
-                Icon(!isStarred ? Icons.star_border : Icons.star),
-                Text(isStarred ? "  UnFavorite" : "  Favorite"),
-              ],
-            ),
-            Row(
-              children: [
-                Text(isRead ? "Set Unread  " : "Set Read  "),
-                Icon(isRead ? Icons.circle_outlined : Icons.circle_rounded),
-              ],
-            ),
+            Icon(!isStarred ? Icons.star_border : Icons.star),
+            Text(isStarred ? "  UnFavorite" : "  Favorite"),
+          ],
+        ),
+      ),
+      secondaryBackground: DismissBackground(
+        color: Theme.of(context).colorScheme.primaryContainer,
+        alignment: .end,
+        child: Row(
+          children: [
+            Text(isRead ? "Set Unread  " : "Set Read  "),
+            Icon(isRead ? Icons.circle_outlined : Icons.circle_rounded),
           ],
         ),
       ),
@@ -98,6 +96,31 @@ class _ArticleTileState extends State<ArticleTile> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class DismissBackground extends StatelessWidget {
+  const DismissBackground({
+    super.key,
+    required this.color,
+    required this.alignment,
+    required this.child,
+  });
+  final Color color;
+  final MainAxisAlignment alignment;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      margin: EdgeInsets.all(8.0),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(16.0),
+      ),
+      child: Row(mainAxisAlignment: alignment, children: [child]),
     );
   }
 }

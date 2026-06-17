@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:m3e_collection/m3e_collection.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -395,32 +396,39 @@ class FormattingDialog extends StatelessWidget {
                     ),
                     proportionalWidth: true,
                   )
-                : SegmentedButton<String>(
-                    segments: context
-                        .read<Preferences>()
-                        .fonts
-                        .map(
-                          (font) => ButtonSegment(
-                            value: font,
-                            label: Text(
-                              font.replaceFirst(".", ""),
-                              style: TextStyle(fontFamily: font),
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    selected: {
-                      context.select<Preferences, String>((a) => a.font),
-                    },
-                    onSelectionChanged: (Set<String> newSelection) {
-                      if (newSelection.isNotEmpty) {
-                        context.read<Preferences>().setFontFamily(
-                          newSelection.first,
-                        );
-                      }
-                    },
-                    showSelectedIcon: false,
-                    multiSelectionEnabled: false,
+                : Center(
+                    child: SizedBox(
+                      height: 46.0,
+                      child: ButtonGroupM3E(
+                        selectedIndex: context.select<Preferences, int>(
+                          (a) => a.fonts.indexOf(a.font),
+                        ),
+                        overflow: .scroll,
+                        type: .connected,
+                        actions: context
+                            .read<Preferences>()
+                            .fonts
+                            .map(
+                              (font) => ButtonGroupM3EAction(
+                                label: Text(
+                                  font.replaceFirst(".", ""),
+                                  style: TextStyle(fontFamily: font),
+                                ),
+                                onPressed: () => context
+                                    .read<Preferences>()
+                                    .setFontFamily(font),
+                                style:
+                                    context.select<Preferences, String>(
+                                          (a) => a.font,
+                                        ) ==
+                                        font
+                                    ? .filled
+                                    : .tonal,
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
                   ),
             const SizedBox(height: 8.0),
             Column(

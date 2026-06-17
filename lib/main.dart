@@ -2,6 +2,7 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:m3e_collection/m3e_collection.dart';
 import 'package:provider/provider.dart';
 
 import 'api/data.dart';
@@ -84,67 +85,77 @@ class _MyAppState extends State<MyApp> {
         return MaterialApp(
           title: 'Fresh Reader',
           themeMode: themeMode,
-          theme: ThemeData(
-            cupertinoOverrideTheme: CupertinoThemeData(
-              primaryColor: seedColor,
-              brightness: Brightness.light,
-              textTheme: CupertinoTextThemeData(
-                primaryColor: Colors.grey.shade600,
+          theme: withM3ETheme(
+            ThemeData(
+              cupertinoOverrideTheme: CupertinoThemeData(
+                primaryColor: seedColor,
+                brightness: Brightness.light,
+                textTheme: CupertinoTextThemeData(
+                  primaryColor: Colors.grey.shade600,
+                ),
+              ),
+              useMaterial3: true,
+              colorScheme: (useDynamicColor
+                  ? lightDynamic?.harmonized() ?? fallbackLightScheme
+                  : fallbackLightScheme),
+              appBarTheme: const AppBarTheme(
+                backgroundColor: Colors.transparent,
+                scrolledUnderElevation: 0,
+                systemOverlayStyle: SystemUiOverlayStyle(
+                  statusBarColor: Colors.transparent,
+                  systemStatusBarContrastEnforced: false,
+                  statusBarIconBrightness: Brightness.dark,
+                  systemNavigationBarColor: Colors.transparent,
+                  systemNavigationBarDividerColor: Colors.transparent,
+                  systemNavigationBarContrastEnforced: false,
+                  systemNavigationBarIconBrightness: Brightness.dark,
+                ),
+              ),
+              listTileTheme: ListTileThemeData(
+                selectedTileColor: Colors.white70,
+              ),
+              sliderTheme: SliderThemeData(year2023: false),
+              progressIndicatorTheme: ProgressIndicatorThemeData(
+                year2023: false,
               ),
             ),
-            useMaterial3: true,
-            colorScheme:
-                (useDynamicColor
-                        ? lightDynamic?.harmonized() ?? fallbackLightScheme
-                        : fallbackLightScheme)
-                    .copyWith(surface: surfaceColor),
-            appBarTheme: const AppBarTheme(
-              backgroundColor: Colors.transparent,
-              scrolledUnderElevation: 0,
-              systemOverlayStyle: SystemUiOverlayStyle(
-                statusBarColor: Colors.transparent,
-                systemStatusBarContrastEnforced: false,
-                statusBarIconBrightness: Brightness.dark,
-                systemNavigationBarColor: Colors.transparent,
-                systemNavigationBarDividerColor: Colors.transparent,
-                systemNavigationBarContrastEnforced: false,
-                systemNavigationBarIconBrightness: Brightness.dark,
-              ),
-            ),
-            listTileTheme: ListTileThemeData(selectedTileColor: Colors.white70),
-            sliderTheme: SliderThemeData(year2023: false),
-            progressIndicatorTheme: ProgressIndicatorThemeData(year2023: false),
           ),
-          darkTheme: ThemeData(
-            cupertinoOverrideTheme: CupertinoThemeData(
-              primaryColor: seedColor,
-              brightness: Brightness.dark,
-              textTheme: CupertinoTextThemeData(
-                primaryColor: Colors.grey.shade600,
+          darkTheme: withM3ETheme(
+            ThemeData(
+              cupertinoOverrideTheme: CupertinoThemeData(
+                primaryColor: seedColor,
+                brightness: Brightness.dark,
+                textTheme: CupertinoTextThemeData(
+                  primaryColor: Colors.grey.shade600,
+                ),
+              ),
+              useMaterial3: true,
+              colorScheme:
+                  (useDynamicColor
+                          ? darkDynamic?.harmonized() ?? fallbackDarkScheme
+                          : fallbackDarkScheme)
+                      .copyWith(surface: surfaceColor),
+              appBarTheme: const AppBarTheme(
+                backgroundColor: Colors.transparent,
+                scrolledUnderElevation: 0,
+                systemOverlayStyle: SystemUiOverlayStyle(
+                  statusBarColor: Colors.transparent,
+                  systemStatusBarContrastEnforced: false,
+                  statusBarIconBrightness: Brightness.light,
+                  systemNavigationBarColor: Colors.transparent,
+                  systemNavigationBarDividerColor: Colors.transparent,
+                  systemNavigationBarContrastEnforced: false,
+                  systemNavigationBarIconBrightness: Brightness.light,
+                ),
+              ),
+              listTileTheme: ListTileThemeData(
+                selectedTileColor: Colors.white10,
+              ),
+              sliderTheme: SliderThemeData(year2023: false),
+              progressIndicatorTheme: ProgressIndicatorThemeData(
+                year2023: false,
               ),
             ),
-            useMaterial3: true,
-            colorScheme:
-                (useDynamicColor
-                        ? darkDynamic?.harmonized() ?? fallbackDarkScheme
-                        : fallbackDarkScheme)
-                    .copyWith(surface: surfaceColor),
-            appBarTheme: const AppBarTheme(
-              backgroundColor: Colors.transparent,
-              scrolledUnderElevation: 0,
-              systemOverlayStyle: SystemUiOverlayStyle(
-                statusBarColor: Colors.transparent,
-                systemStatusBarContrastEnforced: false,
-                statusBarIconBrightness: Brightness.light,
-                systemNavigationBarColor: Colors.transparent,
-                systemNavigationBarDividerColor: Colors.transparent,
-                systemNavigationBarContrastEnforced: false,
-                systemNavigationBarIconBrightness: Brightness.light,
-              ),
-            ),
-            listTileTheme: ListTileThemeData(selectedTileColor: Colors.white10),
-            sliderTheme: SliderThemeData(year2023: false),
-            progressIndicatorTheme: ProgressIndicatorThemeData(year2023: false),
           ),
           home: const HomeWidget(),
         );

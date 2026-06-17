@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:m3e_collection/m3e_collection.dart';
 import 'package:provider/provider.dart';
 
 import '../api/data.dart';
@@ -90,7 +91,9 @@ class _AccountCardState extends State<AccountCard> {
                         },
                         child: Text(
                           "Delete Account",
-                          style: TextStyle(color: Colors.red[300]),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
                         ),
                       ),
                       TextButton(
@@ -99,7 +102,9 @@ class _AccountCardState extends State<AccountCard> {
                         },
                         child: Text(
                           "Delete only data",
-                          style: TextStyle(color: Colors.red[300]),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
                         ),
                       ),
                       TextButton(
@@ -301,7 +306,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
           },
           child: Text("Cancel"),
         ),
-        FilledButton(
+        ButtonM3E(
           onPressed: () async {
             int index = await _addAccount(newAccount);
             if (context.mounted) {
@@ -310,7 +315,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
               debugPrint("Context not mounted");
             }
           },
-          child: Text(widget.oldAccount != null ? "Update" : "Add"),
+          label: Text(widget.oldAccount != null ? "Update" : "Add"),
         ),
       ],
     );

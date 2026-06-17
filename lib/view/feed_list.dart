@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:m3e_collection/m3e_collection.dart';
 import 'package:provider/provider.dart';
 
 import '../api/data.dart';
@@ -73,7 +74,7 @@ class _FeedListState extends State<FeedList> {
             child: SizedBox(
               height: 2.0,
               child: (loadingProgress ?? 0.0) < 1.0
-                  ? LinearProgressIndicator(value: loadingProgress)
+                  ? LinearProgressIndicatorM3E(value: loadingProgress, size: .s)
                   : null,
             ),
           ),
@@ -81,7 +82,7 @@ class _FeedListState extends State<FeedList> {
       ),
       extendBody: true,
       extendBodyBehindAppBar: true,
-      body: RefreshIndicator.adaptive(
+      body: ExpressiveRefreshIndicator(
         displacement: kToolbarHeight * 2.5,
         onRefresh: () async {
           await for (double? progress
