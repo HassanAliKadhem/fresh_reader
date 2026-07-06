@@ -212,7 +212,7 @@ class _ArticleWidgetState extends State<ArticleWidget> {
                         ],
                       ),
                     ),
-                    SizedBox(height: 4.0),
+                    // const SizedBox(height: 4.0),
                     Text(
                       asyncSnapshot.data!.first.title,
                       style: titleStyle,
