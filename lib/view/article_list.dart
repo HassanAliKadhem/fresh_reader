@@ -178,27 +178,11 @@ class _ArticleListState extends State<ArticleList> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         separator(date),
-                        AnchorItemWrapper(
-                          index: index,
-                          key: ValueKey("list-$index"),
-                          controller: _scrollController,
-                          child: ArticleTile(
-                            articleID: searchResults[index],
-                            index: index,
-                          ),
-                        ),
+                        article(index, searchResults[index]),
                       ],
                     );
                   }
-                  return AnchorItemWrapper(
-                    index: index,
-                    key: ValueKey("list-$index"),
-                    controller: _scrollController,
-                    child: ArticleTile(
-                      articleID: searchResults[index],
-                      index: index,
-                    ),
-                  );
+                  return article(index, searchResults[index]);
                 },
                 separatorBuilder: (context, index) {
                   int? previous = context
@@ -229,6 +213,15 @@ class _ArticleListState extends State<ArticleList> {
                 },
               ),
             ),
+    );
+  }
+
+  Widget article(int index, String articleID) {
+    return AnchorItemWrapper(
+      index: index,
+      key: ValueKey("list-$index"),
+      controller: _scrollController,
+      child: ArticleTile(articleID: articleID, index: index),
     );
   }
 

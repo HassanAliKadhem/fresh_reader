@@ -177,6 +177,12 @@ final ValueNotifier<bool> isExpanded = ValueNotifier<bool>(false);
 class _HomeWidgetState extends State<HomeWidget> {
   @override
   Widget build(BuildContext context) {
+    String? filteredTitle = context.select<DataProvider, String?>(
+      (a) => a.filteredTitle,
+    );
+    bool isIndexSelected = context.select<DataProvider, bool>(
+      (a) => a.selectedIndex != null,
+    );
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -227,17 +233,17 @@ class _HomeWidgetState extends State<HomeWidget> {
                             },
                           ),
                           // VerticalDivider(width: 1.0),
-                          const Expanded(flex: 2, child: ArticleList()),
+                          Expanded(
+                            flex: 2,
+                            child: ArticleList(key: ValueKey(filteredTitle)),
+                          ),
                           // VerticalDivider(width: 1.0),
                           if (screenSizeOf(context) == ScreenSize.big)
                             Expanded(
                               flex: 3,
-                              child:
-                                  context.select<DataProvider, bool>(
-                                    (a) => a.selectedIndex != null,
-                                  )
+                              child: isIndexSelected
                                   ? articleView()
-                                  : Scaffold(
+                                  : const Scaffold(
                                       body: Center(
                                         child: Text("Please select an article"),
                                       ),
@@ -249,8 +255,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   ),
           ),
           if (screenSizeOf(context) == ScreenSize.medium &&
-              context.select<DataProvider, String?>((a) => a.filteredTitle) !=
-                  null)
+              filteredTitle != null)
             MaterialPage(
               child: Row(
                 children: [
@@ -258,12 +263,9 @@ class _HomeWidgetState extends State<HomeWidget> {
                   // VerticalDivider(width: 1),
                   Expanded(
                     flex: 3,
-                    child:
-                        context.select<DataProvider, bool>(
-                          (a) => a.selectedIndex != null,
-                        )
+                    child: isIndexSelected
                         ? articleView()
-                        : Scaffold(
+                        : const Scaffold(
                             body: Center(
                               child: Text("Please select an article"),
                             ),
@@ -273,13 +275,9 @@ class _HomeWidgetState extends State<HomeWidget> {
               ),
             ),
           if (screenSizeOf(context) == ScreenSize.small &&
-              context.select<DataProvider, String?>((a) => a.filteredTitle) !=
-                  null)
+              filteredTitle != null)
             const MaterialPage(name: "/list", child: ArticleList()),
-          if (screenSizeOf(context) == ScreenSize.small &&
-              context.select<DataProvider, bool>(
-                (a) => a.selectedIndex != null,
-              ))
+          if (screenSizeOf(context) == ScreenSize.small && isIndexSelected)
             MaterialPage(name: "/article", child: articleView()),
         ],
       ),
