@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fresh_reader/api/data_types.dart';
+import 'package:fresh_reader/widget/unread_count.dart';
 import 'package:provider/provider.dart';
 
 import 'package:fresh_reader/api/data.dart';
@@ -76,13 +77,12 @@ Future<MultiProvider> prepare() async {
   print("loaded sample data");
 
   var pref = Preferences(db);
+  var provider = DataProvider(db);
+  provider.changeAccount(await db.getAccount(1));
   await pref.load();
-  print("loaded preferences");
   return MultiProvider(
     providers: [
-      ChangeNotifierProvider<DataProvider>(
-        create: (context) => DataProvider(db),
-      ),
+      ChangeNotifierProvider<DataProvider>(create: (context) => provider),
       ChangeNotifierProvider<Preferences>(create: (context) => pref),
     ],
     child: MyApp(),
@@ -90,20 +90,29 @@ Future<MultiProvider> prepare() async {
 }
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  testWidgets('Test open database', (WidgetTester tester) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(await prepare());
-    // Verify that our counter starts at 0.
-    print("Hello");
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.widgetWithText(ListTile, "All Articles"),
+        matching: find.widgetWithText(UnreadCount, "1"),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.widgetWithText(ListTile, "Today"),
+        matching: find.widgetWithText(UnreadCount, "0"),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.widgetWithText(ListTile, "Starred"),
+        matching: find.widgetWithText(UnreadCount, "0"),
+      ),
+      findsOneWidget,
+    );
   });
 }
