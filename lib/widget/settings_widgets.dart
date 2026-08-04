@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -177,13 +179,14 @@ class ThemeSwitcherCard extends StatelessWidget {
         children: [
           const ListTile(title: Text("Theme")),
           const ListTile(title: Text("Colors"), dense: true),
-          SwitchListTile.adaptive(
-            title: const Text("Use dynamic colors"),
-            value: context.select<Preferences, bool>((a) => a.themeDynamic),
-            onChanged: (value) {
-              context.read<Preferences>().setThemeMode(value);
-            },
-          ),
+          if (!Platform.isIOS)
+            SwitchListTile.adaptive(
+              title: const Text("Use dynamic colors"),
+              value: context.select<Preferences, bool>((a) => a.themeDynamic),
+              onChanged: (value) {
+                context.read<Preferences>().setThemeMode(value);
+              },
+            ),
           ListTile(
             title: const Text("Custom Color"),
             enabled: !context.select<Preferences, bool>((a) => a.themeDynamic),

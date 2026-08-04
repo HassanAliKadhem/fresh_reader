@@ -9,7 +9,7 @@ import 'database.dart';
 class DataProvider extends ChangeNotifier {
   ApiBase? api;
   int? accountID;
-  StorageBase db;
+  StorageSqlite db;
   bool showAll = false;
 
   Map<String, Subscription> subscriptions = <String, Subscription>{};

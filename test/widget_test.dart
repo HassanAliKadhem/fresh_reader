@@ -13,7 +13,7 @@ import 'package:fresh_reader/api/preferences.dart';
 import 'package:fresh_reader/main.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-Future<void> loadSampleData(StorageBase db) async {
+Future<void> loadSampleData(StorageSqlite db) async {
   await db.addAccount(
     Account(
       1,

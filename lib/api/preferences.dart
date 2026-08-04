@@ -7,7 +7,7 @@ import 'data_types.dart';
 import 'database.dart';
 
 class Preferences extends ChangeNotifier {
-  final StorageBase database;
+  final StorageSqlite database;
 
   double fontSize = 14.0;
   double wordSpacing = 0.0;
