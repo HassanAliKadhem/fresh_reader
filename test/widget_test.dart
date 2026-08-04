@@ -1,9 +1,9 @@
 // ignore_for_file: avoid_print
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fresh_reader/api/data_types.dart';
+import 'package:fresh_reader/widget/article_tile.dart';
 import 'package:fresh_reader/widget/unread_count.dart';
 import 'package:provider/provider.dart';
 
@@ -209,6 +209,29 @@ void main() async {
     await tester.enterText(find.byKey(ValueKey("searchBar")), 'Hello world');
     await tester.pump();
     expect(find.byKey(ValueKey("Dismissible_articleID_1")), findsOneWidget);
-    print("search successful");
+    print("search test successful");
+  });
+
+  testWidgets("Test switch feed", (WidgetTester tester) async {
+    await tester.pumpWidget(await prepare(db));
+    await tester.tap(find.text("All Articles"));
+    await tester.pump();
+    expect(find.byType(ArticleTile), findsOneWidget);
+    await tester.tap(find.byTooltip("Back"));
+    await tester.pump();
+    await tester.tap(find.text("Starred"));
+    await tester.pump();
+    expect(find.byType(ArticleTile), findsNothing);
+    await tester.tap(find.byTooltip("Back"));
+    await tester.pump();
+    await tester.tap(find.text("test feed"));
+    await tester.pump();
+    expect(find.byType(ArticleTile), findsOneWidget);
+    await tester.tap(find.byTooltip("Back"));
+    await tester.pump();
+    await tester.tap(find.text("Today"));
+    await tester.pump();
+    expect(find.byType(ArticleTile), findsNothing);
+    print("switch feed test successful");
   });
 }
