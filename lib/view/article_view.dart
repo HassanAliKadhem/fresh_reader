@@ -461,11 +461,7 @@ class _ArticleTextWidgetState extends State<ArticleTextWidget> {
         for (var child in element.children) {
           if (child.localName == "img") {
             imgUrl = child.attributes["src"];
-            imgWidget = ArticleImage(
-              imageUrl: imgUrl ?? "",
-              width: double.tryParse(child.attributes["width"] ?? ""),
-              height: double.tryParse(child.attributes["height"] ?? ""),
-            );
+            imgWidget = ArticleImage(imageUrl: imgUrl ?? "");
             break;
           }
         }
@@ -485,17 +481,15 @@ class _ArticleTextWidgetState extends State<ArticleTextWidget> {
     } else if (element.localName == "img" &&
         element.attributes["src"] != null) {
       String src = element.attributes["src"]!;
-      double? width = double.tryParse(element.attributes["width"] ?? "");
-      double? height = double.tryParse(element.attributes["height"] ?? "");
       return InlineCustomWidget(
         child: GestureDetector(
           onTap: () {
-            showImage(context, src, width, height);
+            showImage(context, src, null, null);
           },
           onLongPress: () {
             showLinkMenu(context, src, src);
           },
-          child: ArticleImage(imageUrl: src, width: width, height: height),
+          child: ArticleImage(imageUrl: src),
         ),
       );
     }
