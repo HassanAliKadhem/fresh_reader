@@ -21,9 +21,9 @@ class _ArticleTileState extends State<ArticleTile> {
   Widget build(BuildContext context) {
     var (id, subID, isRead, isStarred) = context
         .select<DataProvider, (int, String, bool, bool)>(
-          (a) => a.articlesMetaData[widget.articleID] ?? (0, "", false, false),
+          (a) => a.articlesMetaData[widget.articleID] ?? (-1, "", false, false),
         );
-    if (id == 0) {
+    if (id == -1) {
       return SizedBox(height: 1.0);
     }
     return Dismissible(

@@ -55,7 +55,7 @@ Future<void> loadSampleData(StorageBase db) async {
   ]);
 }
 
-Future<MultiProvider> prepare() async {
+Future<StorageSqlite> getTestDatabase() async {
   sqfliteFfiInit();
   databaseFactoryOrNull = databaseFactoryFfiNoIsolate;
   var database = await databaseFactoryOrNull!.openDatabase(
@@ -75,10 +75,14 @@ Future<MultiProvider> prepare() async {
   var db = StorageSqlite(database);
   await loadSampleData(db);
   print("loaded sample data");
+  return db;
+}
 
+Future<MultiProvider> prepare(StorageSqlite db) async {
   var pref = Preferences(db);
+  await pref.load();
   var provider = DataProvider(db);
-  provider.changeAccount(await db.getAccount(1));
+  await provider.changeAccount(await db.getAccount(1));
   await pref.load();
   return MultiProvider(
     providers: [
@@ -89,10 +93,11 @@ Future<MultiProvider> prepare() async {
   );
 }
 
-void main() {
+void main() async {
+  var db = await getTestDatabase();
   testWidgets('Test open database', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(await prepare());
+    await tester.pumpWidget(await prepare(db));
     expect(
       find.descendant(
         of: find.widgetWithText(ListTile, "All Articles"),
@@ -114,5 +119,76 @@ void main() {
       ),
       findsOneWidget,
     );
+    print("opened database successfully");
+  });
+
+  testWidgets("Test Mark as read and unread", (WidgetTester tester) async {
+    await tester.pumpWidget(await prepare(db));
+    expect(
+      find.descendant(
+        of: find.widgetWithText(ListTile, "All Articles"),
+        matching: find.widgetWithText(UnreadCount, "1"),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text("All Articles"));
+    await tester.pump();
+    expect(find.byKey(ValueKey("Dismissible_articleID_1")), findsOneWidget);
+    await tester.tap(find.byKey(ValueKey("Dismissible_articleID_1")));
+    await tester.pump();
+    expect(
+      find.descendant(
+        of: find.widgetWithText(ListTile, "All Articles"),
+        matching: find.widgetWithText(UnreadCount, "0"),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byTooltip("Read"));
+    await tester.pump();
+    expect(
+      find.descendant(
+        of: find.widgetWithText(ListTile, "All Articles"),
+        matching: find.widgetWithText(UnreadCount, "1"),
+      ),
+      findsOneWidget,
+    );
+    print("marked as read successfully");
+  });
+
+  testWidgets("Test Mark as starred", (WidgetTester tester) async {
+    await tester.pumpWidget(await prepare(db));
+    await tester.pump();
+    expect(
+      find.descendant(
+        of: find.widgetWithText(ListTile, "Starred"),
+        matching: find.widgetWithText(UnreadCount, "0"),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text("All Articles"));
+    await tester.pump();
+    expect(find.byKey(ValueKey("Dismissible_articleID_1")), findsOneWidget);
+    await tester.tap(find.byKey(ValueKey("Dismissible_articleID_1")));
+    await tester.pump();
+    await tester.tap(find.byTooltip("Star"));
+    await tester.tap(find.byTooltip("Read"));
+    await tester.pump();
+    expect(
+      find.descendant(
+        of: find.widgetWithText(ListTile, "Starred"),
+        matching: find.widgetWithText(UnreadCount, "1"),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byTooltip("Star"));
+    await tester.pump();
+    expect(
+      find.descendant(
+        of: find.widgetWithText(ListTile, "Starred"),
+        matching: find.widgetWithText(UnreadCount, "0"),
+      ),
+      findsOneWidget,
+    );
+    print("marked as starred successfully");
   });
 }
