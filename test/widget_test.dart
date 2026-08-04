@@ -9,6 +9,7 @@ import 'package:fresh_reader/api/data.dart';
 import 'package:fresh_reader/api/database.dart';
 import 'package:fresh_reader/api/preferences.dart';
 import 'package:fresh_reader/main.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 Future<void> loadSampleData(StorageBase db) async {
   await db.addAccount(
@@ -22,7 +23,6 @@ Future<void> loadSampleData(StorageBase db) async {
       0,
     ),
   );
-
   await db.insertCategories([
     Category(catID: "catID/Gaming", accountID: 1, name: "Gaming"),
   ], 1);
@@ -55,13 +55,29 @@ Future<void> loadSampleData(StorageBase db) async {
 }
 
 Future<MultiProvider> prepare() async {
-  var db = StorageMemory();
+  sqfliteFfiInit();
+  databaseFactoryOrNull = databaseFactoryFfiNoIsolate;
+  var database = await databaseFactoryOrNull!.openDatabase(
+    inMemoryDatabasePath,
+  );
+  for (var cmd in [
+    subTable,
+    catTable,
+    artTable,
+    delTable,
+    accTable,
+    prefTable,
+    lastSyncTable,
+  ]) {
+    await database.execute(cmd);
+  }
+  var db = StorageSqlite(database);
   await loadSampleData(db);
   print("loaded sample data");
 
   var pref = Preferences(db);
   await pref.load();
-  print("Load preferences");
+  print("loaded preferences");
   return MultiProvider(
     providers: [
       ChangeNotifierProvider<DataProvider>(
