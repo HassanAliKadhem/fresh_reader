@@ -1,5 +1,6 @@
 // ignore_for_file: avoid_print
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fresh_reader/api/data_types.dart';
@@ -157,7 +158,6 @@ void main() async {
 
   testWidgets("Test Mark as starred", (WidgetTester tester) async {
     await tester.pumpWidget(await prepare(db));
-    await tester.pump();
     expect(
       find.descendant(
         of: find.widgetWithText(ListTile, "Starred"),
@@ -190,5 +190,25 @@ void main() async {
       findsOneWidget,
     );
     print("marked as starred successfully");
+  });
+
+  testWidgets("Test Search", (WidgetTester tester) async {
+    await tester.pumpWidget(await prepare(db));
+    await tester.tap(find.text("All Articles"));
+    await tester.pump();
+    expect(find.byKey(ValueKey("Dismissible_articleID_1")), findsOneWidget);
+    await tester.enterText(find.byKey(ValueKey("searchBar")), 'nothing');
+    await tester.pump();
+    expect(find.byKey(ValueKey("Dismissible_articleID_1")), findsNothing);
+    await tester.enterText(find.byKey(ValueKey("searchBar")), '');
+    await tester.pump();
+    expect(find.byKey(ValueKey("Dismissible_articleID_1")), findsOneWidget);
+    await tester.enterText(find.byKey(ValueKey("searchBar")), 'random');
+    await tester.pump();
+    expect(find.byKey(ValueKey("Dismissible_articleID_1")), findsNothing);
+    await tester.enterText(find.byKey(ValueKey("searchBar")), 'Hello world');
+    await tester.pump();
+    expect(find.byKey(ValueKey("Dismissible_articleID_1")), findsOneWidget);
+    print("search successful");
   });
 }

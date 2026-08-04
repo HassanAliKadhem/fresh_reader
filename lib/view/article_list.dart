@@ -96,6 +96,7 @@ class _ArticleListState extends State<ArticleList> {
         ],
         title: (Platform.isIOS || Platform.isMacOS)
             ? CupertinoSearchTextField(
+                key: ValueKey("searchBar"),
                 controller: _searchController,
                 onChanged: (value) {
                   search(value, selectedSorting);
@@ -109,6 +110,7 @@ class _ArticleListState extends State<ArticleList> {
                     "Search ${context.select<DataProvider, String?>((value) => value.filteredTitle)?.split("/").last ?? ""}",
               )
             : SearchBar(
+                key: ValueKey("searchBar"),
                 hintText:
                     "Search ${context.select<DataProvider, String?>((value) => value.filteredTitle)?.split("/").last ?? ""}",
                 controller: _searchController,
