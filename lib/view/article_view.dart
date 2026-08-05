@@ -250,8 +250,6 @@ class ArticleTextWidget extends StatefulWidget {
 }
 
 class _ArticleTextWidgetState extends State<ArticleTextWidget> {
-  final ScrollController scrollController = ScrollController();
-
   void showLinkMenu(BuildContext context, String link, String? imgUrl) {
     String? imgPreview =
         imgUrl ??
@@ -530,37 +528,66 @@ class _ArticleTextWidgetState extends State<ArticleTextWidget> {
             : Colors.grey.shade800,
       ),
       child: SelectionArea(
-        child: Scrollbar(
-          controller: scrollController,
-          child: ListView(
-            controller: scrollController,
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.only(
-              left: 16.0,
-              right: 16.0,
-              top: (MediaQuery.maybePaddingOf(context)?.top ?? 0.0) + 16.0,
-              bottom:
-                  (MediaQuery.maybePaddingOf(context)?.bottom ?? 0.0) + 16.0,
-            ),
-            children: [
-              ...titleWidgets(context, urlStyle),
-              HtmlWidget(
-                content,
-                enableCaching: true,
-                key: ValueKey("html_${widget.url}"),
-                renderMode: RenderMode.column,
-                onErrorBuilder: (context, element, error) {
-                  return Text(error.toString());
-                },
-                customStylesBuilder: (element) {
-                  return {"width": "100%"};
-                },
-                customWidgetBuilder: (element) {
-                  return customWidgetBuilder(context, element, urlStyle);
-                },
-              ),
-            ],
-          ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverPadding(
+                  padding: EdgeInsetsGeometry.only(
+                    top:
+                        (MediaQuery.maybePaddingOf(context)?.top ?? 0.0) + 16.0,
+                    left: 16.0,
+                    right: 16.0,
+                  ),
+                  sliver: SliverToBoxAdapter(
+                    child: Column(
+                      mainAxisAlignment: .start,
+                      crossAxisAlignment: .start,
+                      mainAxisSize: .min,
+                      children: titleWidgets(context, urlStyle),
+                    ),
+                  ),
+                ),
+                SliverPadding(
+                  padding: EdgeInsetsGeometry.all(16.0),
+                  sliver: HtmlWidget(
+                    content,
+                    enableCaching: true,
+                    key: ValueKey("html_${widget.url}"),
+                    renderMode: RenderMode.sliverList,
+                    onErrorBuilder: (context, element, error) {
+                      return Text(error.toString());
+                    },
+                    customStylesBuilder: (element) {
+                      if (element.localName == "iframe" &&
+                          (element.attributes["src"]?.contains("www.youtube") ??
+                              false)) {
+                        // fix youtube growing in height infinitely
+                        return {
+                          "width" : "100%",
+                          "max-width": "100%",
+                          "max-height":
+                              "${(constraints.maxWidth - 32) * (9 / 16)}px",
+                        };
+                      }
+                      return {"width": "100%"};
+                    },
+                    customWidgetBuilder: (element) {
+                      return customWidgetBuilder(context, element, urlStyle);
+                    },
+                  ),
+                ),
+                SliverPadding(
+                  padding: EdgeInsetsGeometry.only(
+                    top:
+                        (MediaQuery.maybePaddingOf(context)?.bottom ?? 0.0) +
+                        16.0,
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
