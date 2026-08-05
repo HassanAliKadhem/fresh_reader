@@ -346,3 +346,27 @@ String? getFirstImageFromEnclosure(dynamic enclosure) {
     return null;
   }
 }
+
+// fix the table issue where text and an image is squished
+String fixRedditTable(String oldContent) {
+  var html = HtmlParser(oldContent).parse();
+  var tds = html.getElementsByTagName("td");
+  var tables = html.getElementsByTagName("table");
+  if (tds.length == 2 && tables.isNotEmpty) {
+    tables.first.parent!.replaceWith(tables.first);
+    tables.first.parent!.insertBefore(tds.first.remove(), tables.first);
+  }
+  return html.outerHtml;
+}
+
+// fix the double text in some reddit feeds
+String fixRedditDoubleText(String oldContent) {
+  var html = HtmlParser(oldContent).parse();
+  var divs = html
+      .getElementsByTagName("div")
+      .where((e) => e.attributes["data-sanitized-class"] == "md");
+  if (divs.length == 2) {
+    divs.last.remove();
+  }
+  return html.outerHtml;
+}

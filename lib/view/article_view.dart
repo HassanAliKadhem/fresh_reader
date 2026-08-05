@@ -502,6 +502,23 @@ class _ArticleTextWidgetState extends State<ArticleTextWidget> {
       color: Theme.of(context).colorScheme.primary,
       decoration: TextDecoration.underline,
     );
+    String content = widget.content;
+    if (widget.content.contains("[comments]</a>") &&
+        (widget.content.contains('<a href="https://www.reddit.com') ||
+            widget.content.contains('<a href="https://www.old.reddit.com'))) {
+      // check for reddit post
+      try {
+        if (widget.content.contains("<table")) {
+          // check if it's a reddit feed with a table
+          content = fixRedditTable(content);
+        } else {
+          // fix the double text issue
+          content = fixRedditDoubleText(content);
+        }
+      } catch (e) {
+        debugPrint("Error fixing reddit table: $e");
+      }
+    }
     return DefaultTextStyle(
       style: TextStyle(
         fontFamily: context.select<Preferences, String>((a) => a.font),
@@ -528,7 +545,7 @@ class _ArticleTextWidgetState extends State<ArticleTextWidget> {
             children: [
               ...titleWidgets(context, urlStyle),
               HtmlWidget(
-                widget.content,
+                content,
                 enableCaching: true,
                 key: ValueKey("html_${widget.url}"),
                 renderMode: RenderMode.column,
