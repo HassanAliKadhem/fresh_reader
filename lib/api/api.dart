@@ -46,10 +46,12 @@ abstract class ApiBase {
 class ApiFreshRss extends ApiBase {
   String auth = "";
   String modifyAuth = "";
+  late Future<String> authFuture;
 
   ApiFreshRss(super.account) {
-    _getAuth().then((a) {
+    authFuture = _getAuth().then((a) {
       auth = a;
+      return a;
     });
     // _getModifyAuth(auth).then((a) {
     //   modifyAuth = a;
@@ -99,18 +101,15 @@ class ApiFreshRss extends ApiBase {
           },
         )
         .then((value) {
+          if (value.statusCode != 200) {
+            throw value.body;
+          }
           jsonDecode(value.body)["subscriptions"].forEach((element) {
             Subscription sub = Subscription.fromJson(element, account.id);
             subs.add(sub);
             count++;
           });
           debugPrint("Fetched subscriptions: $count");
-        })
-        .catchError((onError) {
-          if (foundation.kDebugMode) {
-            throw onError;
-          }
-          debugPrint(onError.toString());
         });
     return subs;
   }
@@ -129,6 +128,9 @@ class ApiFreshRss extends ApiBase {
           },
         )
         .then((value) {
+          if (value.statusCode != 200) {
+            throw value.body;
+          }
           List<dynamic> tags = jsonDecode(value.body)["tags"];
           for (var element in tags) {
             Category cat = Category.fromJson(element, account.id);
@@ -136,12 +138,6 @@ class ApiFreshRss extends ApiBase {
             count++;
           }
           debugPrint("Fetched categories: $count");
-        })
-        .catchError((onError) {
-          if (foundation.kDebugMode) {
-            throw onError;
-          }
-          debugPrint(onError.toString());
         });
     return cats;
   }
@@ -156,33 +152,26 @@ class ApiFreshRss extends ApiBase {
         "${account.serverUrl}/reader/api/0/stream/contents/reading-list?xt=user/-/state/com.google/read&n=1000&ot=${account.updatedArticleTime}";
     String con = "";
     do {
-      try {
-        var res = await http.get(
-          Uri.parse("$url${con == "" ? "" : "&c=$con"}"),
-          headers: {
-            'Content-Type': 'application/json; charset=utf-8',
-            'Accept': 'application/json',
-            'Authorization': 'GoogleLogin auth=$auth',
-          },
-        );
-        var body = jsonDecode(String.fromCharCodes(res.bodyBytes));
-        List<Article> articles = [];
-        body["items"].forEach((json) {
-          Article article = Article.fromCloudJson(json, account.id);
-          articles.add(article);
-          count++;
-        });
-        con = body["continuation"]?.toString() ?? "";
-        yield (null, articles);
-      } catch (e) {
-        updateTime = false;
-        debugPrint(e.toString());
-        if (foundation.kDebugMode) {
-          rethrow;
-        } else {
-          return;
-        }
+      var res = await http.get(
+        Uri.parse("$url${con == "" ? "" : "&c=$con"}"),
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Accept': 'application/json',
+          'Authorization': 'GoogleLogin auth=$auth',
+        },
+      );
+      if (res.statusCode != 200) {
+        throw res.body;
       }
+      var body = jsonDecode(String.fromCharCodes(res.bodyBytes));
+      List<Article> articles = [];
+      body["items"].forEach((json) {
+        Article article = Article.fromCloudJson(json, account.id);
+        articles.add(article);
+        count++;
+      });
+      con = body["continuation"]?.toString() ?? "";
+      yield (null, articles);
     } while (con != "");
     if (updateTime) {
       account.updatedArticleTime =
@@ -223,6 +212,9 @@ class ApiFreshRss extends ApiBase {
         con = res["continuation"]?.toString() ?? "";
       } else {
         debugPrint(response.body);
+        if (response.statusCode != 200) {
+          throw response.body;
+        }
       }
     } while (con != "");
     debugPrint("Fetched readIds: $count");
@@ -262,6 +254,9 @@ class ApiFreshRss extends ApiBase {
       } else {
         debugPrint(response.body);
         updateTime = false;
+        if (response.statusCode != 200) {
+          throw response.body;
+        }
       }
     } while (con != "");
     debugPrint("Fetched starredIDs: $count");
@@ -301,6 +296,9 @@ class ApiFreshRss extends ApiBase {
         con = res["continuation"]?.toString() ?? "";
       } else {
         debugPrint(response.body);
+        if (response.statusCode != 200) {
+          throw response.body;
+        }
       }
     } while (con != "");
     debugPrint("Fetched starred articles: $count");
@@ -332,9 +330,6 @@ class ApiFreshRss extends ApiBase {
           if (value.body == "OK") {
             done = true;
           }
-        })
-        .catchError((onError) {
-          debugPrint(onError.toString());
         });
     if (!done) {
       Map<String, DelayedAction> actions = {};
@@ -371,9 +366,6 @@ class ApiFreshRss extends ApiBase {
           if (value.body == "OK") {
             done = true;
           }
-        })
-        .catchError((onError) {
-          debugPrint(onError.toString());
         });
     if (!done) {
       Map<String, DelayedAction> actions = {};

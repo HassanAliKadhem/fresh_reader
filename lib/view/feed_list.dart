@@ -92,7 +92,10 @@ class _FeedListState extends State<FeedList> {
                 debugPrint(onError.toString());
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(onError.toString(), maxLines: 3)),
+                    SnackBar(
+                      content: Text(onError.toString()),
+                      duration: Duration(seconds: 10),
+                    ),
                   );
                   setState(() {
                     loadingProgress = 1.0; // reset progress

@@ -191,6 +191,14 @@ class StorageSqlite {
     await batch.commit(continueOnError: true);
   }
 
+  Future<void> deleteRemovedCategories(List<Category> cats) async {
+    // will delete categories not in the list
+    var res = await _database.rawDelete(
+      "delete from Categories where catID not in ('${cats.map((s) => s.catID).join("', '")}')",
+    );
+    debugPrint("Deleted $res Categories");
+  }
+
   Future<void> insertSubscriptions(List<Subscription> subs) async {
     final Batch batch = _database.batch();
     for (Subscription sub in subs) {
@@ -201,6 +209,14 @@ class StorageSqlite {
       );
     }
     await batch.commit(continueOnError: true);
+  }
+
+  Future<void> deleteRemovedSubscriptions(List<Subscription> subs) async {
+    // will delete subscriptions not in the list
+    var res = await _database.rawDelete(
+      "delete from Subscriptions where subID not in ('${subs.map((s) => s.subID).join("', '")}')",
+    );
+    debugPrint("Deleted $res Subscriptions");
   }
 
   Future<Map<String, (int, String, bool, bool)>> loadArticleMetaData(
@@ -409,6 +425,20 @@ class StorageSqlite {
     await _database.rawUpdate(
       "Update Articles set isRead = 'true' where articleID not in ('${articleIDs.join("','")}') and accountID = $accountID",
     );
+  }
+
+  Future<List<Map<String, Object?>>> selectOrphanedArticles() async {
+    return await _database.rawQuery(
+      "select articleID, title from articles where subID not in (select subID from subscriptions)",
+    );
+  }
+
+  Future<void> deleteOrphanArticles() async {
+    // delete articles if the subscription is not in database
+    var res = await _database.rawDelete(
+      "delete from articles where subID not in (select subID from subscriptions)",
+    );
+    debugPrint("Deleted $res orphaned articles");
   }
 
   Future<void> syncArticlesStar(Set<String> articleIDs, int accountID) async {

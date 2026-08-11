@@ -1,5 +1,4 @@
 import 'package:anchor_scroll_controller/anchor_scroll_controller.dart';
-import 'package:flutter/foundation.dart' hide Category;
 import 'package:flutter/material.dart';
 
 import 'api.dart';
@@ -40,21 +39,31 @@ class DataProvider extends ChangeNotifier {
       }
 
       if (accountID != null) {
-        db.loadAllSubs(accountID!).then((subs) {
-          subscriptions = subs;
-          db.loadAllCategory(accountID!).then((cats) {
-            categories = cats;
-            db.loadArticleMetaData(accountID!).then((meta) {
-              articlesMetaData = meta;
-              db.getLastSyncIDs(accountID!, .date).then((lastIds) {
-                lastSyncIDs = lastIds;
-                notifyListeners();
-              });
-            });
-          });
-        });
+        _loadData();
       }
     });
+  }
+
+  Future<void> _loadData() async {
+    subscriptions = {};
+    categories = {};
+    articlesMetaData = {};
+    lastSyncIDs = [];
+    await Future.wait([
+      db.loadAllSubs(accountID!).then((subs) {
+        subscriptions = subs;
+      }),
+      db.loadAllCategory(accountID!).then((cats) {
+        categories = cats;
+      }),
+      db.loadArticleMetaData(accountID!).then((meta) {
+        articlesMetaData = meta;
+      }),
+      db.getLastSyncIDs(accountID!, .date).then((lastIds) {
+        lastSyncIDs = lastIds;
+      }),
+    ]);
+    notifyListeners();
   }
 
   void setSelectedIndex(int? i, bool? fromArticleView, [bool notify = true]) {
@@ -103,22 +112,7 @@ class DataProvider extends ChangeNotifier {
     subscriptions = {};
     categories = {};
     if (accountID != null) {
-      await Future.wait([
-        db.loadAllSubs(accountID!).then((subs) {
-          subscriptions = subs;
-        }),
-        db.loadArticleMetaData(accountID!).then((meta) {
-          articlesMetaData = meta;
-        }),
-        db.loadAllCategory(accountID!).then((cats) {
-          categories = cats;
-        }),
-        db.getLastSyncIDs(accountID!, .date).then((lastIds) {
-          lastSyncIDs = lastIds;
-        }),
-      ]).then((_) {
-        notifyListeners();
-      });
+      await _loadData();
     }
   }
 
@@ -166,6 +160,10 @@ class DataProvider extends ChangeNotifier {
     if (accountID == null) {
       debugPrint("No account selected");
       throw "No account selected";
+    }
+    if (api != null && api is ApiFreshRss) {
+      debugPrint("Waiting for auth");
+      await (api as ApiFreshRss).authFuture;
     }
 
     final delayedActions = await db.loadDelayedActions(accountID!);
@@ -300,6 +298,7 @@ class DataProvider extends ChangeNotifier {
     //     .then((value) => modifyAuth = value.body.replaceAll("\n", "")),
     await _getServerCategories();
     await _getSubscriptions();
+    await db.deleteOrphanArticles();
     yield 0.5;
     await _getAllServerArticles();
     yield 0.8;
@@ -307,12 +306,8 @@ class DataProvider extends ChangeNotifier {
     await _getServerStarredArticles();
     await _getServerStarredIds();
     yield 0.9;
-    articlesMetaData.clear();
-    await db.loadArticleMetaData(accountID!).then((meta) {
-      articlesMetaData = meta;
-    });
+    await _loadData();
     //https://github.com/FreshRSS/FreshRSS/issues/2566
-    notifyListeners();
     yield 1.0;
   }
 
@@ -320,18 +315,12 @@ class DataProvider extends ChangeNotifier {
     if (api == null) {
       debugPrint("No Api loaded");
     } else {
-      try {
-        var subs = await api!.getServerSubscriptions();
-        await db.insertSubscriptions(subs);
-        for (var s in subs) {
-          subscriptions[s.subID] = s;
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          rethrow;
-        }
-        debugPrint(e.toString());
+      var subs = await api!.getServerSubscriptions();
+      await db.insertSubscriptions(subs);
+      for (var s in subs) {
+        subscriptions[s.subID] = s;
       }
+      await db.deleteRemovedSubscriptions(subs);
     }
   }
 
@@ -339,18 +328,12 @@ class DataProvider extends ChangeNotifier {
     if (api == null || accountID == null) {
       debugPrint("No Api or Account loaded");
     } else {
-      try {
-        var cats = await api!.getServerCategories();
-        await db.insertCategories(cats, accountID!);
-        for (var c in cats) {
-          categories[c.catID] = c;
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          rethrow;
-        }
-        debugPrint(e.toString());
+      var cats = await api!.getServerCategories();
+      await db.insertCategories(cats, accountID!);
+      for (var c in cats) {
+        categories[c.catID] = c;
       }
+      await db.deleteRemovedCategories(cats);
     }
   }
 
