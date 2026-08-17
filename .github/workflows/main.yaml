@@ -72,4 +72,4 @@ jobs:
         bodyFile: "changes.md"
         artifacts: "build/app/outputs/flutter-apk/app-release.apk"
         tag: v${{ env.VERSION }}
-        # token: ${{ secrets.TOKEN }}
+        token: ${{ secrets.TOKEN }}
