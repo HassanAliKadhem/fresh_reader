@@ -40,11 +40,12 @@ jobs:
     - name: Build APK
       run: flutter build apk --release
     - name: Upload Artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v7
       with:
         name: Releases
         path: |
           build/app/outputs/flutter-apk/app-release.apk
+        archive: false
     - name: Extract version from pubspec.yaml
       id: extract_version
       run: |
