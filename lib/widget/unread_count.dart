@@ -8,13 +8,11 @@ class UnreadCount extends StatelessWidget {
   final int unread;
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-      decoration: BoxDecoration(
-        borderRadius: const BorderRadius.all(Radius.circular(5)),
-        color: Theme.of(context).scaffoldBackgroundColor,
-      ),
-      child: Text(unread.toString(), textScaler: const TextScaler.linear(1.15)),
+    return Chip(
+      label: Text(unread.toString()),
+      side: .none,
+      padding: const .all(4.0),
+      visualDensity: .compact,
     );
   }
 }
