@@ -109,6 +109,7 @@ class _SettingsContentState extends State<SettingsContent> {
         //   dbKey: "star_duration",
         //   values: amounts,
         // ),
+        const Divider(),
         const ThemeSwitcherCard(),
         const Divider(),
         AboutTile(),

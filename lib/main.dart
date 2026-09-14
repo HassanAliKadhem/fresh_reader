@@ -185,9 +185,11 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
+      onPopInvokedWithResult: (didPop, result) async {
         if (!didPop) {
-          _navigatorKey.currentState!.maybePop();
+          if (!(await _navigatorKey.currentState!.maybePop())) {
+            SystemNavigator.pop();
+          }
         }
       },
       child: Navigator(
