@@ -29,7 +29,7 @@ class Preferences extends ChangeNotifier {
   bool showAll = false;
   bool showLastSync = false;
   int themeIndex = 0;
-  bool themeDynamic = true;
+  bool themeDynamic = !Platform.isIOS; // default to false on ios
   int themeColor = 0xFF673AB7;
   Sorting sorting = .date;
 
@@ -44,15 +44,17 @@ class Preferences extends ChangeNotifier {
       // check if font is not available
       font = fonts.first;
     }
-    isLetterHighlight = (await _tryGetBool("format_bionic")) ?? false;
-    markReadWhenOpen = (await _tryGetBool("read_when_open")) ?? true;
-    showLastSync = (await _tryGetBool("show_last_sync")) ?? false;
-    openInBrowser = (await _tryGetBool("open_in_browser")) ?? false;
-    useWebView = (await _tryGetBool("use_web_view")) ?? false;
-    showAll = (await _tryGetBool("show_all")) ?? false;
-    themeDynamic = (await _tryGetBool("theme_mode")) ?? true;
-    themeIndex = (await _tryGetInt("theme_index")) ?? 0;
-    themeColor = (await _tryGetInt("theme_color")) ?? 0xFF673AB7;
+    isLetterHighlight =
+        (await _tryGetBool("format_bionic")) ?? isLetterHighlight;
+    markReadWhenOpen =
+        (await _tryGetBool("read_when_open")) ?? markReadWhenOpen;
+    showLastSync = (await _tryGetBool("show_last_sync")) ?? showAll;
+    openInBrowser = (await _tryGetBool("open_in_browser")) ?? openInBrowser;
+    useWebView = (await _tryGetBool("use_web_view")) ?? useWebView;
+    showAll = (await _tryGetBool("show_all")) ?? showAll;
+    themeDynamic = (await _tryGetBool("theme_mode")) ?? themeDynamic;
+    themeIndex = (await _tryGetInt("theme_index")) ?? themeIndex;
+    themeColor = (await _tryGetInt("theme_color")) ?? themeColor;
     readDuration = (await _tryGetInt("read_duration"));
     starDuration = (await _tryGetInt("star_duration"));
     sorting = switch ((await database.getPreference("sorting"))) {
