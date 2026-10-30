@@ -6,13 +6,12 @@ import '../api/data.dart';
 import '../api/data_types.dart';
 import '../util/date.dart';
 import '../api/preferences.dart';
-import '../util/screen_size.dart';
+import '../util/show_error.dart';
 import '../widget/account_switcher.dart';
 import '../widget/category_card.dart';
 import '../widget/show_all_switcher.dart';
 import '../widget/transparent_container.dart';
 import '../widget/unread_count.dart';
-import 'settings_view.dart';
 
 class FeedList extends StatefulWidget {
   const FeedList({super.key});
@@ -23,6 +22,8 @@ class FeedList extends StatefulWidget {
 
 class _FeedListState extends State<FeedList> {
   double? loadingProgress = 1.0;
+  bool isSearching = false;
+  String? searchTerms;
 
   @override
   Widget build(BuildContext context) {
@@ -34,39 +35,61 @@ class _FeedListState extends State<FeedList> {
         Theme.of(context).scaffoldBackgroundColor,
       ),
       appBar: AppBar(
-        title: Text(
-          context.select<DataProvider, String>(
-            (d) => d.api?.account.username ?? "Feeds",
-          ),
-        ),
-        actions: [
-          ShowAllSwitcherWidget(),
-          AccountSwitcherWidget(),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            tooltip: "Settings",
-            onPressed: () {
-              if (screenSizeOf(context) == ScreenSize.big) {
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (context) {
-                    return const SettingsDialog();
+        title: isSearching
+            ? SearchBar(
+                key: const ValueKey("searchFeeds"),
+                hintText: "Search Feeds",
+                textInputAction: TextInputAction.search,
+                leading: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: const Icon(Icons.search),
+                ),
+                autoFocus: true,
+                constraints: const BoxConstraints(minHeight: 42.0),
+                elevation: const WidgetStatePropertyAll(0.0),
+                trailing: [
+                  IconButton(
+                    onPressed: () {
+                      setState(() {
+                        searchTerms = null;
+                        isSearching = false;
+                      });
+                    },
+                    icon: const Icon(Icons.clear),
+                  ),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    searchTerms = value;
+                  });
+                },
+              )
+            : Text(
+                context.select<DataProvider, String>(
+                  (d) => d.api?.account.username ?? "Feeds",
+                ),
+              ),
+        actions: isSearching
+            ? []
+            : [
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      isSearching = true;
+                    });
                   },
-                ).then((_) {
-                  setState(() {});
-                });
-              } else {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => SettingsPage()),
-                ).then((_) {
-                  setState(() {});
-                });
-              }
-            },
-          ),
-        ],
+                  icon: Icon(Icons.search),
+                ),
+                ShowAllSwitcherWidget(),
+                AccountSwitcherWidget(),
+                IconButton(
+                  icon: const Icon(Icons.settings),
+                  tooltip: "Settings",
+                  onPressed: () {
+                    context.read<DataProvider>().settingsPage = "settings";
+                  },
+                ),
+              ],
         flexibleSpace: TransparentContainer(
           hasBorder: false,
           child: Align(
@@ -91,12 +114,7 @@ class _FeedListState extends State<FeedList> {
               ) {
                 debugPrint(onError.toString());
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(onError.toString()),
-                      duration: Duration(seconds: 10),
-                    ),
-                  );
+                  showError(context, onError.toString());
                   setState(() {
                     loadingProgress = 1.0; // reset progress
                   });
@@ -109,7 +127,7 @@ class _FeedListState extends State<FeedList> {
             });
           }
         },
-        child: const CategoryList(),
+        child: CategoryList(searchTerms: searchTerms),
       ),
       bottomNavigationBar: TransparentContainer(
         hasBorder: false,
@@ -120,7 +138,8 @@ class _FeedListState extends State<FeedList> {
 }
 
 class CategoryList extends StatefulWidget {
-  const CategoryList({super.key});
+  const CategoryList({super.key, this.searchTerms});
+  final String? searchTerms;
 
   @override
   State<CategoryList> createState() => _CategoryListState();
@@ -148,6 +167,7 @@ class _CategoryListState extends State<CategoryList> {
   @override
   Widget build(BuildContext context) {
     secondsSinceToday = getTodaySecondsSinceEpoch();
+    String? search = widget.searchTerms?.toLowerCase();
     String? filteredTitle = context.select<DataProvider, String?>(
       (value) => value.filteredTitle,
     );
@@ -220,9 +240,16 @@ class _CategoryListState extends State<CategoryList> {
                   Map<String, Subscription> currentSubscriptions = {};
                   for (var value
                       in context.read<DataProvider>().subscriptions.values) {
-                    if (value.catID == categories[index].catID) {
+                    if (value.catID == categories[index].catID &&
+                        (search == null ||
+                            value.title.toLowerCase().contains(search) ||
+                            value.htmlUrl.toLowerCase().contains(search))) {
                       currentSubscriptions[value.subID] = value;
                     }
+                  }
+                  if (widget.searchTerms != null &&
+                      currentSubscriptions.isEmpty) {
+                    return SizedBox();
                   }
                   return CategoryCard(
                     categoryName: categories[index].catID.split("/").last,

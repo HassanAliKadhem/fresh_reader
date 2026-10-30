@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../util/open_link.dart';
 
 const String gitHubUrl = "https://github.com/HassanAliKadhem/fresh_reader";
-const String version = "v1.3.8";
+const String version = "v1.3.9";
 
 class AboutTile extends StatelessWidget {
   const AboutTile({super.key});
@@ -13,6 +13,7 @@ class AboutTile extends StatelessWidget {
     return ListTile(
       title: const Text("About Fresh Reader"),
       subtitle: const Text(version),
+      leading: const Icon(Icons.info),
       onTap: () {
         showAboutDialog(
           context: context,

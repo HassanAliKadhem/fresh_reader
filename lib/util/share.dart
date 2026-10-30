@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'show_error.dart';
+
 void shareLink(BuildContext context, String link, String? subject) {
   try {
     final box = context.findRenderObject() as RenderBox?;
@@ -12,9 +14,6 @@ void shareLink(BuildContext context, String link, String? subject) {
       ),
     );
   } catch (e) {
-    debugPrint(e.toString());
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(e.toString(), maxLines: 3), showCloseIcon: true),
-    );
+    showError(context, e.toString());
   }
 }

@@ -20,6 +20,12 @@ class DataProvider extends ChangeNotifier {
   String? filteredTitle;
   int? _selectedIndex;
   int? get selectedIndex => _selectedIndex;
+  String? _settingsPage;
+  String? get settingsPage => _settingsPage;
+  set settingsPage(String? val) {
+    _settingsPage = val;
+    notifyListeners();
+  }
 
   PageController? pageController;
   AnchorScrollController? listController;

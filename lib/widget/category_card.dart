@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 import '../api/data.dart';
 import '../api/data_types.dart';
@@ -81,8 +82,64 @@ class CategoryCard extends StatelessWidget {
                   onTap: () {
                     openFeed(key);
                   },
+                  onLongPress: () {
+                    showInfoDialog(context, currentSubscriptions[key]!.title, [
+                      ["Url", currentSubscriptions[key]!.htmlUrl],
+                      ["RssUrl", currentSubscriptions[key]!.url],
+                      [
+                        "IconUrl",
+                        context.read<DataProvider>().getIconUrl(
+                          currentSubscriptions[key]!.iconUrl,
+                        ),
+                      ],
+                    ]);
+                  },
                 );
               }),
+        ],
+      ),
+    );
+  }
+
+  Future<void> showInfoDialog(
+    BuildContext context,
+    String title,
+    List<List<String>> urls,
+  ) async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        scrollable: true,
+        content: Column(
+          children: [
+            ListTile(title: Text("Category: $categoryName"), dense: true),
+            ...urls.map(
+              (url) => ListTile(
+                title: Text("${url[0]}: ${url[1]}"),
+                trailing: url[0] == "IconUrl"
+                    ? ArticleImage(
+                        imageUrl: url[1],
+                        height: 28,
+                        width: 28,
+                        onError: (error) => const Icon(Icons.error),
+                      )
+                    : const Icon(Icons.open_in_browser),
+                dense: true,
+                onTap: () {
+                  launchUrlString(url[1]);
+                },
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: Text("Close"),
+          ),
         ],
       ),
     );

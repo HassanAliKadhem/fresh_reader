@@ -12,6 +12,8 @@ import 'util/screen_size.dart';
 import 'view/article_list.dart';
 import 'view/article_view.dart';
 import 'view/feed_list.dart';
+import 'view/settings_view.dart';
+import 'widget/settings_widgets.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -177,6 +179,9 @@ final ValueNotifier<bool> isExpanded = ValueNotifier<bool>(false);
 class _HomeWidgetState extends State<HomeWidget> {
   @override
   Widget build(BuildContext context) {
+    String? settingsPage = context.select<DataProvider, String?>(
+      (a) => a.settingsPage,
+    );
     String? filteredTitle = context.select<DataProvider, String?>(
       (a) => a.filteredTitle,
     );
@@ -200,6 +205,10 @@ class _HomeWidgetState extends State<HomeWidget> {
           } else if (page.name == "/list") {
             context.read<DataProvider>().setSelectedIndex(null, null, true);
             context.read<DataProvider>().clearFiltered();
+          } else if (page.name == "/settings") {
+            context.read<DataProvider>().settingsPage = null;
+          } else if (page.name != null && page.name!.startsWith("/settings")) {
+            context.read<DataProvider>().settingsPage = "settings";
           }
         },
         pages: [
@@ -264,7 +273,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   const Expanded(flex: 2, child: ArticleList()),
                   // VerticalDivider(width: 1),
                   Expanded(
-                    flex: 3,
+                    flex: 2,
                     child: isIndexSelected
                         ? articleView()
                         : const Scaffold(
@@ -281,6 +290,32 @@ class _HomeWidgetState extends State<HomeWidget> {
             const MaterialPage(name: "/list", child: ArticleList()),
           if (screenSizeOf(context) == ScreenSize.small && isIndexSelected)
             MaterialPage(name: "/article", child: articleView()),
+          if (screenSizeOf(context) != ScreenSize.small &&
+              settingsPage != null &&
+              settingsPage.startsWith("settings"))
+            MaterialPage(
+              name: "/settings",
+              child: Row(
+                children: [
+                  const Expanded(flex: 2, child: SettingsPage()),
+                  Expanded(
+                    flex: 2,
+                    child: settingsDetails(settingsPage, false),
+                  ),
+                ],
+              ),
+            ),
+          if (screenSizeOf(context) == ScreenSize.small &&
+              settingsPage != null &&
+              settingsPage.startsWith("settings"))
+            MaterialPage(name: "/settings", child: const SettingsPage()),
+          if (screenSizeOf(context) == ScreenSize.small &&
+              settingsPage != null &&
+              settingsPage.startsWith("settings/"))
+            MaterialPage(
+              name: "/settings/",
+              child: settingsDetails(settingsPage, true),
+            ),
         ],
       ),
     );
@@ -294,6 +329,34 @@ class _HomeWidgetState extends State<HomeWidget> {
       key: ValueKey(ids),
       index: context.read<DataProvider>().selectedIndex,
       articleIDs: ids,
+    );
+  }
+
+  Widget settingsDetails(String settingsPage, bool automaticallyImplyLeading) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(switch (settingsPage) {
+          "settings/accounts" => "Manage accounts",
+          "settings/behavior" => "Behavior",
+          "settings/theme" => "Themes",
+          _ => "",
+        }),
+        automaticallyImplyLeading: automaticallyImplyLeading,
+      ),
+      body: ListView(
+        physics: AlwaysScrollableScrollPhysics(),
+        children: [
+          AnimatedSwitcher(
+            duration: Durations.medium2,
+            child: switch (settingsPage) {
+              "settings/accounts" => const ManageAccountPage(),
+              "settings/behavior" => const BehaviorSettingsPage(),
+              "settings/theme" => const ThemeSwitcherCard(),
+              _ => const SizedBox(),
+            },
+          ),
+        ],
+      ),
     );
   }
 }

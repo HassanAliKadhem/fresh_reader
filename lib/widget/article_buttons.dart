@@ -10,6 +10,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../api/data.dart';
 import '../api/preferences.dart';
 import '../util/share.dart';
+import '../util/show_error.dart';
 import '../widget/transparent_container.dart';
 
 class ArticleBottomButtons extends StatefulWidget {
@@ -72,10 +73,7 @@ class _ArticleBottomButtonsState extends State<ArticleBottomButtons> {
                       );
                     });
                   } catch (e) {
-                    debugPrint(e.toString());
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(e.toString(), maxLines: 3)),
-                    );
+                    showError(context, e.toString());
                   }
                 }
               },

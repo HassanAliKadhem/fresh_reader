@@ -173,102 +173,97 @@ class ThemeSwitcherCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Column(
-        mainAxisSize: .min,
-        children: [
-          const ListTile(title: Text("Theme")),
-          const ListTile(title: Text("Colors"), dense: true),
-          if (!Platform.isIOS)
-            SwitchListTile.adaptive(
-              title: const Text("Use dynamic colors"),
-              value: context.select<Preferences, bool>((a) => a.themeDynamic),
-              onChanged: (value) {
-                context.read<Preferences>().setThemeMode(value);
-              },
-            ),
-          ListTile(
-            title: const Text("Custom Color"),
-            enabled: !context.select<Preferences, bool>((a) => a.themeDynamic),
-            trailing: AspectRatio(
-              aspectRatio: 1.0,
-              child: Container(
-                color: Color(
-                  context.select<Preferences, int>((a) => a.themeColor),
-                ),
+    return Column(
+      mainAxisSize: .min,
+      children: [
+        const ListTile(title: Text("Colors"), dense: true),
+        if (!Platform.isIOS)
+          SwitchListTile.adaptive(
+            title: const Text("Use dynamic colors"),
+            value: context.select<Preferences, bool>((a) => a.themeDynamic),
+            onChanged: (value) {
+              context.read<Preferences>().setThemeMode(value);
+            },
+          ),
+        ListTile(
+          title: const Text("Custom Color"),
+          enabled: !context.select<Preferences, bool>((a) => a.themeDynamic),
+          trailing: AspectRatio(
+            aspectRatio: 1.0,
+            child: Container(
+              color: Color(
+                context.select<Preferences, int>((a) => a.themeColor),
               ),
             ),
-            onTap: () {
-              showAdaptiveDialog(
-                context: context,
-                builder: (context) {
-                  int selected = context.select<Preferences, int>(
-                    (a) => a.themeColor,
-                  );
-                  return AlertDialog.adaptive(
-                    title: const Text("Color"),
-                    scrollable: true,
-                    content: Column(
-                      spacing: 12.0,
-                      children: Colors.primaries
-                          .map(
-                            (color) => GestureDetector(
-                              child: Stack(
-                                alignment: .center,
-                                children: [
-                                  Container(
-                                    color: color,
-                                    width: double.infinity,
-                                    height: 40.0,
-                                  ),
-                                  if (color.toARGB32() == selected)
-                                    Icon(Icons.check),
-                                ],
-                              ),
-                              onTap: () {
-                                context.read<Preferences>().setThemeColor(
-                                  color,
-                                );
-                                Navigator.pop(context);
-                              },
+          ),
+          onTap: () {
+            showAdaptiveDialog(
+              context: context,
+              builder: (context) {
+                int selected = context.select<Preferences, int>(
+                  (a) => a.themeColor,
+                );
+                return AlertDialog.adaptive(
+                  title: const Text("Color"),
+                  scrollable: true,
+                  content: Column(
+                    spacing: 12.0,
+                    children: Colors.primaries
+                        .map(
+                          (color) => GestureDetector(
+                            child: Stack(
+                              alignment: .center,
+                              children: [
+                                Container(
+                                  color: color,
+                                  width: double.infinity,
+                                  height: 40.0,
+                                ),
+                                if (color.toARGB32() == selected)
+                                  Icon(Icons.check),
+                              ],
                             ),
-                          )
-                          .toList(),
+                            onTap: () {
+                              context.read<Preferences>().setThemeColor(color);
+                              Navigator.pop(context);
+                            },
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: const Text("Close"),
                     ),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: const Text("Close"),
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
+                  ],
+                );
+              },
+            );
+          },
+        ),
+        const ListTile(title: Text("Theme Mode"), dense: true),
+        RadioGroup<int>(
+          onChanged: (val) {
+            if (val != null) {
+              context.read<Preferences>().setThemeIndex(val);
+            }
+          },
+          groupValue: context.select<Preferences, int>((a) => a.themeIndex),
+          child: Column(
+            children: themes.entries
+                .map(
+                  (t) => RadioListTile.adaptive(
+                    value: t.value,
+                    title: Text(t.key),
+                  ),
+                )
+                .toList(),
           ),
-          const ListTile(title: Text("Theme Mode"), dense: true),
-          RadioGroup<int>(
-            onChanged: (val) {
-              if (val != null) {
-                context.read<Preferences>().setThemeIndex(val);
-              }
-            },
-            groupValue: context.select<Preferences, int>((a) => a.themeIndex),
-            child: Column(
-              children: themes.entries
-                  .map(
-                    (t) => RadioListTile.adaptive(
-                      value: t.value,
-                      title: Text(t.key),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
