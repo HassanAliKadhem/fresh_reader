@@ -9,6 +9,14 @@ Future<void> showError(BuildContext context, String error) async {
         title: Text("Error"),
         scrollable: true,
         content: Text(error),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text("Ok"),
+          ),
+        ],
       );
     },
   );
