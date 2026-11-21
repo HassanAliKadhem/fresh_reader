@@ -261,6 +261,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
               children: [
                 RadioListTile.adaptive(
                   title: Text(getAccountString(.freshrss)),
+                  activeColor: Theme.of(context).colorScheme.primary,
                   value: getAccountString(.freshrss),
                 ),
               ],

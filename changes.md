@@ -1,2 +1,3 @@
-Updated to flutter 3.50.0
+Updated design slightly
 Updated packages
+Updated flutter version to 3.50.1

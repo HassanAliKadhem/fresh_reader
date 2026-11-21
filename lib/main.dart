@@ -113,9 +113,6 @@ class _MyAppState extends State<MyApp> {
                   systemNavigationBarIconBrightness: Brightness.dark,
                 ),
               ),
-              listTileTheme: ListTileThemeData(
-                selectedTileColor: Colors.white70,
-              ),
               sliderTheme: SliderThemeData(year2023: false),
               progressIndicatorTheme: ProgressIndicatorThemeData(
                 year2023: false,
@@ -149,9 +146,6 @@ class _MyAppState extends State<MyApp> {
                   systemNavigationBarContrastEnforced: false,
                   systemNavigationBarIconBrightness: Brightness.light,
                 ),
-              ),
-              listTileTheme: ListTileThemeData(
-                selectedTileColor: Colors.white10,
               ),
               sliderTheme: SliderThemeData(year2023: false),
               progressIndicatorTheme: ProgressIndicatorThemeData(
@@ -202,7 +196,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         onDidRemovePage: (page) {
           if (page.name == "/article") {
             context.read<DataProvider>().setSelectedIndex(null, null, true);
-          } else if (page.name == "/list") {
+          } else if (["/list", "/list,article"].contains(page.name)) {
             context.read<DataProvider>().setSelectedIndex(null, null, true);
             context.read<DataProvider>().clearFiltered();
           } else if (page.name == "/settings") {
@@ -268,6 +262,7 @@ class _HomeWidgetState extends State<HomeWidget> {
           if (screenSizeOf(context) == ScreenSize.medium &&
               filteredTitle != null)
             MaterialPage(
+              name: "/list,article",
               child: Row(
                 children: [
                   const Expanded(flex: 2, child: ArticleList()),

@@ -12,7 +12,7 @@ class ShowAllSwitcherWidget extends StatelessWidget {
     bool showAll = context.select<DataProvider, bool>((a) => a.showAll);
     return PopupMenuButton<bool>(
       initialValue: showAll,
-      icon: Icon(showAll ? Icons.circle_outlined : Icons.circle),
+      icon: Icon(showAll ? Icons.radio_button_off : Icons.radio_button_on),
       itemBuilder: (context) {
         return [
           PopupMenuItem<bool>(
@@ -20,7 +20,7 @@ class ShowAllSwitcherWidget extends StatelessWidget {
             child: Row(
               mainAxisSize: .min,
               spacing: 8.0,
-              children: [Icon(Icons.circle_outlined), Text("All Articles")],
+              children: [Icon(Icons.radio_button_off), Text("All Articles")],
             ),
           ),
           PopupMenuItem<bool>(
@@ -28,7 +28,7 @@ class ShowAllSwitcherWidget extends StatelessWidget {
             child: Row(
               mainAxisSize: .min,
               spacing: 8.0,
-              children: [Icon(Icons.circle), Text("Only Unread")],
+              children: [Icon(Icons.radio_button_on), Text("Only Unread")],
             ),
           ),
         ];

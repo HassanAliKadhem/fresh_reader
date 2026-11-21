@@ -169,12 +169,14 @@ class _ArticleWidgetState extends State<ArticleWidget> {
       height: _tileHeight,
       decoration: BoxDecoration(
         color: isSelected
-            ? Theme.of(context).listTileTheme.selectedTileColor
+            ? Theme.of(context).colorScheme.primaryContainer.withAlpha(128)
             : null,
+        borderRadius: BorderRadius.circular(8.0),
       ),
+      margin: EdgeInsets.symmetric(horizontal: 6.0),
       padding: const EdgeInsets.symmetric(
         vertical: _tilePadding,
-        horizontal: _tilePadding * 1.5,
+        horizontal: (_tilePadding * 1.5) - 6.0,
       ),
       child: FutureBuilder(
         future: future,

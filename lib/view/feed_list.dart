@@ -127,7 +127,11 @@ class _FeedListState extends State<FeedList> {
             });
           }
         },
-        child: CategoryList(searchTerms: searchTerms),
+        child: ListTileTheme(
+          selectedTileColor: Theme.of(context).colorScheme.primaryContainer
+              .withAlpha(128),
+          child: CategoryList(searchTerms: searchTerms),
+        ),
       ),
       bottomNavigationBar: TransparentContainer(
         hasBorder: false,

@@ -83,6 +83,7 @@ class _ReadDurationTileState extends State<ReadDurationTile> {
                         (element) => RadioListTile.adaptive(
                           dense: true,
                           title: Text(element.value),
+                          activeColor: Theme.of(context).colorScheme.primary,
                           value: element.key,
                           toggleable: true,
                         ),
@@ -105,6 +106,7 @@ class ShowLastSyncCheckTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return CheckboxListTile.adaptive(
       title: Text("Show last sync article category"),
+      activeColor: Theme.of(context).colorScheme.primary,
       value: context.select<Preferences, bool>((a) => a.showLastSync),
       onChanged: (val) {
         if (val != null) {
@@ -122,6 +124,7 @@ class ReadWhenOpenCheckTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return CheckboxListTile.adaptive(
       title: Text("Set article as read when open"),
+      activeColor: Theme.of(context).colorScheme.primary,
       value: context.select<Preferences, bool>((a) => a.markReadWhenOpen),
       onChanged: (val) {
         if (val != null) {
@@ -141,6 +144,7 @@ class OpenInBrowserCheckTile extends StatelessWidget {
       (a) => a.openInBrowser,
     );
     return Card(
+      margin: const .all(12.0),
       child: Column(
         mainAxisSize: .min,
         children: [
@@ -156,9 +160,14 @@ class OpenInBrowserCheckTile extends StatelessWidget {
               children: [
                 RadioListTile.adaptive(
                   value: false,
+                  activeColor: Theme.of(context).colorScheme.primary,
                   title: Text("InApp browser view"),
                 ),
-                RadioListTile.adaptive(value: true, title: Text("Browser/App")),
+                RadioListTile.adaptive(
+                  value: true,
+                  activeColor: Theme.of(context).colorScheme.primary,
+                  title: Text("Browser/App"),
+                ),
               ],
             ),
           ),
@@ -187,62 +196,34 @@ class ThemeSwitcherCard extends StatelessWidget {
           ),
         ListTile(
           title: const Text("Custom Color"),
-          enabled: !context.select<Preferences, bool>((a) => a.themeDynamic),
-          trailing: AspectRatio(
-            aspectRatio: 1.0,
-            child: Container(
-              color: Color(
-                context.select<Preferences, int>((a) => a.themeColor),
-              ),
+          trailing: DropdownButtonHideUnderline(
+            child: DropdownButton<int>(
+              value: context.select<Preferences, int>((a) => a.themeColor),
+              menuWidth: 80.0,
+              elevation: 1,
+              borderRadius: .circular(8.0),
+              items: Colors.primaries
+                  .map(
+                    (color) => DropdownMenuItem<int>(
+                      alignment: .center,
+                      value: color.toARGB32(),
+                      child: AspectRatio(
+                        aspectRatio: 1.0,
+                        child: Card(
+                          margin: EdgeInsets.only(top: 2.0),
+                          color: color,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  context.read<Preferences>().setThemeColor(Color(value));
+                }
+              },
             ),
           ),
-          onTap: () {
-            showAdaptiveDialog(
-              context: context,
-              builder: (context) {
-                int selected = context.select<Preferences, int>(
-                  (a) => a.themeColor,
-                );
-                return AlertDialog.adaptive(
-                  title: const Text("Color"),
-                  scrollable: true,
-                  content: Column(
-                    spacing: 12.0,
-                    children: Colors.primaries
-                        .map(
-                          (color) => GestureDetector(
-                            child: Stack(
-                              alignment: .center,
-                              children: [
-                                Container(
-                                  color: color,
-                                  width: double.infinity,
-                                  height: 40.0,
-                                ),
-                                if (color.toARGB32() == selected)
-                                  Icon(Icons.check),
-                              ],
-                            ),
-                            onTap: () {
-                              context.read<Preferences>().setThemeColor(color);
-                              Navigator.pop(context);
-                            },
-                          ),
-                        )
-                        .toList(),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      child: const Text("Close"),
-                    ),
-                  ],
-                );
-              },
-            );
-          },
         ),
         const ListTile(title: Text("Theme Mode"), dense: true),
         RadioGroup<int>(
@@ -252,15 +233,19 @@ class ThemeSwitcherCard extends StatelessWidget {
             }
           },
           groupValue: context.select<Preferences, int>((a) => a.themeIndex),
-          child: Column(
-            children: themes.entries
-                .map(
-                  (t) => RadioListTile.adaptive(
-                    value: t.value,
-                    title: Text(t.key),
-                  ),
-                )
-                .toList(),
+          child: Card(
+            margin: const .all(12.0),
+            child: Column(
+              children: themes.entries
+                  .map(
+                    (t) => RadioListTile.adaptive(
+                      value: t.value,
+                      activeColor: Theme.of(context).colorScheme.primary,
+                      title: Text(t.key),
+                    ),
+                  )
+                  .toList(),
+            ),
           ),
         ),
       ],

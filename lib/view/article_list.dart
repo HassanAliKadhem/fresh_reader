@@ -192,9 +192,9 @@ class _ArticleListState extends State<ArticleList> {
                       .articlesMetaData[searchResults[index]]
                       ?.$1;
                   if (previous != null) {
-                    String previousDate = getFormattedDate(
-                      previous,
-                    ).split(", ")[1].split(" ")[0];
+                    String previousDate = getFormattedDate(previous)
+                        .split(", ")[1]
+                        .split(" ")[0];
                     int? next = context
                         .read<DataProvider>()
                         .articlesMetaData[searchResults.elementAtOrNull(
@@ -202,9 +202,9 @@ class _ArticleListState extends State<ArticleList> {
                         )]
                         ?.$1;
                     if (next != null) {
-                      String nextDate = getFormattedDate(
-                        next,
-                      ).split(", ")[1].split(" ")[0];
+                      String nextDate = getFormattedDate(next)
+                          .split(", ")[1]
+                          .split(" ")[0];
                       if (nextDate != previousDate) {
                         return separator(nextDate);
                       }
